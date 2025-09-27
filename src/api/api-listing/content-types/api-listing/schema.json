@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "api_listings",
+  "info": {
+    "singularName": "api-listing",
+    "pluralName": "api-listings",
+    "displayName": "API LISTING"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "purpose": {
+      "type": "string",
+      "required": true
+    },
+    "url": {
+      "type": "string"
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": [
+        "POST",
+        "GET",
+        "PUT",
+        "DELETE"
+      ]
+    },
+    "usage": {
+      "type": "text"
+    },
+    "location": {
+      "type": "string"
+    },
+    "callback": {
+      "type": "text"
+    },
+    "active": {
+      "type": "boolean",
+      "required": true,
+      "default": true
+    },
+    "public": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "private": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "grouping": {
+      "type": "string"
+    }
+  }
+}

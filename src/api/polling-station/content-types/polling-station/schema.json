@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "polling_stations",
+  "info": {
+    "singularName": "polling-station",
+    "pluralName": "polling-stations",
+    "displayName": "Polling Station",
+    "description": "Voting polling stations"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "parish": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::parish.parish",
+      "inversedBy": "polling_stations"
+    }
+  }
+}

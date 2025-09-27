@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sub_counties",
+  "info": {
+    "singularName": "sub-county",
+    "pluralName": "sub-counties",
+    "displayName": "Sub County",
+    "description": "Sub counties and divisions"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "enumeration_area": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::enumeration-area.enumeration-area",
+      "inversedBy": "sub_counties"
+    },
+    "parishes": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::parish.parish",
+      "mappedBy": "sub_county"
+    }
+  }
+}
