@@ -1,0 +1,74 @@
+'use strict';
+
+module.exports = async ({ strapi }) => {
+  console.log('🖼️  Starting Featured Image Matching...\n');
+  
+  try {
+    // Fetch all media files using entity service
+    console.log('📁 Fetching media files...');
+    const allMedia = await strapi.entityService.findMany('plugin::upload.file', {
+      filters: { name: { $startsWith: 'wp-' } },
+      fields: ['name', 'url', 'id'],
+      pagination: { limit: -1 }
+    });
+    console.log(`✔ Found ${allMedia.length} media files\n`);
+    
+    // Create mapping
+    console.log('🔗 Creating mapping...');
+    const mediaMapping = {};
+    for (const media of allMedia) {
+      const match = media.name.match(/^wp-(\d+)-/);
+      if (match) {
+        const wpId = parseInt(match[1]);
+        mediaMapping[wpId] = { id: media.id, name: media.name };
+      }
+    }
+    console.log(`✔ Mapped ${Object.keys(mediaMapping).length} images\n`);
+    
+    // Fetch all posts
+    console.log('📄 Fetching posts...');
+    const posts = await strapi.entityService.findMany('api::post.post', {
+      fields: ['wp_id', 'title'],
+      pagination: { limit: -1 }
+    });
+    console.log(`✔ Found ${posts.length} posts\n`);
+    
+    // Update posts
+    console.log('🔄 Updating posts...\n');
+    let success = 0, noMatch = 0, failed = 0;
+    
+    for (const post of posts) {
+      try {
+        if (!post.wp_id) { noMatch++; continue; }
+        
+        const media = mediaMapping[post.wp_id];
+        if (!media) { noMatch++; continue; }
+        
+        await strapi.entityService.update('api::post.post', post.id, {
+          data: { featured_image: media.id }
+        });
+        
+        console.log(`✔ ${post.title} -> ${media.name}`);
+        success++;
+        
+        if (success % 100 === 0) console.log(`\n   ${success} updated...\n`);
+      } catch (error) {
+        console.error(`✗ ${post.title}: ${error.message}`);
+        failed++;
+      }
+    }
+    
+    console.log('\n' + '='.repeat(70));
+    console.log('📊 SUMMARY');
+    console.log('='.repeat(70));
+    console.log(`✔ Success: ${success}`);
+    console.log(`⊘ No match: ${noMatch}`);
+    console.log(`✗ Failed: ${failed}`);
+    console.log('\n✅ Complete!');
+    
+  } catch (error) {
+    console.error('❌ Failed:', error);
+    throw error;
+  }
+};
+SCRIPTEND
