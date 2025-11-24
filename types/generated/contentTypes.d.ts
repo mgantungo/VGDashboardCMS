@@ -429,6 +429,7 @@ export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    accessToken: Schema.Attribute.Password;
     accountstatus: Schema.Attribute.Enumeration<
       ['active', 'suspended', 'deleted']
     > &
