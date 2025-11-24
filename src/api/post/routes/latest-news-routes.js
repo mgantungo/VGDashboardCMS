@@ -40,7 +40,15 @@ module.exports = {
         middlewares: [],
       },
     },
-
+    {
+      method: 'GET',
+      path: '/posts/by-categories',
+      handler: 'latest-news.getByCategories',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    }
     
   ],
 

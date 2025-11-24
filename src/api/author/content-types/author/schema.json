@@ -26,10 +26,12 @@
       "type": "string"
     },
     "first_name": {
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     "last_name": {
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     "bio": {
       "type": "text"
@@ -45,6 +47,26 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::post.post",
+      "inversedBy": "authors"
+    },
+    "password": {
+      "type": "password",
+      "private": true
+    },
+    "accountstatus": {
+      "type": "enumeration",
+      "required": true,
+      "default": "active",
+      "enum": [
+        "active",
+        "suspended",
+        "deleted"
+      ]
+    },
+    "publications": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::publication.publication",
       "inversedBy": "authors"
     }
   }

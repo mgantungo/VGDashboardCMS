@@ -429,6 +429,11 @@ export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    accountstatus: Schema.Attribute.Enumeration<
+      ['active', 'suspended', 'deleted']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'active'>;
     avatar_url: Schema.Attribute.String;
     bio: Schema.Attribute.Text;
     createdAt: Schema.Attribute.DateTime;
@@ -436,15 +441,20 @@ export interface ApiAuthorAuthor extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     display_name: Schema.Attribute.String;
     email: Schema.Attribute.Email & Schema.Attribute.Required;
-    first_name: Schema.Attribute.String;
-    last_name: Schema.Attribute.String;
+    first_name: Schema.Attribute.String & Schema.Attribute.Required;
+    last_name: Schema.Attribute.String & Schema.Attribute.Required;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::author.author'
     > &
       Schema.Attribute.Private;
+    password: Schema.Attribute.Password & Schema.Attribute.Private;
     posts: Schema.Attribute.Relation<'manyToMany', 'api::post.post'>;
+    publications: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::publication.publication'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -776,6 +786,36 @@ export interface ApiPostPost extends Struct.CollectionTypeSchema {
     views: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     wp_id: Schema.Attribute.Integer & Schema.Attribute.Unique;
     wp_published_at: Schema.Attribute.DateTime;
+  };
+}
+
+export interface ApiPublicationPublication extends Struct.CollectionTypeSchema {
+  collectionName: 'publications';
+  info: {
+    displayName: 'Publication';
+    pluralName: 'publications';
+    singularName: 'publication';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    authors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::publication.publication'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -1428,6 +1468,7 @@ declare module '@strapi/strapi' {
       'api::parish.parish': ApiParishParish;
       'api::polling-station.polling-station': ApiPollingStationPollingStation;
       'api::post.post': ApiPostPost;
+      'api::publication.publication': ApiPublicationPublication;
       'api::region.region': ApiRegionRegion;
       'api::sub-county.sub-county': ApiSubCountySubCounty;
       'api::systemuser.systemuser': ApiSystemuserSystemuser;
