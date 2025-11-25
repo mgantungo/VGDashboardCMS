@@ -20,7 +20,8 @@
     },
     "email": {
       "type": "email",
-      "required": true
+      "required": true,
+      "unique": true
     },
     "display_name": {
       "type": "string"
@@ -49,9 +50,11 @@
       "target": "api::post.post",
       "inversedBy": "authors"
     },
-    "password": {
-      "type": "password",
-      "private": true
+    "publications": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::publication.publication",
+      "inversedBy": "authors"
     },
     "accountstatus": {
       "type": "enumeration",
@@ -63,14 +66,16 @@
         "deleted"
       ]
     },
-    "publications": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::publication.publication",
-      "inversedBy": "authors"
+    "password": {
+      "type": "password",
+      "private": true
     },
     "accessToken": {
       "type": "password"
+    },
+    "tokenGeneratedAt": {
+      "type": "datetime",
+      "private": true
     }
   }
 }
