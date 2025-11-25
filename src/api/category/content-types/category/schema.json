@@ -59,6 +59,12 @@
       "relation": "manyToMany",
       "target": "api::post.post",
       "inversedBy": "categories"
+    },
+    "publications": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::publication.publication",
+      "inversedBy": "categories"
     }
   }
 }

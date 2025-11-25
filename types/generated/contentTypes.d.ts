@@ -391,6 +391,7 @@ export interface ApiApiListingApiListing extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    description: Schema.Attribute.String;
     grouping: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -561,6 +562,10 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
     name: Schema.Attribute.String & Schema.Attribute.Required;
     parent: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
     posts: Schema.Attribute.Relation<'manyToMany', 'api::post.post'>;
+    publications: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::publication.publication'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
@@ -805,9 +810,14 @@ export interface ApiPublicationPublication extends Struct.CollectionTypeSchema {
   };
   attributes: {
     authors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'>;
+    categories: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::category.category'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',

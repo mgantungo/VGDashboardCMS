@@ -24,6 +24,15 @@
       "relation": "manyToMany",
       "target": "api::author.author",
       "mappedBy": "publications"
+    },
+    "categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::category.category",
+      "mappedBy": "publications"
+    },
+    "description": {
+      "type": "text"
     }
   }
 }

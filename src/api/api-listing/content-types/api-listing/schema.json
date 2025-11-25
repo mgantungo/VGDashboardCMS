@@ -53,6 +53,9 @@
     },
     "grouping": {
       "type": "string"
+    },
+    "description": {
+      "type": "string"
     }
   }
 }
