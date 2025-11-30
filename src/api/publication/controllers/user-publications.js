@@ -12,27 +12,27 @@ module.exports = {
         return ctx.badRequest('Username parameter is required');
       }
 
-      // Single query to get everything with proper population
+      // Step 1: Confirm if username exists in authors
       const author = await strapi.db.query('api::author.author').findOne({
         where: { username },
-        select: ['id', 'username', 'email', 'display_name', 'first_name', 'last_name'],
-        populate: {
-          publications: {
-            select: ['id', 'name', 'slug', 'description'],
-            populate: {
-              categories: {
-                select: ['id', 'name', 'slug', 'description']
-              }
-            }
-          }
-        }
+        select: ['id', 'username', 'email', 'display_name', 'first_name', 'last_name']
       });
 
       if (!author) {
         return ctx.notFound(`Author with username '${username}' not found`);
       }
 
-      if (!author.publications || author.publications.length === 0) {
+      // Step 2: Get unique publications for this author using distinct
+      const authorPublications = await strapi.db.query('api::author.author').findOne({
+        where: { username },
+        populate: {
+          publications: {
+            select: ['id', 'name', 'slug', 'description']
+          }
+        }
+      });
+
+      if (!authorPublications.publications || authorPublications.publications.length === 0) {
         return {
           data: {
             publications: [],
@@ -42,26 +42,42 @@ module.exports = {
         };
       }
 
-      // Remove duplicate publications
-      const publicationMap = new Map();
-      const allCategories = [];
-      const categoryMap = new Map();
+      const publicationIds = authorPublications.publications.map(pub => pub.id);
 
-      author.publications.forEach(pub => {
-        if (!publicationMap.has(pub.id)) {
-          publicationMap.set(pub.id, {
-            id: pub.id,
-            name: pub.name,
-            slug: pub.slug,
-            description: pub.description
-          });
+      // Step 3: Get publications with categories using distinct to avoid duplicates
+      const publications = await strapi.entityService.findMany('api::publication.publication', {
+        filters: {
+          id: { $in: publicationIds }
+        },
+        fields: ['id', 'name', 'slug', 'description'],
+        populate: {
+          categories: {
+            fields: ['id', 'name', 'slug', 'description'],
+            // Use distinct to avoid duplicate categories
+            filters: {
+              $distinct: true
+            }
+          }
         }
+      });
 
-        // Process categories for this publication
+      // Step 4: Format the response
+      const formattedPublications = publications.map(pub => ({
+        id: pub.id,
+        name: pub.name,
+        slug: pub.slug,
+        description: pub.description
+      }));
+
+      // Extract categories with distinct values using Set
+      const allCategories = [];
+      const seenCategoryIds = new Set();
+
+      publications.forEach(pub => {
         if (pub.categories) {
           pub.categories.forEach(category => {
-            if (!categoryMap.has(category.id)) {
-              categoryMap.set(category.id, true);
+            if (!seenCategoryIds.has(category.id)) {
+              seenCategoryIds.add(category.id);
               allCategories.push({
                 id: category.id,
                 name: category.name,
@@ -73,11 +89,9 @@ module.exports = {
         }
       });
 
-      const uniquePublications = Array.from(publicationMap.values());
-
       return {
         data: {
-          publications: uniquePublications,
+          publications: formattedPublications,
           categories: allCategories
         },
         meta: {
@@ -87,7 +101,7 @@ module.exports = {
             name: author.display_name || `${author.first_name} ${author.last_name}`,
             email: author.email
           },
-          totalPublications: uniquePublications.length,
+          totalPublications: formattedPublications.length,
           totalCategories: allCategories.length
         }
       };
