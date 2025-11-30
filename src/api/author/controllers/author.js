@@ -667,6 +667,63 @@ async getMyCategories(ctx) {
       console.error('💥 Get my categories error:', error);
       return ctx.internalServerError('Failed to fetch categories');
     }
+  },
+
+  /**
+ * Get publications for authenticated author
+ */
+async getMyPublications(ctx) {
+  try {
+    // Get the authenticated author ID from the request context
+    const authorId = ctx.state.user.id;
+
+    console.log('📚 Fetching publications for author ID:', authorId);
+
+    // Find the author with their publications populated
+    const author = await strapi.db.query('api::author.author').findOne({
+      where: { 
+        id: authorId,
+        accountstatus: 'active'
+      },
+      populate: {
+        publications: {
+          select: ['id', 'name', 'slug', 'description', 'publishedAt'],
+          where: {
+            publishedAt: { $notNull: true } // Only get published publications
+          }
+        }
+      }
+    });
+
+    if (!author) {
+      console.log('❌ Author not found or not active:', authorId);
+      return ctx.notFound('Author not found or account is not active');
+    }
+
+    const publications = author.publications || [];
+
+    console.log('✅ Found', publications.length, 'publications for author:', authorId);
+
+    // Return the publications data
+    return {
+      success: true,
+      data: publications,
+      count: publications.length,
+      message: publications.length > 0 
+        ? 'Publications retrieved successfully' 
+        : 'No publications found for this author'
+    };
+
+  } catch (error) {
+    console.error('💥 Get my publications error:', error);
+    
+    // Return appropriate error response
+    if (error.name === 'ValidationError') {
+      return ctx.badRequest('Invalid request parameters');
+    }
+    
+    return ctx.internalServerError('Failed to fetch publications. Please try again later.');
   }
+}
   
 }));
