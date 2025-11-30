@@ -6,7 +6,7 @@ module.exports = {
           {
             method: 'GET',
             path: '/posts/author/:username/:startdate?/:enddate?',
-            handler: 'individual-articles.findArticlesByAuthorAndDate',
+            handler: 'individual-articles.findPostsByAuthorAndDate',
             config: {
               policies: [],
               middlewares: [],
