@@ -530,5 +530,143 @@ module.exports = createCoreController('api::author.author', ({ strapi }) => ({
       console.error('💥 Reset password error:', error);
       return ctx.internalServerError('Failed to reset password');
     }
+  },
+
+/********************************************************
+ * Get posts for authenticated author with pagination
+ */
+  async getMyPosts(ctx) {
+    try {
+      const authorId = ctx.state.user.id;
+      const { page, pageSize, status, publication } = ctx.params;
+
+      const start = (parseInt(page) - 1) * parseInt(pageSize);
+      
+      // Build filters
+      const filters = {
+        authors: { id: authorId }
+      };
+
+      if (status && status !== 'null') {
+        filters.publishedAt = status === 'published' ? { $notNull: true } : { $null: true };
+      }
+
+      if (publication && publication !== 'null') {
+        filters.categories = {
+          publications: { id: parseInt(publication) }
+        };
+      }
+
+      const [posts, total] = await Promise.all([
+        strapi.db.query('api::post.post').findMany({
+          where: filters,
+          populate: [
+            'categories',
+            'categories.publications', 
+            'tags',
+            'featured_image',
+            'authors'
+          ],
+          limit: parseInt(pageSize),
+          offset: start,
+          orderBy: { createdAt: 'desc' }
+        }),
+        strapi.db.query('api::post.post').count({
+          where: filters
+        })
+      ]);
+
+      // Transform posts to match your frontend structure
+      const transformedPosts = posts.map(post => ({
+        id: post.id,
+        title: post.title,
+        status: post.publishedAt ? 'published' : 'draft',
+        category: post.categories?.[0]?.id || null,
+        categories: post.categories || [],
+        authors: post.authors?.map(author => author.id) || [],
+        authorDetails: post.authors || [],
+        publishedAt: post.publishedAt || post.wp_published_at,
+        live: !!post.publishedAt,
+        featured: post.featured || false,
+        breakingNews: post.breakingNews || false,
+        breakingDuration: post.breakingDuration || null,
+        premium: post.isPremium || false,
+        tags: post.tags?.map(tag => tag.name) || [],
+        summary: post.excerpt || '',
+        content: post.content,
+        featuredImage: post.featured_image ? {
+          url: post.featured_image.url,
+          alt: post.featured_image.alternativeText,
+          caption: post.featured_image.caption,
+          credit: post.featured_image.credit
+        } : null,
+        album: post.gallery || [],
+        secondaryCategory: post.categories?.[1]?.id || null,
+        publicationId: post.categories?.[0]?.publications?.[0]?.id || null,
+        createdAt: post.createdAt,
+        updatedAt: post.updatedAt
+      }));
+
+      return {
+        success: true,
+        data: transformedPosts,
+        pagination: {
+          page: parseInt(page),
+          pageSize: parseInt(pageSize),
+          pageCount: Math.ceil(total / parseInt(pageSize)),
+          total
+        }
+      };
+
+    } catch (error) {
+      console.error('💥 Get my posts error:', error);
+      return ctx.internalServerError('Failed to fetch posts');
+    }
+  },
+
+/***********************************************
+ * Get categories for authenticated author's publications - UPDATED with path params
+ */
+async getMyCategories(ctx) {
+    try {
+      const authorId = ctx.state.user.id;
+      const { publication } = ctx.params;
+
+      const author = await strapi.db.query('api::author.author').findOne({
+        where: { id: authorId },
+        populate: ['publications.categories']
+      });
+
+      if (!author) {
+        return ctx.notFound('Author not found');
+      }
+
+      let categories = [];
+      
+      if (publication && publication !== 'null') {
+        // Get categories for specific publication
+        const pub = author.publications.find(p => p.id == parseInt(publication));
+        categories = pub?.categories || [];
+      } else {
+        // Get all categories from all publications
+        categories = author.publications.flatMap(pub => pub.categories || []);
+        
+        // Remove duplicates by id
+        categories = categories.filter((cat, index, self) => 
+          index === self.findIndex(c => c.id === cat.id)
+        );
+      }
+
+      return {
+        success: true,
+        data: categories,
+        count: categories.length
+      };
+
+    } catch (error) {
+      console.error('💥 Get my categories error:', error);
+      return ctx.internalServerError('Failed to fetch categories');
+    }
   }
+  
 }));
