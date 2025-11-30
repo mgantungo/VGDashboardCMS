@@ -140,40 +140,6 @@ module.exports = {
       }
     },
 
-    /*Routes for authors*/
-    {
-      method: 'GET',
-      path: '/authors/me/profile',
-      handler: 'author.getMyProfile',
-      config: {
-        policies: ['is-authenticated']
-      }
-    },
-    {
-      method: 'GET',
-      path: '/authors/me/posts/:page/:pageSize/:status?/:publication?',
-      handler: 'author.getMyPosts',
-      config: {
-        policies: ['is-authenticated']
-      }
-    },
-    {
-      method: 'GET',
-      path: '/authors/me/publications',
-      handler: 'author.getMyPublications',
-      config: {
-        policies: ['is-authenticated']
-      }
-    },
-    {
-      method: 'GET',
-      path: '/authors/me/categories/:publication?',
-      handler: 'author.getMyCategories',
-      config: {
-        policies: ['is-authenticated']
-      }
-    }
-    
    
   ]
 };
