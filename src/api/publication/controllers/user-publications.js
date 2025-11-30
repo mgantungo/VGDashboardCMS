@@ -12,7 +12,7 @@ module.exports = {
         return ctx.badRequest('Username parameter is required');
       }
 
-      // Step 1: Confirm if username exists in authors
+      // Step 1: Confirm that the username exists in the authors collection
       const author = await strapi.db.query('api::author.author').findOne({
         where: { username },
         select: ['id', 'username', 'email', 'display_name', 'first_name', 'last_name']
@@ -22,17 +22,17 @@ module.exports = {
         return ctx.notFound(`Author with username '${username}' not found`);
       }
 
-      // Step 2: Get unique publications for this author using distinct
-      const authorPublications = await strapi.db.query('api::author.author').findOne({
-        where: { username },
-        populate: {
-          publications: {
-            select: ['id', 'name', 'slug', 'description']
+      // Step 2: Independently in the publications collection, return publications for the given author
+      const publications = await strapi.db.query('api::publication.publication').findMany({
+        where: {
+          authors: {
+            username: username
           }
-        }
+        },
+        select: ['id', 'name', 'slug', 'description']
       });
 
-      if (!authorPublications.publications || authorPublications.publications.length === 0) {
+      if (!publications || publications.length === 0) {
         return {
           data: {
             publications: [],
@@ -42,39 +42,44 @@ module.exports = {
         };
       }
 
-      const publicationIds = authorPublications.publications.map(pub => pub.id);
-
-      // Step 3: Get publications with categories using distinct to avoid duplicates
-      const publications = await strapi.entityService.findMany('api::publication.publication', {
-        filters: {
+      // Step 3: If the username has associated publications, get related categories of each publication
+      const publicationIds = publications.map(pub => pub.id);
+      
+      // Get publications with their categories
+      const publicationsWithCategories = await strapi.db.query('api::publication.publication').findMany({
+        where: {
           id: { $in: publicationIds }
         },
-        fields: ['id', 'name', 'slug', 'description'],
+        select: ['id', 'name', 'slug', 'description'],
         populate: {
           categories: {
-            fields: ['id', 'name', 'slug', 'description'],
-            // Use distinct to avoid duplicate categories
-            filters: {
-              $distinct: true
-            }
+            select: ['id', 'name', 'slug', 'description']
           }
         }
       });
 
-      // Step 4: Format the response
-      const formattedPublications = publications.map(pub => ({
-        id: pub.id,
-        name: pub.name,
-        slug: pub.slug,
-        description: pub.description
-      }));
+      // Format publications (remove any potential duplicates)
+      const uniquePublications = [];
+      const seenPublicationIds = new Set();
+      
+      publicationsWithCategories.forEach(pub => {
+        if (!seenPublicationIds.has(pub.id)) {
+          seenPublicationIds.add(pub.id);
+          uniquePublications.push({
+            id: pub.id,
+            name: pub.name,
+            slug: pub.slug,
+            description: pub.description
+          });
+        }
+      });
 
-      // Extract categories with distinct values using Set
+      // Extract and format categories
       const allCategories = [];
       const seenCategoryIds = new Set();
-
-      publications.forEach(pub => {
-        if (pub.categories) {
+      
+      publicationsWithCategories.forEach(pub => {
+        if (pub.categories && pub.categories.length > 0) {
           pub.categories.forEach(category => {
             if (!seenCategoryIds.has(category.id)) {
               seenCategoryIds.add(category.id);
@@ -91,7 +96,7 @@ module.exports = {
 
       return {
         data: {
-          publications: formattedPublications,
+          publications: uniquePublications,
           categories: allCategories
         },
         meta: {
@@ -101,7 +106,7 @@ module.exports = {
             name: author.display_name || `${author.first_name} ${author.last_name}`,
             email: author.email
           },
-          totalPublications: formattedPublications.length,
+          totalPublications: uniquePublications.length,
           totalCategories: allCategories.length
         }
       };
