@@ -8,6 +8,8 @@ async findPostsByAuthorAndDate(ctx) {
     try {
       const { username, startdate, enddate } = ctx.params;
 
+      console.log('🔄 Fetching articles for author:', username, 'from', startdate, 'to', enddate);
+
       // Validate parameters
       if (!username) {
         return ctx.badRequest('Username parameter is required');
@@ -26,6 +28,8 @@ async findPostsByAuthorAndDate(ctx) {
         startDate = sixMonthsAgo.toISOString().split('T')[0];
       }
 
+      console.log('📅 Using date range:', startDate, 'to', endDate);
+
       // Find articles by author and date range using createdAt only
       const articles = await strapi.entityService.findMany('api::post.post', {
         filters: {
@@ -39,7 +43,7 @@ async findPostsByAuthorAndDate(ctx) {
         },
         populate: {
           authors: {
-            fields: ['id', 'username', 'display_name']
+            fields: ['id', 'username', 'display_name', 'first_name', 'last_name']
           },
           categories: {
             fields: ['id', 'name', 'slug']
@@ -48,11 +52,14 @@ async findPostsByAuthorAndDate(ctx) {
             fields: ['id', 'name', 'slug']
           },
           featured_image: {
-            fields: ['url', 'alternativeText', 'caption', 'credit']
+            fields: ['url', 'alternativeText', 'caption']
           }
         },
-        sort: { createdAt: 'desc' }
+        sort: { createdAt: 'desc' },
+        limit: 100
       });
+
+      console.log(`✅ Found ${articles.length} articles for author ${username}`);
 
       return {
         articles: articles,
@@ -67,6 +74,7 @@ async findPostsByAuthorAndDate(ctx) {
       };
 
     } catch (error) {
+      console.error('❌ Error in findByAuthorAndDate:', error);
       strapi.log.error('Error in findByAuthorAndDate:', error);
       return ctx.internalServerError('An error occurred while fetching articles');
     }
