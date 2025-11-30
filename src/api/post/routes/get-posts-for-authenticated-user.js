@@ -4,8 +4,8 @@ module.exports = {
   routes: [
         {
           method: 'GET',
-          path: '/posts/latest-news',
-          handler: 'latest-news.getLatestNews',
+          path: '/posts/posts-for-authenticated-user/:userid/call',
+          handler: 'get-posts-for-authenticated-users.findMyPosts',
           config: {
             auth: false,
             policies: [],
