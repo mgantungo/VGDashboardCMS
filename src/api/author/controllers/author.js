@@ -299,7 +299,7 @@ module.exports = createCoreController('api::author.author', ({ strapi }) => ({
     }
   },
 
-  async getProfile(ctx) {
+  async getMyProfile(ctx) {
     try {
       const { id } = ctx.params;
 
