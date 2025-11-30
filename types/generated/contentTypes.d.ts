@@ -806,7 +806,7 @@ export interface ApiPublicationPublication extends Struct.CollectionTypeSchema {
     singularName: 'publication';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     authors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'>;
