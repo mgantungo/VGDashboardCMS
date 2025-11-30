@@ -725,5 +725,107 @@ async getMyPublications(ctx) {
     return ctx.internalServerError('Failed to fetch publications. Please try again later.');
   }
 }
+  ,
+
+  /**
+ * Get authenticated author's profile
+ */
+async getMyProfile(ctx) {
+  try {
+    // Get the authenticated author ID from the request context
+    const authorId = ctx.state.user.id;
+
+    console.log('👤 Fetching profile for author ID:', authorId);
+
+    // Find the author with detailed populated data
+    const author = await strapi.db.query('api::author.author').findOne({
+      where: { 
+        id: authorId
+      },
+      select: [
+        'id', 'username', 'email', 'display_name', 
+        'first_name', 'last_name', 'bio', 'avatar_url',
+        'wp_id', 'accountstatus', 'createdAt', 'updatedAt'
+      ],
+      populate: {
+        publications: {
+          select: ['id', 'name', 'slug', 'description'],
+          where: {
+            publishedAt: { $notNull: true }
+          }
+        },
+        posts: {
+          select: ['id', 'title', 'publishedAt', 'status'],
+          where: {
+            $or: [
+              { publishedAt: { $notNull: true } },
+              { status: 'draft' }
+            ]
+          },
+          limit: 10, // Limit recent posts
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!author) {
+      console.log('❌ Author not found:', authorId);
+      return ctx.notFound('Author profile not found');
+    }
+
+    console.log('✅ Profile found for:', author.email);
+
+    // Calculate some statistics
+    const publishedPostsCount = author.posts?.filter(post => post.publishedAt).length || 0;
+    const draftPostsCount = author.posts?.filter(post => !post.publishedAt).length || 0;
+    const publicationsCount = author.publications?.length || 0;
+
+    // Transform the response data (exclude sensitive fields)
+    const profileData = {
+      id: author.id,
+      username: author.username,
+      email: author.email,
+      display_name: author.display_name,
+      first_name: author.first_name,
+      last_name: author.last_name,
+      full_name: author.display_name || `${author.first_name} ${author.last_name}`,
+      bio: author.bio,
+      avatar_url: author.avatar_url,
+      wp_id: author.wp_id,
+      accountstatus: author.accountstatus,
+      createdAt: author.createdAt,
+      updatedAt: author.updatedAt,
+      statistics: {
+        total_posts: author.posts?.length || 0,
+        published_posts: publishedPostsCount,
+        draft_posts: draftPostsCount,
+        publications: publicationsCount
+      },
+      publications: author.publications || [],
+      recent_posts: author.posts?.slice(0, 5) || [] // Last 5 posts
+    };
+
+    return {
+      success: true,
+      data: profileData,
+      message: 'Profile retrieved successfully'
+    };
+
+  } catch (error) {
+    console.error('💥 Get my profile error:', error);
+    
+    // Handle specific error cases
+    if (error.name === 'UnauthorizedError') {
+      return ctx.unauthorized('Authentication required. Please log in again.');
+    }
+    
+    if (error.name === 'ValidationError') {
+      return ctx.badRequest('Invalid request parameters');
+    }
+    
+    return ctx.internalServerError('Failed to fetch profile. Please try again later.');
+  }
+}
+
   
 }));
