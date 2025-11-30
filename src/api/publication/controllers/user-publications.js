@@ -8,15 +8,24 @@ module.exports = {
     try {
       const { username } = ctx.params;
 
-      // Validate username parameter
       if (!username) {
         return ctx.badRequest('Username parameter is required');
       }
 
-      // Find the author by username
+      // Single query to get everything with proper population
       const author = await strapi.db.query('api::author.author').findOne({
         where: { username },
-        populate: ['publications']
+        select: ['id', 'username', 'email', 'display_name', 'first_name', 'last_name'],
+        populate: {
+          publications: {
+            select: ['id', 'name', 'slug', 'description'],
+            populate: {
+              categories: {
+                select: ['id', 'name', 'slug', 'description']
+              }
+            }
+          }
+        }
       });
 
       if (!author) {
@@ -33,50 +42,42 @@ module.exports = {
         };
       }
 
-      // Get publication IDs from the author
-      const publicationIds = author.publications.map(pub => pub.id);
+      // Remove duplicate publications
+      const publicationMap = new Map();
+      const allCategories = [];
+      const categoryMap = new Map();
 
-      // Find publications with their categories
-      const publications = await strapi.db.query('api::publication.publication').findMany({
-        where: {
-          id: { $in: publicationIds }
-        },
-        populate: {
-          categories: {
-            select: ['id', 'name', 'slug', 'description', 'isActive', 'displayOrder', 'isFeatured']
-          }
+      author.publications.forEach(pub => {
+        if (!publicationMap.has(pub.id)) {
+          publicationMap.set(pub.id, {
+            id: pub.id,
+            name: pub.name,
+            slug: pub.slug,
+            description: pub.description
+          });
+        }
+
+        // Process categories for this publication
+        if (pub.categories) {
+          pub.categories.forEach(category => {
+            if (!categoryMap.has(category.id)) {
+              categoryMap.set(category.id, true);
+              allCategories.push({
+                id: category.id,
+                name: category.name,
+                slug: category.slug,
+                publicationId: pub.id
+              });
+            }
+          });
         }
       });
 
-      // Format the response to match your desired structure
-      const formattedPublications = publications.map(pub => ({
-        id: pub.id,
-        name: pub.name,
-        slug: pub.slug,
-        description: pub.description
-      }));
-
-      // Extract categories from all publications
-      const allCategories = [];
-      const categoryMap = new Map();
-      
-      publications.forEach(pub => {
-        pub.categories.forEach(category => {
-          if (!categoryMap.has(category.id)) {
-            categoryMap.set(category.id, true);
-            allCategories.push({
-              id: category.id,
-              name: category.name,
-              slug: category.slug,
-              publicationId: pub.id
-            });
-          }
-        });
-      });
+      const uniquePublications = Array.from(publicationMap.values());
 
       return {
         data: {
-          publications: formattedPublications,
+          publications: uniquePublications,
           categories: allCategories
         },
         meta: {
@@ -86,7 +87,7 @@ module.exports = {
             name: author.display_name || `${author.first_name} ${author.last_name}`,
             email: author.email
           },
-          totalPublications: formattedPublications.length,
+          totalPublications: uniquePublications.length,
           totalCategories: allCategories.length
         }
       };
