@@ -1,0 +1,59 @@
+{
+  "kind": "collectionType",
+  "collectionName": "campaigns",
+  "info": {
+    "singularName": "campaign",
+    "pluralName": "campaigns",
+    "displayName": "Campaigns"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "campaignName": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "campaignName",
+      "required": true
+    },
+    "startDate": {
+      "type": "date"
+    },
+    "endDate": {
+      "type": "date"
+    },
+    "isActive": {
+      "type": "boolean",
+      "private": true,
+      "required": true,
+      "default": false
+    },
+    "campaign_attendences": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::campaign-attendence.campaign-attendence",
+      "inversedBy": "campaigns"
+    },
+    "owner": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "Bukedde",
+        "New Vision",
+        "Epaper",
+        "Vision Shop",
+        "Vision Courier",
+        "Bukedde Radio",
+        "XFM",
+        "ETOP",
+        "Kabalega FM",
+        "TV West",
+        "Wan Luo"
+      ]
+    }
+  }
+}

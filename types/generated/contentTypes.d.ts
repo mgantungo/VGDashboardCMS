@@ -528,6 +528,101 @@ export interface ApiBcDatasetBcDataset extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCampaignAttendenceCampaignAttendence
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'campaign_attendences';
+  info: {
+    displayName: 'CampaignAttendence';
+    pluralName: 'campaign-attendences';
+    singularName: 'campaign-attendence';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    campaigns: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::campaign.campaign'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email;
+    fullName: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::campaign-attendence.campaign-attendence'
+    > &
+      Schema.Attribute.Private;
+    phone: Schema.Attribute.String & Schema.Attribute.Required;
+    processes: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
+    promoCode: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    uniqueSecret: Schema.Attribute.UID & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCampaignCampaign extends Struct.CollectionTypeSchema {
+  collectionName: 'campaigns';
+  info: {
+    displayName: 'Campaigns';
+    pluralName: 'campaigns';
+    singularName: 'campaign';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    campaign_attendences: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::campaign-attendence.campaign-attendence'
+    >;
+    campaignName: Schema.Attribute.String & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    endDate: Schema.Attribute.Date;
+    isActive: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.Private &
+      Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::campaign.campaign'
+    > &
+      Schema.Attribute.Private;
+    owner: Schema.Attribute.Enumeration<
+      [
+        'Bukedde',
+        'New Vision',
+        'Epaper',
+        'Vision Shop',
+        'Vision Courier',
+        'Bukedde Radio',
+        'XFM',
+        'ETOP',
+        'Kabalega FM',
+        'TV West',
+        'Wan Luo',
+      ]
+    > &
+      Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'campaignName'> & Schema.Attribute.Required;
+    startDate: Schema.Attribute.Date;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   collectionName: 'categories';
   info: {
@@ -1475,6 +1570,8 @@ declare module '@strapi/strapi' {
       'api::api-listing.api-listing': ApiApiListingApiListing;
       'api::author.author': ApiAuthorAuthor;
       'api::bc-dataset.bc-dataset': ApiBcDatasetBcDataset;
+      'api::campaign-attendence.campaign-attendence': ApiCampaignAttendenceCampaignAttendence;
+      'api::campaign.campaign': ApiCampaignCampaign;
       'api::category.category': ApiCategoryCategory;
       'api::district.district': ApiDistrictDistrict;
       'api::enumeration-area.enumeration-area': ApiEnumerationAreaEnumerationArea;
