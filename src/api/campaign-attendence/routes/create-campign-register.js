@@ -4,10 +4,11 @@ module.exports = {
     {
       method: 'POST',
       path: '/create-campaign-attendences/createFromForm',
-      handler: 'campaign-attendence.createFromForm',
+      handler: 'campaign-attendence.getEpaperCampaign',
       config: {
         policies: [],
         middlewares: [],
+        description:"Register campaign for epaper"
       },
     },
   ],
