@@ -29,6 +29,9 @@ async findPostsByAuthorAndDate(ctx) {
 
     console.log('📅 Using date range:', startDate, 'to', endDate);
 
+    // Get CMS base URL from config
+    const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgard.visiongroup.co.ug');
+    
     const articles = await strapi.entityService.findMany('api::post.post', {
       filters: {
         authors: {
@@ -47,7 +50,7 @@ async findPostsByAuthorAndDate(ctx) {
         },
         categories: { fields: ['id', 'name'] },
         tags: { fields: ['id', 'name'] },
-        featured_image: { fields: ['url', 'alternativeText', 'caption'] }
+        featured_image: { fields: ['url', 'alternativeText', 'caption', 'formats', 'ext', 'mime', 'size'] }
       },
       sort: { id: 'desc' }, // Sort by ID descending to get highest ID first
       limit: 200 // Increase limit to ensure we get all duplicates
@@ -118,6 +121,61 @@ async findPostsByAuthorAndDate(ctx) {
         });
       }
 
+      // Format featured image with full URL
+      let featuredImage = null;
+      if (article.featured_image) {
+        const img = article.featured_image;
+        
+        // Build full image URL
+        let imageUrl = img.url;
+        
+        // Check if URL already contains the full domain
+        if (!imageUrl.startsWith('http')) {
+          // If it's a relative URL, prepend the CMS base URL
+          if (imageUrl.startsWith('/')) {
+            imageUrl = `${cmsBaseUrl}${imageUrl}`;
+          } else {
+            // If it doesn't start with slash, add it
+            imageUrl = `${cmsBaseUrl}/${imageUrl}`;
+          }
+        }
+        
+        // Check for different image formats if available
+        const imageFormats = {};
+        if (img.formats) {
+          Object.keys(img.formats).forEach(format => {
+            let formatUrl = img.formats[format].url;
+            if (!formatUrl.startsWith('http')) {
+              if (formatUrl.startsWith('/')) {
+                formatUrl = `${cmsBaseUrl}${formatUrl}`;
+              } else {
+                formatUrl = `${cmsBaseUrl}/${formatUrl}`;
+              }
+            }
+            imageFormats[format] = {
+              url: formatUrl,
+              width: img.formats[format].width,
+              height: img.formats[format].height,
+              ext: img.formats[format].ext,
+              size: img.formats[format].size
+            };
+          });
+        }
+        
+        featuredImage = {
+          url: imageUrl,
+          alt: img.alternativeText || '',
+          caption: img.caption || '',
+          credit: '', // FUTURE: Add credit field to media
+          formats: imageFormats,
+          ext: img.ext,
+          mime: img.mime,
+          size: img.size,
+          // Keep original URL for reference
+          originalUrl: img.url
+        };
+      }
+
       // FUTURE: When these fields exist, populate them properly
       // const album = article.album?.map((item, index) => ({
       //   id: item.id,
@@ -162,12 +220,8 @@ async findPostsByAuthorAndDate(ctx) {
         summary: article.excerpt || '',
         content: article.content || '',
         
-        featuredImage: article.featured_image ? {
-          url: article.featured_image.url,
-          alt: article.featured_image.alternativeText || '',
-          caption: article.featured_image.caption || '',
-          credit: '' // FUTURE: Add credit field to media
-        } : null,
+        // Featured image with full URL
+        featuredImage: featuredImage,
         
         // FUTURE FIELD - CURRENT EMPTY ARRAY
         album: [],
