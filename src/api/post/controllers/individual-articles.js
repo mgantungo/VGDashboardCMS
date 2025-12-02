@@ -49,14 +49,46 @@ async findPostsByAuthorAndDate(ctx) {
         tags: { fields: ['id', 'name'] },
         featured_image: { fields: ['url', 'alternativeText', 'caption'] }
       },
-      sort: { createdAt: 'desc' },
-      limit: 100
+      sort: { id: 'desc' }, // Sort by ID descending to get highest ID first
+      limit: 200 // Increase limit to ensure we get all duplicates
     });
 
-    console.log(`✅ Found ${articles.length} articles for author ${username}`);
+    console.log(`📊 Found ${articles.length} total articles for author ${username}`);
+
+    // Filter out duplicates - keep only the highest ID for each wp_id
+    const uniqueArticlesMap = new Map();
+    
+    articles.forEach(article => {
+      const wpId = article.wp_id;
+      
+      if (!wpId) {
+        // If no wp_id, keep the article as is
+        uniqueArticlesMap.set(article.id, article);
+        return;
+      }
+      
+      // Check if we already have an article with this wp_id
+      const existingArticle = Array.from(uniqueArticlesMap.values())
+        .find(item => item.wp_id === wpId);
+      
+      if (!existingArticle) {
+        // First time seeing this wp_id, add it
+        uniqueArticlesMap.set(article.id, article);
+      } else if (article.id > existingArticle.id) {
+        // Found a higher ID for the same wp_id, replace it
+        uniqueArticlesMap.delete(existingArticle.id);
+        uniqueArticlesMap.set(article.id, article);
+        console.log(`🔄 Replaced wp_id ${wpId}: ${existingArticle.id} -> ${article.id}`);
+      }
+      // If existing article has higher ID, do nothing
+    });
+
+    const uniqueArticles = Array.from(uniqueArticlesMap.values());
+    
+    console.log(`✅ After deduplication: ${uniqueArticles.length} unique articles`);
 
     // Transform to desired format
-    const formattedArticles = articles.map(article => {
+    const formattedArticles = uniqueArticles.map(article => {
       
       // Get ALL authors of this article with their publication IDs
       const articleAuthors = [];
@@ -104,6 +136,7 @@ async findPostsByAuthorAndDate(ctx) {
       // CURRENT: Using placeholders for future fields
       return {
         id: article.id,
+        wp_id: article.wp_id, // Include wp_id in response for debugging
         title: article.title,
         status: article.publishedAt ? 'published' : 'draft',
         category: article.categories?.[0]?.id || null,
@@ -149,7 +182,10 @@ async findPostsByAuthorAndDate(ctx) {
         publicationId: publicationIds.length > 0 ? publicationIds[0] : null,
         
         createdAt: article.createdAt,
-        updatedAt: article.updatedAt
+        updatedAt: article.updatedAt,
+        
+        // Include duplicate flag if there were duplicates
+        hadDuplicates: articles.some(a => a.wp_id === article.wp_id && a.id !== article.id)
       };
     });
 
