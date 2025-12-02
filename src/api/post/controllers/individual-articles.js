@@ -5,7 +5,7 @@ module.exports = {
  * get articles associated with and author within a given period. Default is 6months
  */ 
 
-  async findPostsByAuthorAndDate(ctx) {
+   async findPostsByAuthorAndDate(ctx) {
     try {
       const { username, startdate, enddate } = ctx.params;
 
@@ -29,7 +29,11 @@ module.exports = {
 
       console.log('📅 Using date range:', startDate, 'to', endDate);
 
-      // Find articles by author and date range
+      // FUTURE ENHANCEMENT: Add these fields to populate when they exist
+      // album: true,
+      // secondary_category: { fields: ['id'] },
+      // publication: { fields: ['id'] }
+      
       const articles = await strapi.entityService.findMany('api::post.post', {
         filters: {
           authors: {
@@ -41,18 +45,10 @@ module.exports = {
           }
         },
         populate: {
-          authors: {
-            fields: ['id']
-          },
-          categories: {
-            fields: ['id', 'name']
-          },
-          tags: {
-            fields: ['id', 'name']
-          },
-          featured_image: {
-            fields: ['url', 'alternativeText', 'caption']
-          }
+          authors: { fields: ['id'] },
+          categories: { fields: ['id', 'name'] },
+          tags: { fields: ['id', 'name'] },
+          featured_image: { fields: ['url', 'alternativeText', 'caption'] }
         },
         sort: { createdAt: 'desc' },
         limit: 100
@@ -60,53 +56,66 @@ module.exports = {
 
       console.log(`✅ Found ${articles.length} articles for author ${username}`);
 
-      // Format the response to match desired structure
+      // Transform to desired format
       const formattedArticles = articles.map(article => {
-        // Get publication ID - will be null since it's not directly linked to posts
-        const publicationId = null;
         
-        // Get secondary category (second category if exists)
-        const secondaryCategory = article.categories && article.categories.length > 1 
-          ? article.categories[1].id 
-          : null;
+        // FUTURE: When these fields exist, populate them properly
+        // const album = article.album?.map((item, index) => ({
+        //   id: item.id,
+        //   url: item.url,
+        //   alt: item.alternativeText,
+        //   caption: item.caption,
+        //   credit: item.credit || '',
+        //   order: index
+        // })) || [];
+        
+        // const secondaryCategory = article.secondary_category?.id || null;
+        // const publicationId = article.publication?.id || null;
+        // const featured = article.isFeatured || false;
+        // const breakingNews = article.isBreakingNews || false;
+        // const breakingDuration = article.breakingDuration || null;
 
+        // CURRENT: Using placeholders for future fields
         return {
           id: article.id,
           title: article.title,
           status: article.publishedAt ? 'published' : 'draft',
           category: article.categories?.[0]?.id || null,
           authors: article.authors?.map(author => author.id) || [],
-          publishedAt: article.publishedAt || null,
-          live: article.publishedAt ? true : false,
+          publishedAt: article.publishedAt,
+          live: !!article.publishedAt,
           
-          // Fields that will be added in the future - providing defaults
-          featured: false, // Will be added as isFeatured
-          breakingNews: false, // Will be added as isBreakingNews
-          breakingDuration: null, // Will be added as breakingDuration
+          // FUTURE FIELDS - CURRENT PLACEHOLDERS
+          featured: false,
+          breakingNews: false,
+          breakingDuration: null,
           
-          // Existing field
+          // EXISTING FIELD
           premium: article.isPremium || false,
           
           tags: article.tags?.map(tag => tag.name) || [],
           summary: article.excerpt || '',
-          content: article.content || '', // Keeping as is (richtext format)
+          content: article.content || '',
           
           featuredImage: article.featured_image ? {
-            url: article.featured_image.url || '',
+            url: article.featured_image.url,
             alt: article.featured_image.alternativeText || '',
             caption: article.featured_image.caption || '',
-            credit: '' // Will be added to media fields
+            credit: '' // FUTURE: Add credit field to media
           } : null,
           
-          album: [], // Will be added as media multiple field
-          secondaryCategory: secondaryCategory,
-          publicationId: publicationId, // Will be linked in future
+          // FUTURE FIELD - CURRENT EMPTY ARRAY
+          album: [],
+          
+          // FUTURE: Will be proper relation
+          secondaryCategory: null,
+          publicationId: null,
+          
           createdAt: article.createdAt,
           updatedAt: article.updatedAt
         };
       });
 
-      // Return as array
       return formattedArticles;
 
     } catch (error) {
@@ -115,6 +124,7 @@ module.exports = {
       return ctx.internalServerError('An error occurred while fetching articles');
     }
   }
+
 
  
  /*
