@@ -49,7 +49,7 @@ async findPostsByAuthorAndDate(ctx) {
         tags: { fields: ['id', 'name'] },
         featured_image: { fields: ['url', 'alternativeText', 'caption'] }
       },
-      sort: { id: 'asc' }, // Sort by ID descending to get highest ID first
+      sort: { id: 'desc' }, // Sort by ID descending to get highest ID first
       limit: 200 // Increase limit to ensure we get all duplicates
     });
 
