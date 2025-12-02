@@ -41,14 +41,13 @@ async findPostsByAuthorAndDate(ctx) {
       },
       populate: {
         authors: {
-          fields: ['id', 'username', 'display_name', 'first_name', 'last_name', 'email'],
           populate: {
-            publications: { fields: ['id', 'name', 'slug'] }
+            publications: { fields: ['id'] }
           }
         },
-        categories: { fields: ['id', 'name', 'slug'] },
-        tags: { fields: ['id', 'name', 'slug'] },
-        featured_image: { fields: ['url', 'alternativeText', 'caption', 'formats'] }
+        categories: { fields: ['id', 'name'] },
+        tags: { fields: ['id', 'name'] },
+        featured_image: { fields: ['url', 'alternativeText', 'caption'] }
       },
       sort: { createdAt: 'desc' },
       limit: 100
@@ -59,25 +58,33 @@ async findPostsByAuthorAndDate(ctx) {
     // Transform to desired format
     const formattedArticles = articles.map(article => {
       
-      // Extract all authors with their details
-      const authors = article.authors?.map(author => ({
-        id: author.id,
-        username: author.username,
-        displayName: author.display_name || `${author.first_name} ${author.last_name}`.trim(),
-        firstName: author.first_name,
-        lastName: author.last_name,
-        email: author.email,
-        // Get publication IDs from this author
-        publicationIds: author.publications?.map(pub => pub.id) || []
-      })) || [];
-
-      // Get all unique publication IDs from all authors
-      const allPublicationIds = authors.reduce((ids, author) => {
-        author.publicationIds.forEach(id => {
-          if (!ids.includes(id)) ids.push(id);
+      // Get ALL authors of this article with their publication IDs
+      const articleAuthors = [];
+      let publicationIds = [];
+      
+      if (article.authors && article.authors.length > 0) {
+        article.authors.forEach(author => {
+          // Add author to the list
+          articleAuthors.push({
+            id: author.id,
+            username: author.username,
+            displayName: author.display_name || `${author.first_name} ${author.last_name}`.trim(),
+            firstName: author.first_name,
+            lastName: author.last_name,
+            email: author.email,
+            wpId: author.wp_id
+          });
+          
+          // Collect publication IDs from this author
+          if (author.publications && author.publications.length > 0) {
+            author.publications.forEach(pub => {
+              if (!publicationIds.includes(pub.id)) {
+                publicationIds.push(pub.id);
+              }
+            });
+          }
         });
-        return ids;
-      }, []);
+      }
 
       // FUTURE: When these fields exist, populate them properly
       // const album = article.album?.map((item, index) => ({
@@ -100,20 +107,12 @@ async findPostsByAuthorAndDate(ctx) {
         title: article.title,
         status: article.publishedAt ? 'published' : 'draft',
         category: article.categories?.[0]?.id || null,
-        categoryName: article.categories?.[0]?.name || null,
-        categorySlug: article.categories?.[0]?.slug || null,
         
-        // Return all authors with their details
-        authors: authors,
+        // Return ALL authors of this article
+        authors: articleAuthors,
         
         // For backward compatibility, also return author IDs array
-        authorIds: authors.map(author => author.id),
-        
-        // All publication IDs from all authors
-        publicationIds: allPublicationIds,
-        
-        // Primary publication ID (first one found, if any)
-        publicationId: allPublicationIds.length > 0 ? allPublicationIds[0] : null,
+        authorIds: articleAuthors.map(author => author.id),
         
         publishedAt: article.publishedAt,
         live: !!article.publishedAt,
@@ -126,14 +125,7 @@ async findPostsByAuthorAndDate(ctx) {
         // EXISTING FIELD
         premium: article.isPremium || false,
         
-        tags: article.tags?.map(tag => ({
-          id: tag.id,
-          name: tag.name,
-          slug: tag.slug
-        })) || [],
-        
-        tagNames: article.tags?.map(tag => tag.name) || [],
-        
+        tags: article.tags?.map(tag => tag.name) || [],
         summary: article.excerpt || '',
         content: article.content || '',
         
@@ -141,7 +133,6 @@ async findPostsByAuthorAndDate(ctx) {
           url: article.featured_image.url,
           alt: article.featured_image.alternativeText || '',
           caption: article.featured_image.caption || '',
-          formats: article.featured_image.formats || {},
           credit: '' // FUTURE: Add credit field to media
         } : null,
         
@@ -151,9 +142,14 @@ async findPostsByAuthorAndDate(ctx) {
         // FUTURE: Will be proper relation
         secondaryCategory: null,
         
+        // Publication IDs from ALL authors of this article
+        publicationIds: publicationIds,
+        
+        // Primary publication ID (first one found, if any)
+        publicationId: publicationIds.length > 0 ? publicationIds[0] : null,
+        
         createdAt: article.createdAt,
-        updatedAt: article.updatedAt,
-        wpId: article.wp_id || null
+        updatedAt: article.updatedAt
       };
     });
 
@@ -165,7 +161,6 @@ async findPostsByAuthorAndDate(ctx) {
     return ctx.internalServerError('An error occurred while fetching articles');
   }
 }
-
 
  
  /*
