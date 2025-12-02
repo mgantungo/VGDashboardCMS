@@ -4,7 +4,7 @@ module.exports = {
     {
       method: 'POST',
       path: '/create-campaign-attendences/createFromForm',
-      handler: 'campaign-attendence.getEpaperCampaign',
+      handler: 'create-campaign-register.getEpaperCampaign',
       config: {
         policies: [],
         middlewares: [],
