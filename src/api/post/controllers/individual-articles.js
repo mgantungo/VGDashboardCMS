@@ -11,12 +11,10 @@ module.exports = {
 
       console.log('🔄 Fetching articles for author:', username, 'from', startdate, 'to', enddate);
 
-      // Validate parameters
       if (!username) {
         return ctx.badRequest('Username parameter is required');
       }
 
-      // Calculate date range (default to last 6 months)
       let startDate = startdate;
       let endDate = enddate;
 
@@ -31,7 +29,7 @@ module.exports = {
 
       console.log('📅 Using date range:', startDate, 'to', endDate);
 
-      // Find articles by author and date range using createdAt only
+      // Find articles by author and date range
       const articles = await strapi.entityService.findMany('api::post.post', {
         filters: {
           authors: {
@@ -44,23 +42,17 @@ module.exports = {
         },
         populate: {
           authors: {
-            fields: ['id', 'username', 'display_name', 'first_name', 'last_name']
+            fields: ['id']
           },
           categories: {
-            fields: ['id', 'name', 'slug']
+            fields: ['id', 'name']
           },
           tags: {
-            fields: ['id', 'name', 'slug']
+            fields: ['id', 'name']
           },
           featured_image: {
             fields: ['url', 'alternativeText', 'caption']
-          },
-          // Add these if they exist in your content type
-          album: {
-            populate: ['*']
-          },
-          secondary_category: true,
-          publication: true
+          }
         },
         sort: { createdAt: 'desc' },
         limit: 100
@@ -70,6 +62,14 @@ module.exports = {
 
       // Format the response to match desired structure
       const formattedArticles = articles.map(article => {
+        // Get publication ID - will be null since it's not directly linked to posts
+        const publicationId = null;
+        
+        // Get secondary category (second category if exists)
+        const secondaryCategory = article.categories && article.categories.length > 1 
+          ? article.categories[1].id 
+          : null;
+
         return {
           id: article.id,
           title: article.title,
@@ -78,49 +78,36 @@ module.exports = {
           authors: article.authors?.map(author => author.id) || [],
           publishedAt: article.publishedAt || null,
           live: article.publishedAt ? true : false,
-          featured: article.isFeatured || false, // Assuming you have an isFeatured field
-          breakingNews: article.isBreakingNews || false, // Assuming you have an isBreakingNews field
-          breakingDuration: article.breakingDuration || null,
+          
+          // Fields that will be added in the future - providing defaults
+          featured: false, // Will be added as isFeatured
+          breakingNews: false, // Will be added as isBreakingNews
+          breakingDuration: null, // Will be added as breakingDuration
+          
+          // Existing field
           premium: article.isPremium || false,
+          
           tags: article.tags?.map(tag => tag.name) || [],
           summary: article.excerpt || '',
-          content: article.content || '',
+          content: article.content || '', // Keeping as is (richtext format)
+          
           featuredImage: article.featured_image ? {
             url: article.featured_image.url || '',
             alt: article.featured_image.alternativeText || '',
             caption: article.featured_image.caption || '',
-            credit: article.featured_image.credit || '' // Add credit field if exists
+            credit: '' // Will be added to media fields
           } : null,
-          album: article.album?.map((media, index) => ({
-            id: media.id || index,
-            url: media.url || '',
-            alt: media.alternativeText || '',
-            caption: media.caption || '',
-            credit: media.credit || '',
-            order: media.order || index
-          })) || [],
-          secondaryCategory: article.secondary_category?.id || null,
-          publicationId: article.publication?.id || null,
+          
+          album: [], // Will be added as media multiple field
+          secondaryCategory: secondaryCategory,
+          publicationId: publicationId, // Will be linked in future
           createdAt: article.createdAt,
           updatedAt: article.updatedAt
         };
       });
 
-      // If you want to return just the array of formatted articles
+      // Return as array
       return formattedArticles;
-
-      // If you want to keep metadata but in a different format
-      // return {
-      //   articles: formattedArticles,
-      //   meta: {
-      //     author: username,
-      //     dateRange: {
-      //       start: startDate,
-      //       end: endDate
-      //     },
-      //     total: formattedArticles.length
-      //   }
-      // };
 
     } catch (error) {
       console.error('❌ Error in findByAuthorAndDate:', error);
@@ -128,8 +115,6 @@ module.exports = {
       return ctx.internalServerError('An error occurred while fetching articles');
     }
   }
-
-
 
  
  /*
