@@ -4,7 +4,6 @@ module.exports = {
  /*
  * get articles associated with and author within a given period. Default is 6months
  */ 
-
 async findPostsByAuthorAndDate(ctx) {
   try {
     const { username, startdate, enddate } = ctx.params;
