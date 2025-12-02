@@ -29,32 +29,6 @@ async findPostsByAuthorAndDate(ctx) {
 
     console.log('📅 Using date range:', startDate, 'to', endDate);
 
-    // First, get the author to access their publications
-    const author = await strapi.entityService.findMany('api::author.author', {
-      filters: {
-        username: username
-      },
-      populate: {
-        publications: { fields: ['id', 'name'] }
-      },
-      limit: 1
-    });
-
-    if (!author || author.length === 0) {
-      console.log(`❌ Author ${username} not found`);
-      return [];
-    }
-
-    const authorData = author[0];
-    const authorPublications = authorData.publications || [];
-    
-    // Get the first publication ID (or handle multiple if needed)
-    const primaryPublicationId = authorPublications.length > 0 ? authorPublications[0].id : null;
-    
-    // FUTURE ENHANCEMENT: Add these fields to populate when they exist
-    // album: true,
-    // secondary_category: { fields: ['id'] },
-    
     const articles = await strapi.entityService.findMany('api::post.post', {
       filters: {
         authors: {
@@ -66,15 +40,15 @@ async findPostsByAuthorAndDate(ctx) {
         }
       },
       populate: {
-        authors: { 
-          fields: ['id'],
+        authors: {
+          fields: ['id', 'username', 'display_name', 'first_name', 'last_name', 'email'],
           populate: {
-            publications: { fields: ['id'] }
+            publications: { fields: ['id', 'name', 'slug'] }
           }
         },
-        categories: { fields: ['id', 'name'] },
-        tags: { fields: ['id', 'name'] },
-        featured_image: { fields: ['url', 'alternativeText', 'caption'] }
+        categories: { fields: ['id', 'name', 'slug'] },
+        tags: { fields: ['id', 'name', 'slug'] },
+        featured_image: { fields: ['url', 'alternativeText', 'caption', 'formats'] }
       },
       sort: { createdAt: 'desc' },
       limit: 100
@@ -85,25 +59,25 @@ async findPostsByAuthorAndDate(ctx) {
     // Transform to desired format
     const formattedArticles = articles.map(article => {
       
-      // Get publication ID from the author's publications
-      // Since each article can have multiple authors, we need to check all of them
-      let publicationId = null;
-      
-      if (article.authors && article.authors.length > 0) {
-        // Check each author for publications
-        for (const author of article.authors) {
-          if (author.publications && author.publications.length > 0) {
-            // Use the first publication found
-            publicationId = author.publications[0].id;
-            break;
-          }
-        }
-      }
-      
-      // If no publication found in the populated authors, use the primary one from earlier
-      if (!publicationId) {
-        publicationId = primaryPublicationId;
-      }
+      // Extract all authors with their details
+      const authors = article.authors?.map(author => ({
+        id: author.id,
+        username: author.username,
+        displayName: author.display_name || `${author.first_name} ${author.last_name}`.trim(),
+        firstName: author.first_name,
+        lastName: author.last_name,
+        email: author.email,
+        // Get publication IDs from this author
+        publicationIds: author.publications?.map(pub => pub.id) || []
+      })) || [];
+
+      // Get all unique publication IDs from all authors
+      const allPublicationIds = authors.reduce((ids, author) => {
+        author.publicationIds.forEach(id => {
+          if (!ids.includes(id)) ids.push(id);
+        });
+        return ids;
+      }, []);
 
       // FUTURE: When these fields exist, populate them properly
       // const album = article.album?.map((item, index) => ({
@@ -126,7 +100,21 @@ async findPostsByAuthorAndDate(ctx) {
         title: article.title,
         status: article.publishedAt ? 'published' : 'draft',
         category: article.categories?.[0]?.id || null,
-        authors: article.authors?.map(author => author.id) || [],
+        categoryName: article.categories?.[0]?.name || null,
+        categorySlug: article.categories?.[0]?.slug || null,
+        
+        // Return all authors with their details
+        authors: authors,
+        
+        // For backward compatibility, also return author IDs array
+        authorIds: authors.map(author => author.id),
+        
+        // All publication IDs from all authors
+        publicationIds: allPublicationIds,
+        
+        // Primary publication ID (first one found, if any)
+        publicationId: allPublicationIds.length > 0 ? allPublicationIds[0] : null,
+        
         publishedAt: article.publishedAt,
         live: !!article.publishedAt,
         
@@ -138,7 +126,14 @@ async findPostsByAuthorAndDate(ctx) {
         // EXISTING FIELD
         premium: article.isPremium || false,
         
-        tags: article.tags?.map(tag => tag.name) || [],
+        tags: article.tags?.map(tag => ({
+          id: tag.id,
+          name: tag.name,
+          slug: tag.slug
+        })) || [],
+        
+        tagNames: article.tags?.map(tag => tag.name) || [],
+        
         summary: article.excerpt || '',
         content: article.content || '',
         
@@ -146,6 +141,7 @@ async findPostsByAuthorAndDate(ctx) {
           url: article.featured_image.url,
           alt: article.featured_image.alternativeText || '',
           caption: article.featured_image.caption || '',
+          formats: article.featured_image.formats || {},
           credit: '' // FUTURE: Add credit field to media
         } : null,
         
@@ -155,11 +151,9 @@ async findPostsByAuthorAndDate(ctx) {
         // FUTURE: Will be proper relation
         secondaryCategory: null,
         
-        // Now properly populated from author's publications
-        publicationId: publicationId,
-        
         createdAt: article.createdAt,
-        updatedAt: article.updatedAt
+        updatedAt: article.updatedAt,
+        wpId: article.wp_id || null
       };
     });
 
