@@ -1,5 +1,4 @@
-[file name]: create-campaign-register.js
-[file content begin]
+
 'use strict';
 module.exports = {
 
@@ -321,4 +320,4 @@ module.exports = {
     }
   }
 }
-[file content end]
+
