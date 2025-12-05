@@ -11,29 +11,7 @@ module.exports = {
       strapi.log.info('Request method:', request.method);
       strapi.log.info('Request URL:', request.url);
       
-      // 1. Check if request is coming from WordPress plugin (allow multiple origins)
-      const referer = request.headers.referer || request.headers.origin;
-      const allowedOrigins = [
-        'https://epapers.visiongroup.co.ug',
-        'visiongroup.co.ug',
-        // Add your WordPress site domains here
-      ];
-      
-      strapi.log.info('Referer/Origin:', referer);
-      
-      // If referer exists, check if it's from allowed origins
-      if (referer) {
-        const isAllowed = allowedOrigins.some(origin => referer.includes(origin));
-        if (!isAllowed) {
-          strapi.log.warn(`Blocked request from unauthorized origin: ${referer}`);
-          return response.forbidden('Access denied. Unauthorized request source.');
-        }
-        strapi.log.info('Origin check: PASSED');
-      } else {
-        strapi.log.info('No referer/origin header found, continuing...');
-      }
-      
-      // 2. Get the raw request body for logging
+      // 1. Get the raw request body
       const rawBody = request.body;
       
       strapi.log.info('=== RAW REQUEST BODY ===');
@@ -41,25 +19,14 @@ module.exports = {
       strapi.log.info('Body keys:', Object.keys(rawBody));
       strapi.log.info('=======================');
       
-      // 3. Extract and validate required fields based on WordPress plugin data structure
+      // 2. Extract fields
       const { 
         name, 
         email, 
         phone, 
         transaction,
-        // Campaign data from WordPress plugin
         slug,
-        campaign_name,
-        campaign_type,
-        source,
-        // Technical metadata
-        submission_date,
-        ip_address,
-        user_agent,
-        referrer,
-        wordpress_site,
-        plugin_version,
-        submission_id
+        campaign_name
       } = rawBody;
       
       strapi.log.info('=== EXTRACTED FIELDS ===');
@@ -71,7 +38,7 @@ module.exports = {
       strapi.log.info('campaign_name:', campaign_name, '(type:', typeof campaign_name, ')');
       strapi.log.info('=========================');
       
-      // Required fields from WordPress form
+      // 3. Required fields validation
       strapi.log.info('Checking required fields...');
       if (!name) {
         strapi.log.error('Missing required field: name');
@@ -87,7 +54,7 @@ module.exports = {
       }
       strapi.log.info('Required fields check: PASSED');
       
-      // 4. Validate data formats (match WordPress validation)
+      // 4. Data format validation
       strapi.log.info('Starting data format validation...');
       const nameRegex = /^[A-Za-z\s]{2,50}$/;
       const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,15}$/;
@@ -96,24 +63,18 @@ module.exports = {
       
       if (!nameRegex.test(name.trim())) {
         strapi.log.error('Name validation failed:', name);
-        strapi.log.error('Name after trim:', name.trim());
-        strapi.log.error('Name length:', name.trim().length);
         return response.badRequest('Invalid name format. 2-50 letters and spaces only.');
       }
       strapi.log.info('Name validation: PASSED');
       
       if (!phoneRegex.test(phone.trim())) {
         strapi.log.error('Phone validation failed:', phone);
-        strapi.log.error('Phone after trim:', phone.trim());
-        strapi.log.error('Phone length:', phone.trim().length);
         return response.badRequest('Invalid phone number. 10-15 digits required.');
       }
       strapi.log.info('Phone validation: PASSED');
       
       if (!transactionRegex.test(transaction.trim())) {
         strapi.log.error('Transaction validation failed:', transaction);
-        strapi.log.error('Transaction after trim:', transaction.trim());
-        strapi.log.error('Transaction length:', transaction.trim().length);
         return response.badRequest('Invalid transaction ID. 6-50 alphanumeric characters required.');
       }
       strapi.log.info('Transaction validation: PASSED');
@@ -128,7 +89,7 @@ module.exports = {
       
       strapi.log.info('All data format validations: PASSED');
       
-      // 5. Get or create the campaign based on slug
+      // 5. Get campaign
       let campaign = null;
       const campaignSlug = slug || 'epaper-subscribe-and-win-2025-12';
       strapi.log.info('Looking for campaign with slug:', campaignSlug);
@@ -138,66 +99,35 @@ module.exports = {
           where: { slug: campaignSlug }
         });
         
-        strapi.log.info('Campaign query result:', campaign ? 'FOUND' : 'NOT FOUND');
-        
-        // If campaign doesn't exist, create it
-        /*
-        if (!campaign) {
-          strapi.log.info('Creating new campaign...');
-          campaign = await strapi.db.query('api::campaign.campaign').create({
-            data: {
-              campaignName: campaign_name || 'Epaper Subscribe & Win Campaign',
-              slug: campaignSlug,
-              isActive: true,
-              owner: 'Epaper',
-              publishedAt: new Date()
-            }
-          });
-          strapi.log.info('New campaign created with ID:', campaign.id);
+        if (campaign) {
+          strapi.log.info('Campaign found:', campaign.campaignName);
+          
+          if (!campaign.isActive) {
+            strapi.log.warn('Campaign is not active:', campaignSlug);
+            return response.badRequest('This campaign is currently inactive.');
+          }
+          strapi.log.info('Campaign active status: PASSED');
         } else {
-          strapi.log.info('Found existing campaign:', campaign.id);
+          strapi.log.error('Campaign not found:', campaignSlug);
+          return response.badRequest(`Campaign "${campaignSlug}" not found.`);
         }
-        */
-        
-        // Check if campaign is active
-        if (!campaign.isActive) {
-          strapi.log.warn('Campaign is not active:', campaignSlug);
-          return response.badRequest('This campaign is currently inactive.');
-        }
-        strapi.log.info('Campaign active status: PASSED');
       }
       
-      // 6. Check for duplicate entries
-      /* where user is allowed only one time
-      strapi.log.info('Checking for duplicate entries...');
+      // 6. Check for duplicate transaction ID (promoCode)
+      strapi.log.info('Checking for duplicate transaction ID...');
       const existingEntry = await strapi.db.query('api::campaign-attendence.campaign-attendence').findOne({
         where: {
-          $or: [
-            { phone: phone.trim() },
-            { email: email ? email.trim() : undefined },
-            { promoCode: transaction.trim() }
-          ]
+          promoCode: transaction.trim()
         }
       });
-      */
-
-      strapi.log.info('Checking for duplicate transaction ID...');
-        const existingEntry = await strapi.db.query('api::campaign-attendence.campaign-attendence').findOne({
-          where: {
-            promoCode: transaction.trim(),
-            uniqueSecret: transaction.trim()
-          }
-        });
       
       if (existingEntry) {
-        strapi.log.warn('Duplicate entry found!');
-        strapi.log.warn('Existing entry promoCode:', existingEntry.promoCode);
-        strapi.log.warn('Existing entry usersecret:', existingEntry.uniqueSecret);
-        return response.badRequest('An entry with these details already exists.');
+        strapi.log.warn('Duplicate transaction ID found:', transaction.trim());
+        return response.badRequest('This transaction ID has already been used. Please use a different transaction ID.');
       }
-      strapi.log.info('Duplicate check: PASSED (no duplicates found)');
+      strapi.log.info('Transaction ID is unique');
       
-      // 7. Prepare data for campaign attendance
+      // 7. Prepare attendance data
       strapi.log.info('Preparing attendance data...');
       const attendenceData = {
         fullName: name.trim(),
@@ -214,16 +144,14 @@ module.exports = {
       // 8. Create the campaign attendance entry
       strapi.log.info('Creating attendance entry...');
       const entry = await strapi.entityService.create('api::campaign-attendence.campaign-attendence', {
-        data: attendenceData,
-        populate: ['campaigns']
+        data: attendenceData
       });
       
-      strapi.log.info(`Campaign attendance created successfully!`);
-      strapi.log.info('Entry ID:', entry.id);
+      strapi.log.info('Attendance created with ID:', entry.id);
       strapi.log.info('Entry fullName:', entry.fullName);
       strapi.log.info('Entry promoCode:', entry.promoCode);
       
-      // 9. If campaign exists, link the attendance to the campaign
+      // 9. Link to campaign
       if (campaign) {
         strapi.log.info('Linking attendance to campaign...');
         await strapi.db.query('api::campaign-attendence.campaign-attendence').update({
@@ -235,17 +163,7 @@ module.exports = {
           }
         });
         
-        // Also update the campaign to link to this attendance
-        await strapi.db.query('api::campaign.campaign').update({
-          where: { id: campaign.id },
-          data: {
-            campaign_attendences: {
-              connect: [{ id: entry.id }]
-            }
-          }
-        });
-        
-        strapi.log.info(`Linked attendance ${entry.id} to campaign ${campaign.id}`);
+        strapi.log.info('Linked attendance', entry.id, 'to campaign', campaign.id);
       }
       
       // 10. Prepare success response
@@ -257,15 +175,7 @@ module.exports = {
           id: entry.id,
           name: entry.fullName,
           transactionId: entry.promoCode,
-          campaignSlug: campaignSlug,
-          campaignName: campaign?.campaignName || campaign_name,
-          timestamp: new Date().toISOString(),
-          submissionId: submission_id
-        },
-        metadata: {
-          pluginVersion: plugin_version,
-          wordpressSite: wordpress_site,
-          ipAddress: ip_address
+          timestamp: new Date().toISOString()
         }
       };
       
@@ -283,10 +193,12 @@ module.exports = {
       strapi.log.error('Error name:', error.name);
       strapi.log.error('=== END ERROR LOG ===');
       
-      // Return user-friendly error message
-      return response.internalServerError('An error occurred during registration. Please try again.');
+      // Return user-friendly error message - USE ctx.response
+      return ctx.response.internalServerError('An error occurred during registration. Please try again.');
     }
-  },
+  }
+
+  ,
   
   // Optional: Add a method to verify submission
   async verifySubmission(ctx) {
