@@ -1,26 +1,57 @@
 'use strict';
 module.exports = {
 
-   async getEpaperCampaign(ctx) {
+  async createFromForm(ctx) {
     try {
       const { request, response } = ctx;
       
-      // 1. Check if request is coming from allowed origin
+      // 1. Check if request is coming from WordPress plugin (allow multiple origins)
       const referer = request.headers.referer || request.headers.origin;
-      const allowedOrigin = 'https://epapers.visiongroup.co.ug';
+      const allowedOrigins = [
+        'https://epapers.visiongroup.co.ug',
+        'visiongroup.co.ug',
+        // Add your WordPress site domains here
+      ];
       
-      if (!referer || !referer.includes(allowedOrigin)) {
-        return response.forbidden('Access denied. Please submit from the official website.');
+      // If referer exists, check if it's from allowed origins
+      if (referer) {
+        const isAllowed = allowedOrigins.some(origin => referer.includes(origin));
+        if (!isAllowed) {
+          strapi.log.warn(`Blocked request from unauthorized origin: ${referer}`);
+          return response.forbidden('Access denied. Unauthorized request source.');
+        }
       }
       
-      // 2. Validate required fields
-      const { name, phone, email, transaction } = request.body;
+      // 2. Get the raw request body for logging
+      const rawBody = request.body;
       
+      // 3. Validate required fields based on WordPress plugin data structure
+      const { 
+        name, 
+        email, 
+        phone, 
+        transaction,
+        // Campaign data from WordPress plugin
+        slug,
+        campaign_name,
+        campaign_type,
+        source,
+        // Technical metadata
+        submission_date,
+        ip_address,
+        user_agent,
+        referrer,
+        wordpress_site,
+        plugin_version,
+        submission_id
+      } = rawBody;
+      
+      // Required fields from WordPress form
       if (!name || !phone || !transaction) {
         return response.badRequest('Name, phone, and transaction ID are required.');
       }
       
-      // 3. Validate data formats
+      // 4. Validate data formats (match WordPress validation)
       const nameRegex = /^[A-Za-z\s]{2,50}$/;
       const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,15}$/;
       const transactionRegex = /^[A-Za-z0-9\-_]{6,50}$/;
@@ -42,7 +73,35 @@ module.exports = {
         return response.badRequest('Invalid email format.');
       }
       
-      // 4. Check for duplicate entries (optional, based on your business logic)
+      // 5. Get or create the campaign based on slug
+      let campaign = null;
+      if (slug) {
+        campaign = await strapi.db.query('api::campaign.campaign').findOne({
+          where: { slug: slug }
+        });
+        
+        // If campaign doesn't exist, create it
+         /* campaign ids shall always be given by the admin of the cms
+        if (!campaign) {
+          campaign = await strapi.db.query('api::campaign.campaign').create({
+            data: {
+              campaignName: campaign_name || 'Epaper Subscribe & Win Campaign',
+              slug: slug,
+              isActive: true,
+              owner: 'Epaper', // Default owner, you might want to make this configurable
+              publishedAt: new Date()
+            }
+          });
+        }
+        */
+        
+        // Check if campaign is active
+        if (!campaign.isActive) {
+          return response.badRequest('This campaign is currently inactive.');
+        }
+      }
+      
+      // 6. Check for duplicate entries
       const existingEntry = await strapi.db.query('api::campaign-attendence.campaign-attendence').findOne({
         where: {
           $or: [
@@ -54,27 +113,52 @@ module.exports = {
       });
       
       if (existingEntry) {
-        // You can modify this based on your needs - either update or reject
         return response.badRequest('An entry with these details already exists.');
       }
       
-      // 5. Generate unique secret (same as promoCode as per requirement)
-      const uniqueSecret = transaction.trim(); // Using transaction as both promoCode and uniqueSecret
+      // 7. Prepare data for campaign attendance
+      const attendenceData = {
+        fullName: name.trim(),
+        phone: phone.trim(),
+        email: email ? email.trim() : null,
+        promoCode: transaction.trim(),
+        uniqueSecret: transaction.trim(),
+        processes: false,
+        publishedAt: new Date()
+      };
       
-      // 6. Create the entry
+      // 8. Create the campaign attendance entry
       const entry = await strapi.entityService.create('api::campaign-attendence.campaign-attendence', {
-        data: {
-          fullName: name.trim(),
-          phone: phone.trim(),
-          email: email ? email.trim() : null,
-          promoCode: uniqueSecret,
-          uniqueSecret: uniqueSecret,
-          processes: false, // Default as per schema
-          publishedAt: new Date()
-        }
+        data: attendenceData,
+        populate: ['campaigns']
       });
       
-      // 7. Return confirmation response
+      // 9. If campaign exists, link the attendance to the campaign
+      if (campaign) {
+        await strapi.db.query('api::campaign-attendence.campaign-attendence').update({
+          where: { id: entry.id },
+          data: {
+            campaigns: {
+              connect: [{ id: campaign.id }]
+            }
+          }
+        });
+        
+        // Also update the campaign to link to this attendance
+        await strapi.db.query('api::campaign.campaign').update({
+          where: { id: campaign.id },
+          data: {
+            campaign_attendences: {
+              connect: [{ id: entry.id }]
+            }
+          }
+        });
+      }
+      
+      // 10. Log the successful submission (optional)
+      strapi.log.info(`Campaign attendance created: ${entry.id} for campaign: ${slug}`);
+      
+      // 11. Return success response
       return response.ok({
         success: true,
         message: 'Registration successful!',
@@ -82,14 +166,60 @@ module.exports = {
           id: entry.id,
           name: entry.fullName,
           transactionId: entry.promoCode,
-          timestamp: new Date().toISOString()
+          campaignSlug: slug,
+          campaignName: campaign?.campaignName || campaign_name,
+          timestamp: new Date().toISOString(),
+          submissionId: submission_id // Return the WordPress submission ID
+        },
+        metadata: {
+          pluginVersion: plugin_version,
+          wordpressSite: wordpress_site,
+          ipAddress: ip_address
         }
       });
       
     } catch (error) {
-      console.error('Registration error:', error);
+      // Log detailed error for debugging
+      strapi.log.error('Campaign registration error:', error);
+      
+      // Return user-friendly error message
       return response.internalServerError('An error occurred during registration. Please try again.');
     }
+  },
+  
+  // Optional: Add a method to verify submission
+  async verifySubmission(ctx) {
+    try {
+      const { transactionId } = ctx.params;
+      
+      if (!transactionId) {
+        return response.badRequest('Transaction ID is required.');
+      }
+      
+      const entry = await strapi.db.query('api::campaign-attendence.campaign-attendence').findOne({
+        where: { promoCode: transactionId },
+        populate: ['campaigns']
+      });
+      
+      if (!entry) {
+        return response.notFound('No registration found with this transaction ID.');
+      }
+      
+      return response.ok({
+        success: true,
+        data: {
+          name: entry.fullName,
+          phone: entry.phone,
+          email: entry.email,
+          registeredAt: entry.createdAt,
+          status: entry.processes ? 'Processed' : 'Pending',
+          campaign: entry.campaigns?.[0]?.campaignName || 'Unknown Campaign'
+        }
+      });
+      
+    } catch (error) {
+      strapi.log.error('Verification error:', error);
+      return response.internalServerError('Unable to verify submission.');
+    }
   }
-
 }
