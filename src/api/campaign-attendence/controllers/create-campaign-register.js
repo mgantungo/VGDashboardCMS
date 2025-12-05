@@ -80,22 +80,11 @@ module.exports = {
           where: { slug: slug }
         });
         
-        // If campaign doesn't exist, create it
-         /* campaign ids shall always be given by the admin of the cms
+        // Check if campaign exists and is active
         if (!campaign) {
-          campaign = await strapi.db.query('api::campaign.campaign').create({
-            data: {
-              campaignName: campaign_name || 'Epaper Subscribe & Win Campaign',
-              slug: slug,
-              isActive: true,
-              owner: 'Epaper', // Default owner, you might want to make this configurable
-              publishedAt: new Date()
-            }
-          });
+          return response.badRequest('Campaign not found. Please check the campaign slug.');
         }
-        */
         
-        // Check if campaign is active
         if (!campaign.isActive) {
           return response.badRequest('This campaign is currently inactive.');
         }
@@ -183,13 +172,14 @@ module.exports = {
       strapi.log.error('Campaign registration error:', error);
       
       // Return user-friendly error message
-      return response.internalServerError('An error occurred during registration. Please try again.');
+      return ctx.response.internalServerError('An error occurred during registration. Please try again.');
     }
   },
   
   // Optional: Add a method to verify submission
   async verifySubmission(ctx) {
     try {
+      const { response } = ctx;
       const { transactionId } = ctx.params;
       
       if (!transactionId) {
@@ -219,7 +209,7 @@ module.exports = {
       
     } catch (error) {
       strapi.log.error('Verification error:', error);
-      return response.internalServerError('Unable to verify submission.');
+      return ctx.response.internalServerError('Unable to verify submission.');
     }
   }
 }
