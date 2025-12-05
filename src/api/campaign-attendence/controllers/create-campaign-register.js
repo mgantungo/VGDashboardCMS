@@ -106,6 +106,7 @@ module.exports = {
             strapi.log.warn('Campaign is not active:', campaignSlug);
             return response.badRequest('This campaign is currently inactive.');
           }
+          
           strapi.log.info('Campaign active status: PASSED');
         } else {
           strapi.log.error('Campaign not found:', campaignSlug);
