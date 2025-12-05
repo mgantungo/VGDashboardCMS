@@ -141,6 +141,7 @@ module.exports = {
         strapi.log.info('Campaign query result:', campaign ? 'FOUND' : 'NOT FOUND');
         
         // If campaign doesn't exist, create it
+        /*
         if (!campaign) {
           strapi.log.info('Creating new campaign...');
           campaign = await strapi.db.query('api::campaign.campaign').create({
@@ -156,6 +157,7 @@ module.exports = {
         } else {
           strapi.log.info('Found existing campaign:', campaign.id);
         }
+        */
         
         // Check if campaign is active
         if (!campaign.isActive) {
@@ -166,6 +168,7 @@ module.exports = {
       }
       
       // 6. Check for duplicate entries
+      /* where user is allowed only one time
       strapi.log.info('Checking for duplicate entries...');
       const existingEntry = await strapi.db.query('api::campaign-attendence.campaign-attendence').findOne({
         where: {
@@ -176,13 +179,20 @@ module.exports = {
           ]
         }
       });
+      */
+
+      strapi.log.info('Checking for duplicate transaction ID...');
+        const existingEntry = await strapi.db.query('api::campaign-attendence.campaign-attendence').findOne({
+          where: {
+            promoCode: transaction.trim(),
+            uniqueSecret: transaction.trim()
+          }
+        });
       
       if (existingEntry) {
         strapi.log.warn('Duplicate entry found!');
-        strapi.log.warn('Existing entry ID:', existingEntry.id);
-        strapi.log.warn('Existing entry phone:', existingEntry.phone);
-        strapi.log.warn('Existing entry email:', existingEntry.email);
         strapi.log.warn('Existing entry promoCode:', existingEntry.promoCode);
+        strapi.log.warn('Existing entry usersecret:', existingEntry.uniqueSecret);
         return response.badRequest('An entry with these details already exists.');
       }
       strapi.log.info('Duplicate check: PASSED (no duplicates found)');
