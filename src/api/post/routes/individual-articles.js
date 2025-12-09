@@ -13,7 +13,7 @@ module.exports = {
               description: "Get articles by author username and date range"
             },
           },
-        {
+          {
             method: 'POST',
             path: '/posts/save',
             handler: 'post.saveArticle',
@@ -21,6 +21,6 @@ module.exports = {
               policies: [],
               middlewares: [],
             },
-        }
+          }
   ]
 }
