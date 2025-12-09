@@ -16,7 +16,7 @@ module.exports = {
           {
             method: 'POST',
             path: '/posts/save',
-            handler: 'post.saveArticle',
+            handler: 'individual-articles.saveArticle',
             config: {
               policies: [],
               middlewares: [],
