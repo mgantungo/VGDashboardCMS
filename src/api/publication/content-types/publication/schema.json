@@ -33,6 +33,12 @@
     },
     "description": {
       "type": "text"
+    },
+    "posts": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::post.post",
+      "mappedBy": "publication"
     }
   }
 }

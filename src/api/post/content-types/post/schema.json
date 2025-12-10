@@ -79,6 +79,35 @@
       "relation": "manyToMany",
       "target": "api::tag.tag",
       "inversedBy": "posts"
+    },
+    "featured": {
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    "breakingNews": {
+      "type": "boolean",
+      "default": false
+    },
+    "breakingDuration": {
+      "type": "boolean",
+      "default": false
+    },
+    "album": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "publication": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::publication.publication",
+      "inversedBy": "posts"
     }
   }
 }

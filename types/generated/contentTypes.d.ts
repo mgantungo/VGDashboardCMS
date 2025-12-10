@@ -859,7 +859,14 @@ export interface ApiPostPost extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    album: Schema.Attribute.Media<
+      'images' | 'files' | 'videos' | 'audios',
+      true
+    >;
     authors: Schema.Attribute.Relation<'manyToMany', 'api::author.author'>;
+    breakingDuration: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    breakingNews: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     categories: Schema.Attribute.Relation<
       'manyToMany',
       'api::category.category'
@@ -869,6 +876,7 @@ export interface ApiPostPost extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     excerpt: Schema.Attribute.Text;
+    featured: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     featured_image: Schema.Attribute.Media<
       'images' | 'videos' | 'audios' | 'files'
     >;
@@ -878,6 +886,10 @@ export interface ApiPostPost extends Struct.CollectionTypeSchema {
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::post.post'> &
       Schema.Attribute.Private;
+    publication: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::publication.publication'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     seo_description: Schema.Attribute.Text;
     seo_title: Schema.Attribute.String;
@@ -920,6 +932,7 @@ export interface ApiPublicationPublication extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String;
+    posts: Schema.Attribute.Relation<'manyToMany', 'api::post.post'>;
     publishedAt: Schema.Attribute.DateTime;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
