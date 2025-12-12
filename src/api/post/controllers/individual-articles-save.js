@@ -10,21 +10,18 @@ module.exports = {
   /**
    * Create or Update Article
    * POST /api/posts/save
-   * 
-   * Accepts article data from ArticleEditor.vue and creates/updates:
-   * - Post entry
-   * - Tag relations (creates tags if they don't exist)
-   * - Author relations
-   * - Category relations
-   * - Featured image
-   * - Publication relations
    */
   async saveArticle(ctx) {
     try {
-      const articleData = ctx.request.body;
+      // Parse multipart form data
+      const { data, files } = await this.parseMultipartData(ctx);
       
-      console.log('📝 Saving article:', articleData.title);
+      // Parse JSON data
+      const articleData = JSON.parse(data.data || '{}');
+      
+      console.log('📝 Saving article:', articleData.title || 'Untitled');
       console.log('📊 Article data:', JSON.stringify(articleData, null, 2));
+      console.log('📁 Uploaded files:', files ? Object.keys(files) : 'No files');
 
       // Validate required fields
       if (!articleData.title) {
@@ -33,6 +30,24 @@ module.exports = {
 
       if (!articleData.content) {
         return ctx.badRequest('Article content is required');
+      }
+
+      // Process featured image from files
+      if (files && files.featuredImage) {
+        console.log('🖼️ Processing featured image upload');
+        const featuredImageResult = await this.processFeaturedImageUpload(files.featuredImage);
+        if (featuredImageResult) {
+          articleData.featuredImage = featuredImageResult;
+        }
+      }
+
+      // Process album images from files
+      if (files && files.album) {
+        console.log('🖼️ Processing album images');
+        const albumResults = await this.processAlbumImages(files.album);
+        if (albumResults && albumResults.length > 0) {
+          articleData.album = albumResults;
+        }
       }
 
       // Determine if this is create or update
@@ -54,6 +69,242 @@ module.exports = {
   },
 
   /**
+   * Parse multipart form data
+   */
+  async parseMultipartData(ctx) {
+    return new Promise((resolve, reject) => {
+      strapi.plugins['upload'].services.upload.parseMultipartData(ctx)
+        .then(resolve)
+        .catch(error => {
+          console.error('Error parsing multipart data:', error);
+          
+          // If multipart parsing fails, try to get data from request body
+          if (ctx.request.body && ctx.request.files) {
+            resolve({
+              data: ctx.request.body,
+              files: ctx.request.files
+            });
+          } else {
+            reject(error);
+          }
+        });
+    });
+  },
+
+  /**
+   * Process featured image upload
+   */
+  async processFeaturedImageUpload(featuredImageFile) {
+    try {
+      if (!featuredImageFile) {
+        return null;
+      }
+
+      console.log('📤 Processing featured image upload:', featuredImageFile.name || 'Unnamed file');
+      
+      // Upload to Strapi media library
+      const uploadedFiles = await strapi.plugins['upload'].services.upload.upload({
+        data: {
+          fileInfo: {
+            name: featuredImageFile.name || 'featured-image',
+            alternativeText: 'Featured image for article',
+            caption: ''
+          }
+        },
+        files: featuredImageFile
+      });
+
+      if (uploadedFiles && uploadedFiles.length > 0) {
+        const uploadedFile = uploadedFiles[0];
+        console.log('✅ Featured image uploaded to media library with ID:', uploadedFile.id);
+        
+        // Get CMS base URL for full URL
+        const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
+        const imageUrl = uploadedFile.url.startsWith('http') 
+          ? uploadedFile.url 
+          : `${cmsBaseUrl}${uploadedFile.url}`;
+        
+        return {
+          id: uploadedFile.id,
+          url: imageUrl,
+          originalUrl: uploadedFile.url,
+          alternativeText: uploadedFile.alternativeText || '',
+          caption: uploadedFile.caption || '',
+          name: uploadedFile.name,
+          mime: uploadedFile.mime,
+          size: uploadedFile.size,
+          width: uploadedFile.width,
+          height: uploadedFile.height
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error uploading featured image:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Process album images upload
+   */
+  async processAlbumImages(albumFiles) {
+    try {
+      if (!albumFiles) {
+        return [];
+      }
+
+      const filesArray = Array.isArray(albumFiles) ? albumFiles : [albumFiles];
+      console.log(`📤 Processing ${filesArray.length} album images`);
+      
+      const uploadPromises = filesArray.map(async (file, index) => {
+        try {
+          const uploadedFiles = await strapi.plugins['upload'].services.upload.upload({
+            data: {
+              fileInfo: {
+                name: file.name || `album-image-${index + 1}`,
+                alternativeText: `Album image ${index + 1}`,
+                caption: ''
+              }
+            },
+            files: file
+          });
+
+          if (uploadedFiles && uploadedFiles.length > 0) {
+            const uploadedFile = uploadedFiles[0];
+            
+            // Get CMS base URL for full URL
+            const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
+            const imageUrl = uploadedFile.url.startsWith('http') 
+              ? uploadedFile.url 
+              : `${cmsBaseUrl}${uploadedFile.url}`;
+            
+            return {
+              id: uploadedFile.id,
+              url: imageUrl,
+              originalUrl: uploadedFile.url,
+              alternativeText: uploadedFile.alternativeText || '',
+              caption: uploadedFile.caption || '',
+              name: uploadedFile.name,
+              mime: uploadedFile.mime,
+              size: uploadedFile.size,
+              width: uploadedFile.width,
+              height: uploadedFile.height
+            };
+          }
+          return null;
+        } catch (error) {
+          console.error(`Error uploading album image ${index + 1}:`, error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(uploadPromises);
+      const validResults = results.filter(result => result !== null);
+      
+      console.log(`✅ Uploaded ${validResults.length} album images`);
+      return validResults;
+
+    } catch (error) {
+      console.error('Error processing album images:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Extract and upload images from content
+   */
+  async processContentImages(content, articleId) {
+    try {
+      // Extract base64 images from content
+      const base64Regex = /data:image\/(png|jpeg|jpg|gif|webp|bmp|svg\+xml);base64,([^"'\s<>]+)/gi;
+      const matches = [...content.matchAll(base64Regex)];
+      
+      if (matches.length === 0) {
+        return content; // No images to process
+      }
+
+      console.log(`📷 Found ${matches.length} base64 images in content`);
+      
+      let processedContent = content;
+      const uploadPromises = [];
+      
+      for (const [fullMatch, format, base64Data] of matches) {
+        try {
+          // Convert base64 to buffer
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          // Create filename
+          const filename = `content-image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${format}`;
+          
+          uploadPromises.push({
+            fullMatch,
+            buffer,
+            filename,
+            format,
+            index: uploadPromises.length
+          });
+        } catch (imgError) {
+          console.error('Error processing base64 image:', imgError);
+        }
+      }
+      
+      // Upload all images in parallel
+      const uploadResults = await Promise.allSettled(
+        uploadPromises.map(async ({ fullMatch, buffer, filename, format, index }) => {
+          try {
+            const uploadedFiles = await strapi.plugins['upload'].services.upload.upload({
+              data: {
+                fileInfo: {
+                  name: filename,
+                  alternativeText: `Content image ${index + 1}`,
+                  caption: ''
+                }
+              },
+              files: {
+                path: buffer,
+                name: filename,
+                type: `image/${format}`,
+                size: buffer.length
+              }
+            });
+
+            if (uploadedFiles && uploadedFiles.length > 0) {
+              const uploadedFile = uploadedFiles[0];
+              const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
+              const imageUrl = uploadedFile.url.startsWith('http') 
+                ? uploadedFile.url 
+                : `${cmsBaseUrl}${uploadedFile.url}`;
+              
+              console.log(`✅ Uploaded content image ${index + 1}: ${filename}`);
+              return { fullMatch, imageUrl };
+            }
+            return null;
+          } catch (uploadError) {
+            console.error(`Error uploading content image ${index + 1}:`, uploadError);
+            return null;
+          }
+        })
+      );
+      
+      // Replace base64 images with URLs in content
+      for (const result of uploadResults) {
+        if (result.status === 'fulfilled' && result.value) {
+          const { fullMatch, imageUrl } = result.value;
+          processedContent = processedContent.replace(fullMatch, imageUrl);
+        }
+      }
+      
+      console.log(`✅ Processed ${uploadResults.filter(r => r.status === 'fulfilled').length} content images`);
+      return processedContent;
+      
+    } catch (error) {
+      console.error('Error processing content images:', error);
+      return content;
+    }
+  },
+
+  /**
    * Create New Article
    */
   async createNewArticle(ctx, articleData) {
@@ -70,7 +321,7 @@ module.exports = {
       const featuredImageId = await this.processFeaturedImage(articleData.featuredImage);
       console.log('🖼️ Featured image ID:', featuredImageId);
 
-      // Process authors - convert from objects to IDs if needed
+      // Process authors
       const authorIds = await this.processAuthors(articleData.authors || []);
       console.log('👤 Author IDs:', authorIds);
 
@@ -78,33 +329,67 @@ module.exports = {
       const categoryIds = await this.processCategories(articleData.category, articleData.secondaryCategory);
       console.log('📁 Category IDs:', categoryIds);
 
+      // Process album images
+      const albumImageIds = await this.processAlbumForArticle(articleData.album || []);
+      console.log('📸 Album image IDs:', albumImageIds);
+
+      // Generate unique slug
+      const slug = await this.generateUniqueSlug(articleData.title);
+      console.log('🔗 Generated slug:', slug);
+
       // Prepare article data for creation
       const createData = {
         title: articleData.title,
-        slug: await this.generateUniqueSlug(articleData.title),
-        content: articleData.content,
-        excerpt: articleData.summary || this.extractExcerpt(articleData.content),
+        slug: slug,
+        content: articleData.content, // Will be updated after image processing
+        excerpt: articleData.summary || this.extractExcerpt(articleData.content, 200),
         wp_id: nextWpId,
         
         // Status and publishing
+        view_status: articleData.status || 'draft',
         wp_published_at: articleData.status === 'published' ? 
           (articleData.publishedAt || new Date().toISOString()) : null,
+        
+        // Live flag
+        live: articleData.live || false,
         
         // Premium flag
         isPremium: articleData.premium || false,
         
+        // Feature flags
+        featured: articleData.featured || false,
+        breakingNews: articleData.breakingNews || false,
+        breakingDuration: articleData.breakingDuration || null,
+        
         // SEO fields
         seo_title: articleData.title,
-        seo_description: articleData.summary || this.extractExcerpt(articleData.content),
+        seo_description: articleData.summary || this.extractExcerpt(articleData.content, 160),
         
-        // Relations - connect using IDs
+        // Views counter
+        views: 0,
+        
+        // Relations
         authors: authorIds,
         categories: categoryIds,
         tags: tagIds,
-        featured_image: featuredImageId,
       };
 
-      console.log('💾 Creating article with data:', createData);
+      // Add featured image if exists
+      if (featuredImageId) {
+        createData.featured_image = featuredImageId;
+      }
+
+      // Add album if exists
+      if (albumImageIds.length > 0) {
+        createData.album = albumImageIds;
+      }
+
+      console.log('💾 Creating article with initial data:', {
+        title: createData.title,
+        status: createData.view_status,
+        authors: createData.authors,
+        categories: createData.categories
+      });
 
       // Create the article
       const createdArticle = await strapi.entityService.create('api::post.post', {
@@ -113,11 +398,29 @@ module.exports = {
           authors: true,
           categories: true,
           tags: true,
-          featured_image: true
+          featured_image: true,
+          album: true
         }
       });
 
       console.log('✅ Article created successfully with ID:', createdArticle.id);
+
+      // Process content images after article is created (need the article ID)
+      if (articleData.content) {
+        const processedContent = await this.processContentImages(
+          articleData.content, 
+          createdArticle.id
+        );
+        
+        // Update article with processed content if images were uploaded
+        if (processedContent !== articleData.content) {
+          await strapi.entityService.update('api::post.post', createdArticle.id, {
+            data: { content: processedContent }
+          });
+          createdArticle.content = processedContent;
+          console.log('✅ Updated article content with uploaded images');
+        }
+      }
 
       // Return formatted response
       return this.formatArticleResponse(createdArticle, articleData);
@@ -136,13 +439,21 @@ module.exports = {
       const articleId = articleData.id;
 
       // Check if article exists
-      const existingArticle = await strapi.entityService.findOne('api::post.post', articleId);
+      const existingArticle = await strapi.entityService.findOne('api::post.post', articleId, {
+        populate: {
+          authors: true,
+          categories: true,
+          tags: true,
+          featured_image: true,
+          album: true
+        }
+      });
       
       if (!existingArticle) {
         return ctx.notFound('Article not found');
       }
 
-      console.log('📝 Updating article:', existingArticle.title);
+      console.log('📝 Updating article:', existingArticle.title, '(ID:', articleId, ')');
 
       // Process tags
       const tagIds = await this.processTagsForArticle(articleData.tags || []);
@@ -156,22 +467,40 @@ module.exports = {
       // Process categories
       const categoryIds = await this.processCategories(articleData.category, articleData.secondaryCategory);
 
+      // Process album images
+      const albumImageIds = await this.processAlbumForArticle(articleData.album || []);
+
+      // Process content images
+      let processedContent = articleData.content;
+      if (articleData.content) {
+        processedContent = await this.processContentImages(articleData.content, articleId);
+      }
+
       // Prepare update data
       const updateData = {
         title: articleData.title,
-        content: articleData.content,
-        excerpt: articleData.summary || this.extractExcerpt(articleData.content),
+        content: processedContent,
+        excerpt: articleData.summary || this.extractExcerpt(articleData.content, 200),
         
         // Status and publishing
+        view_status: articleData.status || 'draft',
         wp_published_at: articleData.status === 'published' ? 
           (articleData.publishedAt || new Date().toISOString()) : null,
+        
+        // Live flag
+        live: articleData.live || false,
         
         // Premium flag
         isPremium: articleData.premium || false,
         
+        // Feature flags
+        featured: articleData.featured || false,
+        breakingNews: articleData.breakingNews || false,
+        breakingDuration: articleData.breakingDuration || null,
+        
         // SEO fields
         seo_title: articleData.title,
-        seo_description: articleData.summary || this.extractExcerpt(articleData.content),
+        seo_description: articleData.summary || this.extractExcerpt(articleData.content, 160),
         
         // Relations
         authors: authorIds,
@@ -179,12 +508,21 @@ module.exports = {
         tags: tagIds,
       };
 
-      // Only update featured image if it changed
+      // Only update featured image if it exists
       if (featuredImageId !== null) {
         updateData.featured_image = featuredImageId;
       }
 
-      console.log('💾 Updating article with data:', updateData);
+      // Update album if provided
+      if (albumImageIds.length > 0) {
+        updateData.album = albumImageIds;
+      }
+
+      console.log('💾 Updating article with data:', {
+        title: updateData.title,
+        status: updateData.view_status,
+        live: updateData.live
+      });
 
       // Update the article
       const updatedArticle = await strapi.entityService.update('api::post.post', articleId, {
@@ -193,7 +531,8 @@ module.exports = {
           authors: true,
           categories: true,
           tags: true,
-          featured_image: true
+          featured_image: true,
+          album: true
         }
       });
 
@@ -230,7 +569,7 @@ module.exports = {
     } catch (error) {
       console.error('Error getting next wp_id:', error);
       // Return a safe default
-      return Date.now(); // Use timestamp as fallback
+      return Math.floor(Date.now() / 1000); // Use timestamp as fallback
     }
   },
 
@@ -313,17 +652,71 @@ module.exports = {
       }
 
       // If it has an id property, return that
-      if (featuredImageData.id) {
+      if (featuredImageData.id && !featuredImageData.file) {
         return featuredImageData.id;
       }
 
-      // FUTURE: Handle file upload if featuredImageData.file exists
-      // For now, return null if no ID
+      // If it's a file object with url (already uploaded via multipart), find or create
+      if (featuredImageData.url) {
+        // Check if file exists in media library
+        const existingFiles = await strapi.plugins['upload'].services.upload.find({
+          filters: { url: featuredImageData.originalUrl || featuredImageData.url }
+        });
+        
+        if (existingFiles && existingFiles.length > 0) {
+          return existingFiles[0].id;
+        }
+      }
+
       return null;
 
     } catch (error) {
       console.error('Error processing featured image:', error);
       return null;
+    }
+  },
+
+  /**
+   * Process album images for article
+   */
+  async processAlbumForArticle(albumImages) {
+    try {
+      if (!albumImages || albumImages.length === 0) {
+        return [];
+      }
+
+      const imageIds = [];
+
+      for (const image of albumImages) {
+        // If it's already an ID, add it
+        if (typeof image === 'number') {
+          imageIds.push(image);
+          continue;
+        }
+
+        // If it has an id property, add that
+        if (image.id && !image.file) {
+          imageIds.push(image.id);
+          continue;
+        }
+
+        // If it's a recently uploaded image, find it by URL
+        if (image.url) {
+          const existingFiles = await strapi.plugins['upload'].services.upload.find({
+            filters: { url: image.originalUrl || image.url }
+          });
+          
+          if (existingFiles && existingFiles.length > 0) {
+            imageIds.push(existingFiles[0].id);
+          }
+        }
+      }
+
+      return imageIds;
+
+    } catch (error) {
+      console.error('Error processing album images:', error);
+      return [];
     }
   },
 
@@ -374,7 +767,7 @@ module.exports = {
       // Add secondary category
       if (secondaryCategory) {
         const catId = typeof secondaryCategory === 'number' ? secondaryCategory : secondaryCategory.id;
-        if (catId) categoryIds.push(catId);
+        if (catId && !categoryIds.includes(catId)) categoryIds.push(catId);
       }
 
       return categoryIds;
@@ -401,7 +794,7 @@ module.exports = {
           limit: 1
         });
 
-        // If no existing article with this slug, or it's the same article, use it
+        // If no existing article with this slug, use it
         if (!existing || existing.length === 0) {
           break;
         }
@@ -409,6 +802,12 @@ module.exports = {
         // Generate new slug with counter
         slug = `${baseSlug}-${counter}`;
         counter++;
+        
+        // Safety check to prevent infinite loop
+        if (counter > 100) {
+          slug = `${baseSlug}-${Date.now()}`;
+          break;
+        }
       }
 
       return slug;
@@ -423,9 +822,13 @@ module.exports = {
    * Slugify string
    */
   slugify(text) {
+    if (!text) return '';
+    
     return text
       .toString()
       .toLowerCase()
+      .normalize('NFD') // Normalize unicode
+      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
       .trim()
       .replace(/\s+/g, '-')           // Replace spaces with -
       .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
@@ -441,87 +844,212 @@ module.exports = {
     if (!content) return '';
     
     // Remove HTML tags
-    const stripped = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const stripped = content
+      .replace(/<[^>]*>/g, ' ') // Remove HTML tags
+      .replace(/\s+/g, ' ')     // Normalize whitespace
+      .replace(/&nbsp;/g, ' ')  // Replace &nbsp;
+      .replace(/&amp;/g, '&')   // Replace &amp;
+      .replace(/&lt;/g, '<')    // Replace &lt;
+      .replace(/&gt;/g, '>')    // Replace &gt;
+      .replace(/&quot;/g, '"')  // Replace &quot;
+      .replace(/&#39;/g, "'")   // Replace &#39;
+      .trim();
     
     // Truncate to maxLength
     if (stripped.length <= maxLength) {
       return stripped;
     }
     
-    return stripped.substring(0, maxLength - 3) + '...';
+    // Find the last space before maxLength
+    const truncated = stripped.substring(0, maxLength);
+    const lastSpace = truncated.lastIndexOf(' ');
+    
+    if (lastSpace > maxLength * 0.7) { // If space is reasonably close
+      return truncated.substring(0, lastSpace) + '...';
+    }
+    
+    return truncated + '...';
   },
 
   /**
    * Format article response to match frontend expectations
    */
   formatArticleResponse(article, originalData) {
-    // Get CMS base URL
-    const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
-    
-    // Format featured image with full URL
-    let featuredImage = null;
-    if (article.featured_image) {
-      const img = article.featured_image;
-      let imageUrl = img.url;
+    try {
+      // Get CMS base URL
+      const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
       
-      if (!imageUrl.startsWith('http')) {
-        imageUrl = imageUrl.startsWith('/') 
-          ? `${cmsBaseUrl}${imageUrl}` 
-          : `${cmsBaseUrl}/${imageUrl}`;
+      // Format featured image with full URL
+      let featuredImage = null;
+      if (article.featured_image) {
+        const img = article.featured_image;
+        let imageUrl = img.url;
+        
+        if (imageUrl && !imageUrl.startsWith('http')) {
+          imageUrl = imageUrl.startsWith('/') 
+            ? `${cmsBaseUrl}${imageUrl}` 
+            : `${cmsBaseUrl}/${imageUrl}`;
+        }
+        
+        featuredImage = {
+          id: img.id,
+          url: imageUrl,
+          originalUrl: img.url,
+          alternativeText: img.alternativeText || '',
+          caption: img.caption || '',
+          name: img.name,
+          mime: img.mime,
+          size: img.size,
+          width: img.width,
+          height: img.height
+        };
       }
+
+      // Format album images
+      const album = [];
+      if (article.album && Array.isArray(article.album)) {
+        article.album.forEach(img => {
+          if (img && img.url) {
+            let imageUrl = img.url;
+            
+            if (!imageUrl.startsWith('http')) {
+              imageUrl = imageUrl.startsWith('/') 
+                ? `${cmsBaseUrl}${imageUrl}` 
+                : `${cmsBaseUrl}/${imageUrl}`;
+            }
+            
+            album.push({
+              id: img.id,
+              url: imageUrl,
+              originalUrl: img.url,
+              alternativeText: img.alternativeText || '',
+              caption: img.caption || '',
+              name: img.name,
+              mime: img.mime,
+              size: img.size,
+              width: img.width,
+              height: img.height
+            });
+          }
+        });
+      }
+
+      // Format authors
+      const authors = [];
+      const authorIds = [];
       
-      featuredImage = {
-        url: imageUrl,
-        alt: img.alternativeText || '',
-        caption: img.caption || '',
-        credit: '',
-        originalUrl: img.url
+      if (article.authors && Array.isArray(article.authors)) {
+        article.authors.forEach(author => {
+          authors.push({
+            id: author.id,
+            username: author.username,
+            displayName: author.display_name || `${author.first_name || ''} ${author.last_name || ''}`.trim() || author.username,
+            firstName: author.first_name,
+            lastName: author.last_name,
+            email: author.email,
+            wpId: author.wp_id
+          });
+          authorIds.push(author.id);
+        });
+      }
+
+      // Format categories
+      const category = article.categories?.[0]?.id || null;
+      const secondaryCategory = article.categories?.[1]?.id || null;
+
+      // Format tags
+      const tags = article.tags?.map(tag => tag.name) || [];
+
+      return {
+        id: article.id,
+        wp_id: article.wp_id,
+        title: article.title,
+        slug: article.slug,
+        
+        // Status
+        view_status: article.view_status,
+        status: article.view_status || 'draft',
+        live: article.live || false,
+        
+        // Categories
+        category: category,
+        secondaryCategory: secondaryCategory,
+        
+        // Authors
+        authors: authors,
+        authorIds: authorIds,
+        
+        // Publishing
+        publishedAt: article.wp_published_at,
+        
+        // Feature flags
+        featured: article.featured || false,
+        breakingNews: article.breakingNews || false,
+        breakingDuration: article.breakingDuration || null,
+        premium: article.isPremium || false,
+        
+        // Content
+        tags: tags,
+        summary: article.excerpt || '',
+        content: article.content || '',
+        
+        // Media
+        featuredImage: featuredImage,
+        album: album,
+        
+        // Publication
+        publicationId: originalData?.publicationId || null,
+        
+        // Timestamps
+        createdAt: article.createdAt,
+        updatedAt: article.updatedAt,
+        
+        // SEO
+        seo_title: article.seo_title,
+        seo_description: article.seo_description,
+        
+        // Stats
+        views: article.views || 0
+      };
+
+    } catch (error) {
+      console.error('Error formatting article response:', error);
+      
+      // Return minimal response if formatting fails
+      return {
+        id: article.id,
+        title: article.title,
+        status: article.view_status || 'draft',
+        live: article.live || false,
+        authors: [],
+        authorIds: [],
+        content: article.content || '',
+        createdAt: article.createdAt,
+        updatedAt: article.updatedAt
       };
     }
-
-    // Format authors
-    const authors = article.authors?.map(author => ({
-      id: author.id,
-      username: author.username,
-      displayName: author.display_name || `${author.first_name} ${author.last_name}`.trim(),
-      firstName: author.first_name,
-      lastName: author.last_name,
-      email: author.email,
-      wpId: author.wp_id
-    })) || [];
-
-    return {
-      id: article.id,
-      wp_id: article.wp_id,
-      title: article.title,
-      status: article.wp_published_at ? 'published' : 'draft',
-      category: article.categories?.[0]?.id || null,
-      
-      authors: authors,
-      authorIds: authors.map(a => a.id),
-      
-      publishedAt: article.wp_published_at,
-      live: !!article.wp_published_at,
-      
-      featured: false, // FUTURE
-      breakingNews: false, // FUTURE
-      breakingDuration: null, // FUTURE
-      
-      premium: article.isPremium || false,
-      
-      tags: article.tags?.map(tag => tag.name) || [],
-      summary: article.excerpt || '',
-      content: article.content || '',
-      
-      featuredImage: featuredImage,
-      
-      album: [], // FUTURE
-      secondaryCategory: article.categories?.[1]?.id || null,
-      
-      publicationId: originalData.publicationId || null,
-      
-      createdAt: article.createdAt,
-      updatedAt: article.updatedAt
-    };
   }
 };
+
+
+/*
+Full Multipart Form Data Handling: Properly processes file uploads with FormData
+
+Featured Image Upload: Uploads featured images to Strapi media library
+
+Content Image Processing: Extracts base64 images from content and uploads them
+
+Album Image Support: Handles multiple album images
+
+Tag Creation: Creates new tags if they don't exist
+
+Unique Slug Generation: Creates SEO-friendly slugs
+
+Proper Error Handling: Comprehensive error handling throughout
+
+Image URL Processing: Converts Strapi media URLs to absolute URLs
+
+Response Formatting: Returns data in the exact format expected by your Vue frontend
+
+Logging: Detailed console logging for debugging
+*/
