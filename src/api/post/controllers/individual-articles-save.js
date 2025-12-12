@@ -20,10 +20,12 @@ async saveArticle(ctx) {
     if (ctx.is('multipart/form-data')) {
       console.log('✅ Is multipart/form-data');
       
-      // Parse multipart data
+      // Parse multipart data - FIXED VERSION
       let data, files;
       try {
-        const parsed = await strapi.plugins['upload'].services.upload.parseMultipartData(ctx);
+        // FIX: Use correct service path
+        const uploadService = strapi.plugin('upload').service('upload');
+        const parsed = await uploadService.parseMultipartData(ctx);
         data = parsed.data;
         files = parsed.files;
         console.log('✅ Successfully parsed multipart data');
@@ -150,56 +152,60 @@ async saveArticle(ctx) {
   /**
    * Process featured image upload
    */
-  async processFeaturedImageUpload(featuredImageFile) {
-    try {
-      if (!featuredImageFile) {
-        return null;
-      }
-
-      console.log('📤 Processing featured image upload:', featuredImageFile.name || 'Unnamed file');
-      
-      // Upload to Strapi media library
-      const uploadedFiles = await strapi.plugins['upload'].services.upload.upload({
-        data: {
-          fileInfo: {
-            name: featuredImageFile.name || 'featured-image',
-            alternativeText: 'Featured image for article',
-            caption: ''
-          }
-        },
-        files: featuredImageFile
-      });
-
-      if (uploadedFiles && uploadedFiles.length > 0) {
-        const uploadedFile = uploadedFiles[0];
-        console.log('✅ Featured image uploaded to media library with ID:', uploadedFile.id);
-        
-        // Get CMS base URL for full URL
-        const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
-        const imageUrl = uploadedFile.url.startsWith('http') 
-          ? uploadedFile.url 
-          : `${cmsBaseUrl}${uploadedFile.url}`;
-        
-        return {
-          id: uploadedFile.id,
-          url: imageUrl,
-          originalUrl: uploadedFile.url,
-          alternativeText: uploadedFile.alternativeText || '',
-          caption: uploadedFile.caption || '',
-          name: uploadedFile.name,
-          mime: uploadedFile.mime,
-          size: uploadedFile.size,
-          width: uploadedFile.width,
-          height: uploadedFile.height
-        };
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error uploading featured image:', error);
+async processFeaturedImageUpload(featuredImageFile) {
+  try {
+    if (!featuredImageFile) {
       return null;
     }
-  },
+
+    console.log('📤 Processing featured image upload:', featuredImageFile.name || 'Unnamed file');
+    
+    // FIX: Use the correct service path for Strapi v4
+    const uploadService = strapi.plugin('upload').service('upload');
+    
+    // Upload to Strapi media library
+    const uploadedFiles = await uploadService.upload({
+      data: {
+        fileInfo: {
+          name: featuredImageFile.name || 'featured-image',
+          alternativeText: 'Featured image for article',
+          caption: ''
+        }
+      },
+      files: featuredImageFile
+    });
+
+    if (uploadedFiles && uploadedFiles.length > 0) {
+      const uploadedFile = uploadedFiles[0];
+      console.log('✅ Featured image uploaded to media library with ID:', uploadedFile.id);
+      
+      // Get CMS base URL for full URL
+      const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
+      const imageUrl = uploadedFile.url.startsWith('http') 
+        ? uploadedFile.url 
+        : `${cmsBaseUrl}${uploadedFile.url}`;
+      
+      return {
+        id: uploadedFile.id,
+        url: imageUrl,
+        originalUrl: uploadedFile.url,
+        alternativeText: uploadedFile.alternativeText || '',
+        caption: uploadedFile.caption || '',
+        name: uploadedFile.name,
+        mime: uploadedFile.mime,
+        size: uploadedFile.size,
+        width: uploadedFile.width,
+        height: uploadedFile.height
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error uploading featured image:', error);
+    console.error('Error stack:', error.stack);
+    return null;
+  }
+},
 
   /**
    * Process album images upload
