@@ -11,27 +11,51 @@ module.exports = {
    * Create or Update Article
    * POST /api/posts/save
    */
-  async saveArticle(ctx) {
-    try {
-      // Parse multipart form data
-      const { data, files } = await this.parseMultipartData(ctx);
+async saveArticle(ctx) {
+  try {
+    console.log('📝 Save article request received');
+    console.log('🔍 Content-Type:', ctx.request.headers['content-type']);
+    
+    // Check if it's multipart/form-data
+    if (ctx.is('multipart/form-data')) {
+      console.log('✅ Is multipart/form-data');
       
-      // Parse JSON data
-      const articleData = JSON.parse(data.data || '{}');
+      // Parse multipart data
+      let data, files;
+      try {
+        const parsed = await strapi.plugins['upload'].services.upload.parseMultipartData(ctx);
+        data = parsed.data;
+        files = parsed.files;
+        console.log('✅ Successfully parsed multipart data');
+      } catch (parseError) {
+        console.error('❌ Error parsing multipart data:', parseError);
+        // Try manual parsing as fallback
+        data = ctx.request.body;
+        files = ctx.request.files;
+      }
       
-      console.log('📝 Saving article:', articleData.title || 'Untitled');
-      console.log('📊 Article data:', JSON.stringify(articleData, null, 2));
-      console.log('📁 Uploaded files:', files ? Object.keys(files) : 'No files');
-
-      // Validate required fields
-      if (!articleData.title) {
-        return ctx.badRequest('Article title is required');
+      console.log('📊 Parsed data:', data);
+      console.log('📁 Parsed files:', files ? Object.keys(files) : 'No files');
+      
+      // Check if data.data exists (JSON string in FormData)
+      let articleData;
+      if (data && data.data) {
+        try {
+          articleData = JSON.parse(data.data);
+          console.log('✅ Parsed JSON from data.data:', articleData.title);
+        } catch (parseError) {
+          console.error('❌ Error parsing data.data JSON:', parseError);
+          return ctx.badRequest('Invalid JSON in data field');
+        }
+      } else if (data) {
+        // Try to use data directly
+        articleData = data;
+        console.log('✅ Using data directly:', articleData);
+      } else {
+        console.error('❌ No data found in request');
+        return ctx.badRequest('No data provided');
       }
-
-      if (!articleData.content) {
-        return ctx.badRequest('Article content is required');
-      }
-
+      
       // Process featured image from files
       if (files && files.featuredImage) {
         console.log('🖼️ Processing featured image upload');
@@ -40,16 +64,21 @@ module.exports = {
           articleData.featuredImage = featuredImageResult;
         }
       }
-
-      // Process album images from files
-      if (files && files.album) {
-        console.log('🖼️ Processing album images');
-        const albumResults = await this.processAlbumImages(files.album);
-        if (albumResults && albumResults.length > 0) {
-          articleData.album = albumResults;
-        }
+      
+      // Validate required fields
+      if (!articleData.title || articleData.title.trim() === '') {
+        console.error('❌ Title validation failed. Title:', articleData.title);
+        return ctx.badRequest('Article title is required');
       }
 
+      if (!articleData.content || articleData.content.trim() === '') {
+        return ctx.badRequest('Article content is required');
+      }
+      
+      console.log('✅ All validations passed');
+      console.log('📝 Title:', articleData.title);
+      console.log('📄 Content length:', articleData.content?.length || 0);
+      
       // Determine if this is create or update
       const isUpdate = !!articleData.id;
       
@@ -60,13 +89,40 @@ module.exports = {
         console.log('✨ Creating new article');
         return await this.createNewArticle(ctx, articleData);
       }
+      
+    } else {
+      // Handle regular JSON request
+      console.log('📝 Handling JSON request');
+      const articleData = ctx.request.body;
+      
+      // Validate required fields
+      if (!articleData.title) {
+        return ctx.badRequest('Article title is required');
+      }
 
-    } catch (error) {
-      console.error('❌ Error in saveArticle:', error);
-      strapi.log.error('Error in saveArticle:', error);
-      return ctx.internalServerError('An error occurred while saving the article');
+      if (!articleData.content) {
+        return ctx.badRequest('Article content is required');
+      }
+      
+      const isUpdate = !!articleData.id;
+      
+      if (isUpdate) {
+        console.log('🔄 Updating existing article with ID:', articleData.id);
+        return await this.updateExistingArticle(ctx, articleData);
+      } else {
+        console.log('✨ Creating new article');
+        return await this.createNewArticle(ctx, articleData);
+      }
     }
-  },
+
+  } catch (error) {
+    console.error('❌ Error in saveArticle:', error);
+    console.error('❌ Error stack:', error.stack);
+    strapi.log.error('Error in saveArticle:', error);
+    return ctx.internalServerError('An error occurred while saving the article');
+  }
+}
+  ,
 
   /**
    * Parse multipart form data
