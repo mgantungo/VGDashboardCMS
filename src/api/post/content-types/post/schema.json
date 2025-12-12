@@ -108,6 +108,21 @@
       "relation": "manyToMany",
       "target": "api::publication.publication",
       "inversedBy": "posts"
+    },
+    "view_status": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "published",
+        "deleted"
+      ]
+    },
+    "secondaryCategory": {
+      "type": "integer"
+    },
+    "live": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

@@ -883,6 +883,7 @@ export interface ApiPostPost extends Struct.CollectionTypeSchema {
     isPremium: Schema.Attribute.Boolean &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<false>;
+    live: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::post.post'> &
       Schema.Attribute.Private;
@@ -891,6 +892,7 @@ export interface ApiPostPost extends Struct.CollectionTypeSchema {
       'api::publication.publication'
     >;
     publishedAt: Schema.Attribute.DateTime;
+    secondaryCategory: Schema.Attribute.Integer;
     seo_description: Schema.Attribute.Text;
     seo_title: Schema.Attribute.String;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
@@ -899,6 +901,9 @@ export interface ApiPostPost extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    view_status: Schema.Attribute.Enumeration<
+      ['draft', 'published', 'deleted']
+    >;
     views: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     wp_id: Schema.Attribute.Integer & Schema.Attribute.Unique;
     wp_published_at: Schema.Attribute.DateTime;
