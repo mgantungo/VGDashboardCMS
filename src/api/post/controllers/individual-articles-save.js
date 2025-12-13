@@ -13,162 +13,162 @@ module.exports = {
    */
 
 
-async saveArticle(ctx) {
+  async saveArticle(ctx) {
     try {
       console.log('📝 Save article request received');
       console.log('📋 Content-Type:', ctx.request.headers['content-type']);
       
-      // Check if it's multipart/form-data
-      if (ctx.is('multipart/form-data')) {
+      let articleData;
+      let featuredImageFile = null;
+      
+      // STRAPI 5: Handle multipart form data
+      if (ctx.is('multipart')) {
         console.log('✅ Is multipart/form-data');
         
-        // Parse multipart data
-        let data, files;
-        try {
-          const uploadService = strapi.plugin('upload').service('upload');
-          const parsed = await uploadService.parseMultipartData(ctx);
-          data = parsed.data;
-          files = parsed.files;
-          console.log('✅ Successfully parsed multipart data');
-        } catch (parseError) {
-          console.error('❌ Error parsing multipart data:', parseError);
-          data = ctx.request.body;
-          files = ctx.request.files;
-        }
+        // STRAPI 5: Access body and files from ctx.request
+        const { body, files } = ctx.request;
         
-        console.log('📊 Parsed data:', data);
-        console.log('📁 Parsed files:', files ? Object.keys(files) : 'No files');
+        console.log('📊 Request body:', body ? 'Present' : 'Missing');
+        console.log('📁 Request files:', files ? Object.keys(files) : 'No files');
         
         // Parse JSON data from FormData
-        let articleData;
-        if (data && data.data) {
+        if (body && body.data) {
           try {
-            articleData = JSON.parse(data.data);
-            console.log('✅ Parsed JSON from data.data:', articleData.title);
+            articleData = JSON.parse(body.data);
+            console.log('✅ Parsed JSON from body.data:', articleData.title);
           } catch (parseError) {
-            console.error('❌ Error parsing data.data JSON:', parseError);
+            console.error('❌ Error parsing body.data JSON:', parseError);
             return ctx.badRequest('Invalid JSON in data field');
           }
-        } else if (data) {
-          articleData = data;
-          console.log('✅ Using data directly:', articleData);
         } else {
-          console.error('❌ No data found in request');
+          console.error('❌ No data found in request body');
+          console.log('📋 Body structure:', JSON.stringify(body, null, 2));
           return ctx.badRequest('No data provided');
         }
         
-        // FIX 1: Process featured image from files
-        if (files && files.featuredImage) {
-          console.log('🖼️ Processing featured image upload');
-          const featuredImageResult = await this.processFeaturedImageUpload(files.featuredImage);
-          if (featuredImageResult) {
-            articleData.featuredImageId = featuredImageResult.id;
-            console.log('✅ Featured image uploaded with ID:', featuredImageResult.id);
+        // STRAPI 5: Get featured image file
+        if (files) {
+          // Try different possible field names
+          featuredImageFile = files['files.featuredImage'] || 
+                             files['featuredImage'] || 
+                             files.featuredImage;
+          
+          if (featuredImageFile) {
+            console.log('🖼️ Featured image file found:', featuredImageFile.name || featuredImageFile.originalFilename);
+          } else {
+            console.log('ℹ️ No featured image file in request');
+            console.log('📋 Available file fields:', Object.keys(files));
           }
-        } else if (articleData.featuredImage?.id) {
-          // Use existing featured image ID
-          articleData.featuredImageId = articleData.featuredImage.id;
-          console.log('🆔 Using existing featured image ID:', articleData.featuredImageId);
-        }
-        
-        // Validate required fields
-        if (!articleData.title || articleData.title.trim() === '') {
-          console.error('❌ Title validation failed. Title:', articleData.title);
-          return ctx.badRequest('Article title is required');
-        }
-
-        if (!articleData.content || articleData.content.trim() === '') {
-          return ctx.badRequest('Article content is required');
-        }
-        
-        // FIX 2: Validate publicationId
-        if (!articleData.publicationId) {
-          console.error('❌ PublicationId validation failed');
-          return ctx.badRequest('Publication is required');
-        }
-        
-        console.log('✅ All validations passed');
-        console.log('📰 Publication ID:', articleData.publicationId);
-        console.log('📄 Title:', articleData.title);
-        console.log('📝 Content length:', articleData.content?.length || 0);
-        
-        // Determine if this is create or update
-        const isUpdate = !!articleData.id;
-        
-        if (isUpdate) {
-          console.log('🔄 Updating existing article with ID:', articleData.id);
-          return await this.updateExistingArticle(ctx, articleData);
-        } else {
-          console.log('✨ Creating new article');
-          return await this.createNewArticle(ctx, articleData);
         }
         
       } else {
         // Handle regular JSON request
         console.log('📄 Handling JSON request');
-        const articleData = ctx.request.body;
-        
-        // Validate required fields
-        if (!articleData.title) {
-          return ctx.badRequest('Article title is required');
-        }
+        articleData = ctx.request.body;
+      }
+      
+      // Validate required fields
+      if (!articleData || !articleData.title || articleData.title.trim() === '') {
+        console.error('❌ Title validation failed');
+        return ctx.badRequest('Article title is required');
+      }
 
-        if (!articleData.content) {
-          return ctx.badRequest('Article content is required');
+      if (!articleData.content || articleData.content.trim() === '') {
+        return ctx.badRequest('Article content is required');
+      }
+      
+      if (!articleData.publicationId) {
+        console.error('❌ PublicationId validation failed');
+        return ctx.badRequest('Publication is required');
+      }
+      
+      console.log('✅ All validations passed');
+      console.log('📰 Publication ID:', articleData.publicationId);
+      console.log('📄 Title:', articleData.title);
+      console.log('📝 Content length:', articleData.content?.length || 0);
+      
+      // Process featured image if provided
+      if (featuredImageFile) {
+        console.log('🖼️ Processing featured image upload');
+        const featuredImageResult = await this.processFeaturedImageUpload(featuredImageFile);
+        if (featuredImageResult) {
+          articleData.featuredImageId = featuredImageResult.id;
+          console.log('✅ Featured image uploaded with ID:', featuredImageResult.id);
         }
-        
-        if (!articleData.publicationId) {
-          return ctx.badRequest('Publication is required');
-        }
-        
-        const isUpdate = !!articleData.id;
-        
-        if (isUpdate) {
-          console.log('🔄 Updating existing article with ID:', articleData.id);
-          return await this.updateExistingArticle(ctx, articleData);
-        } else {
-          console.log('✨ Creating new article');
-          return await this.createNewArticle(ctx, articleData);
-        }
+      } else if (articleData.featuredImage?.id) {
+        articleData.featuredImageId = articleData.featuredImage.id;
+        console.log('🆔 Using existing featured image ID:', articleData.featuredImageId);
+      }
+      
+      // Determine if this is create or update
+      const isUpdate = !!articleData.id;
+      
+      if (isUpdate) {
+        console.log('🔄 Updating existing article with ID:', articleData.id);
+        return await this.updateExistingArticle(ctx, articleData);
+      } else {
+        console.log('✨ Creating new article');
+        return await this.createNewArticle(ctx, articleData);
       }
 
     } catch (error) {
       console.error('❌ Error in saveArticle:', error);
       console.error('❌ Error stack:', error.stack);
-      strapi.log.error('Error in saveArticle:', error);
       return ctx.internalServerError('An error occurred while saving the article');
     }
   },
 
   /**
-   * Process featured image upload
-   * FIX: Properly upload to media library and return ID
+   * Process featured image upload to Strapi media library
+   * STRAPI 5 VERSION
    */
-  async processFeaturedImageUpload(featuredImageFile) {
+  async processFeaturedImageUpload(file) {
     try {
-      if (!featuredImageFile) {
+      if (!file) {
+        console.log('ℹ️ No file provided for upload');
         return null;
       }
 
-      console.log('📤 Processing featured image upload:', featuredImageFile.name || 'Unnamed file');
+      console.log('📤 Uploading featured image to media library');
+      console.log('📋 File details:', {
+        name: file.name || file.originalFilename,
+        type: file.type || file.mimetype,
+        size: file.size
+      });
       
+      // STRAPI 5: Get upload service
       const uploadService = strapi.plugin('upload').service('upload');
       
-      // Upload to Strapi media library
+      // STRAPI 5: Prepare file for upload
+      const fileData = {
+        path: file.filepath || file.path,
+        name: file.name || file.originalFilename || 'featured-image.jpg',
+        type: file.type || file.mimetype || 'image/jpeg',
+        size: file.size
+      };
+      
+      console.log('📋 Prepared file data:', fileData);
+      
+      // STRAPI 5: Upload to media library
       const uploadedFiles = await uploadService.upload({
         data: {
           fileInfo: {
-            name: featuredImageFile.name || 'featured-image',
+            name: fileData.name,
             alternativeText: 'Featured image for article',
             caption: ''
           }
         },
-        files: featuredImageFile
+        files: fileData
       });
 
       if (uploadedFiles && uploadedFiles.length > 0) {
         const uploadedFile = uploadedFiles[0];
-        console.log('✅ Featured image uploaded to media library with ID:', uploadedFile.id);
+        console.log('✅ Featured image uploaded successfully');
+        console.log('📋 Upload result:', {
+          id: uploadedFile.id,
+          url: uploadedFile.url,
+          name: uploadedFile.name
+        });
         
         const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
         const imageUrl = uploadedFile.url.startsWith('http') 
@@ -189,23 +189,30 @@ async saveArticle(ctx) {
         };
       }
 
+      console.warn('⚠️ Upload completed but no files returned');
       return null;
+      
     } catch (error) {
-      console.error('Error uploading featured image:', error);
-      console.error('Error stack:', error.stack);
+      console.error('❌ Error uploading featured image:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
       return null;
     }
   },
 
   /**
-   * FIX: Extract and upload inline images from content
-   * This processes base64 images in the content and uploads them to media library
+   * Process inline images from content
+   * STRAPI 5 VERSION
    */
   async processContentImages(content, articleId) {
     try {
-      if (!content) return content;
+      if (!content) {
+        console.log('ℹ️ No content provided for image processing');
+        return content;
+      }
       
-      // Extract base64 images from content
       const base64Regex = /data:image\/(png|jpeg|jpg|gif|webp|bmp|svg\+xml);base64,([^"'\s<>]+)/gi;
       const matches = [...content.matchAll(base64Regex)];
       
@@ -224,25 +231,30 @@ async saveArticle(ctx) {
         const [fullMatch, format, base64Data] = matches[i];
         
         try {
-          // Convert base64 to buffer
           const buffer = Buffer.from(base64Data, 'base64');
-          
-          // Create filename
           const timestamp = Date.now();
           const random = Math.random().toString(36).substr(2, 9);
           const filename = `content-image-${articleId || 'new'}-${timestamp}-${random}.${format}`;
           
           console.log(`📤 Uploading inline image ${i + 1}/${matches.length}: ${filename}`);
           
-          // Create a temporary file object for upload
+          // STRAPI 5: Create temporary file for upload
+          const fs = require('fs');
+          const path = require('path');
+          const os = require('os');
+          const tmpDir = os.tmpdir();
+          const tmpFilePath = path.join(tmpDir, filename);
+          
+          // Write buffer to temporary file
+          fs.writeFileSync(tmpFilePath, buffer);
+          
           const fileData = {
+            path: tmpFilePath,
             name: filename,
             type: `image/${format}`,
-            size: buffer.length,
-            path: buffer
+            size: buffer.length
           };
           
-          // Upload to media library
           const uploadedFiles = await uploadService.upload({
             data: {
               fileInfo: {
@@ -254,6 +266,13 @@ async saveArticle(ctx) {
             files: fileData
           });
 
+          // Clean up temporary file
+          try {
+            fs.unlinkSync(tmpFilePath);
+          } catch (cleanupError) {
+            console.warn('⚠️ Could not delete temp file:', tmpFilePath);
+          }
+
           if (uploadedFiles && uploadedFiles.length > 0) {
             const uploadedFile = uploadedFiles[0];
             const imageUrl = uploadedFile.url.startsWith('http') 
@@ -261,13 +280,10 @@ async saveArticle(ctx) {
               : `${cmsBaseUrl}${uploadedFile.url}`;
             
             console.log(`✅ Uploaded inline image ${i + 1}: ${imageUrl}`);
-            
-            // Replace base64 image with uploaded image URL
             processedContent = processedContent.replace(fullMatch, imageUrl);
           }
         } catch (imgError) {
           console.error(`❌ Error processing inline image ${i + 1}:`, imgError);
-          // Continue with other images even if one fails
         }
       }
       
@@ -275,110 +291,99 @@ async saveArticle(ctx) {
       return processedContent;
       
     } catch (error) {
-      console.error('Error processing content images:', error);
-      return content; // Return original content if processing fails
+      console.error('❌ Error processing content images:', error);
+      return content;
     }
   },
 
   /**
    * Create New Article
-   * FIX: Properly handle publication relationship and featured image
+   * STRAPI 5 VERSION
    */
   async createNewArticle(ctx, articleData) {
     try {
-      // Get next wp_id
       const nextWpId = await this.getNextWpId();
       console.log('🆔 Next wp_id:', nextWpId);
 
-      // Process tags
       const tagIds = await this.processTagsForArticle(articleData.tags || []);
       console.log('🏷️ Processed tag IDs:', tagIds);
 
-      // Process authors
       const authorIds = await this.processAuthors(articleData.authors || []);
       console.log('👤 Author IDs:', authorIds);
 
-      // Process categories
       const categoryIds = await this.processCategories(articleData.category, articleData.secondaryCategory);
       console.log('📁 Category IDs:', categoryIds);
 
-      // Process album images
       const albumImageIds = await this.processAlbumForArticle(articleData.album || []);
       console.log('📸 Album image IDs:', albumImageIds);
 
-      // Generate unique slug
       const slug = await this.generateUniqueSlug(articleData.title);
       console.log('🔗 Generated slug:', slug);
 
-      // FIX: Process inline images BEFORE saving
       console.log('🖼️ Processing inline images in content...');
       const processedContent = await this.processContentImages(articleData.content, 'new');
 
-      // Prepare article data for creation
+      // STRAPI 5: Prepare create data
       const createData = {
         title: articleData.title,
         slug: slug,
-        content: processedContent, // Use processed content with uploaded images
+        content: processedContent,
         excerpt: articleData.summary || this.extractExcerpt(processedContent, 200),
         wp_id: nextWpId,
-        
-        // Status and publishing
         view_status: articleData.status || 'draft',
         wp_published_at: articleData.status === 'published' ? 
           (articleData.publishedAt || new Date().toISOString()) : null,
-        
-        // Live flag
         live: articleData.live || false,
-        
-        // Premium flag
         isPremium: articleData.premium || false,
-        
-        // Feature flags
         featured: articleData.featured || false,
         breakingNews: articleData.breakingNews || false,
         breakingDuration: articleData.breakingDuration || null,
-        
-        // SEO fields
         seo_title: articleData.title,
         seo_description: articleData.summary || this.extractExcerpt(processedContent, 160),
-        
-        // Views counter
         views: 0,
-        
-        // Relations
-        authors: authorIds,
-        categories: categoryIds,
-        tags: tagIds,
       };
 
-      // FIX: Add featured image if exists (use the ID)
+      // STRAPI 5: Connect relations
+      if (authorIds.length > 0) {
+        createData.authors = { connect: authorIds.map(id => ({ id })) };
+      }
+
+      if (categoryIds.length > 0) {
+        createData.categories = { connect: categoryIds.map(id => ({ id })) };
+      }
+
+      if (tagIds.length > 0) {
+        createData.tags = { connect: tagIds.map(id => ({ id })) };
+      }
+
+      // STRAPI 5: Connect featured image
       if (articleData.featuredImageId) {
-        createData.featured_image = articleData.featuredImageId;
-        console.log('🖼️ Adding featured image ID:', articleData.featuredImageId);
+        createData.featured_image = { connect: [{ id: articleData.featuredImageId }] };
+        console.log('🖼️ Connecting featured image ID:', articleData.featuredImageId);
       }
 
-      // Add album if exists
+      // STRAPI 5: Connect album
       if (albumImageIds.length > 0) {
-        createData.album = albumImageIds;
+        createData.album = { connect: albumImageIds.map(id => ({ id })) };
       }
 
-      // FIX: Add publication relationship
+      // STRAPI 5: Connect publication
       if (articleData.publicationId) {
-        createData.publication = [articleData.publicationId];
-        console.log('📰 Adding publication relationship:', articleData.publicationId);
+        createData.publication = { connect: [{ id: articleData.publicationId }] };
+        console.log('📰 Connecting publication ID:', articleData.publicationId);
       }
 
       console.log('💾 Creating article with data:', {
         title: createData.title,
         status: createData.view_status,
-        authors: createData.authors,
-        categories: createData.categories,
-        publication: createData.publication,
-        featured_image: createData.featured_image
+        hasAuthors: !!createData.authors,
+        hasCategories: !!createData.categories,
+        hasPublication: !!createData.publication,
+        hasFeaturedImage: !!createData.featured_image
       });
 
-      // Create the article
-      const createdArticle = await strapi.entityService.create('api::post.post', {
+      // STRAPI 5: Create entity
+      const createdArticle = await strapi.documents('api::post.post').create({
         data: createData,
         populate: {
           authors: true,
@@ -390,27 +395,44 @@ async saveArticle(ctx) {
         }
       });
 
-      console.log('✅ Article created successfully with ID:', createdArticle.id);
+      console.log('✅ Article created successfully with ID:', createdArticle.documentId || createdArticle.id);
+      
+      // Verification
+      if (createdArticle.publication) {
+        console.log('✅ Publication relationship saved:', createdArticle.publication);
+      } else {
+        console.warn('⚠️ Publication relationship NOT saved!');
+      }
 
-      // Return formatted response
+      if (createdArticle.featured_image) {
+        console.log('✅ Featured image relationship saved:', createdArticle.featured_image.id);
+      } else if (articleData.featuredImageId) {
+        console.warn('⚠️ Featured image relationship NOT saved!');
+      }
+
       return this.formatArticleResponse(createdArticle, articleData);
 
     } catch (error) {
       console.error('❌ Error creating article:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
       throw error;
     }
   },
 
   /**
    * Update Existing Article
-   * FIX: Properly handle publication relationship and featured image
+   * STRAPI 5 VERSION
    */
   async updateExistingArticle(ctx, articleData) {
     try {
       const articleId = articleData.id;
 
-      // Check if article exists
-      const existingArticle = await strapi.entityService.findOne('api::post.post', articleId, {
+      // STRAPI 5: Find document
+      const existingArticle = await strapi.documents('api::post.post').findOne({
+        documentId: articleId,
         populate: {
           authors: true,
           categories: true,
@@ -427,81 +449,63 @@ async saveArticle(ctx) {
 
       console.log('📝 Updating article:', existingArticle.title, '(ID:', articleId, ')');
 
-      // Process tags
       const tagIds = await this.processTagsForArticle(articleData.tags || []);
-
-      // Process authors
       const authorIds = await this.processAuthors(articleData.authors || []);
-
-      // Process categories
       const categoryIds = await this.processCategories(articleData.category, articleData.secondaryCategory);
-
-      // Process album images
       const albumImageIds = await this.processAlbumForArticle(articleData.album || []);
 
-      // FIX: Process inline images
       console.log('🖼️ Processing inline images in content...');
       const processedContent = await this.processContentImages(articleData.content, articleId);
 
-      // Prepare update data
+      // STRAPI 5: Prepare update data
       const updateData = {
         title: articleData.title,
         content: processedContent,
         excerpt: articleData.summary || this.extractExcerpt(processedContent, 200),
-        
-        // Status and publishing
         view_status: articleData.status || 'draft',
         wp_published_at: articleData.status === 'published' ? 
           (articleData.publishedAt || new Date().toISOString()) : null,
-        
-        // Live flag
         live: articleData.live || false,
-        
-        // Premium flag
         isPremium: articleData.premium || false,
-        
-        // Feature flags
         featured: articleData.featured || false,
         breakingNews: articleData.breakingNews || false,
         breakingDuration: articleData.breakingDuration || null,
-        
-        // SEO fields
         seo_title: articleData.title,
         seo_description: articleData.summary || this.extractExcerpt(processedContent, 160),
-        
-        // Relations
-        authors: authorIds,
-        categories: categoryIds,
-        tags: tagIds,
       };
 
-      // FIX: Update featured image if provided
+      // STRAPI 5: Set relations (replace all)
+      if (authorIds.length > 0) {
+        updateData.authors = { set: authorIds.map(id => ({ id })) };
+      }
+
+      if (categoryIds.length > 0) {
+        updateData.categories = { set: categoryIds.map(id => ({ id })) };
+      }
+
+      if (tagIds.length > 0) {
+        updateData.tags = { set: tagIds.map(id => ({ id })) };
+      }
+
       if (articleData.featuredImageId) {
-        updateData.featured_image = articleData.featuredImageId;
+        updateData.featured_image = { set: [{ id: articleData.featuredImageId }] };
         console.log('🖼️ Updating featured image ID:', articleData.featuredImageId);
       }
 
-      // Update album if provided
       if (albumImageIds.length > 0) {
-        updateData.album = albumImageIds;
+        updateData.album = { set: albumImageIds.map(id => ({ id })) };
       }
 
-      // FIX: Update publication relationship
       if (articleData.publicationId) {
-        updateData.publication = [articleData.publicationId];
-        console.log('📰 Updating publication relationship:', articleData.publicationId);
+        updateData.publication = { set: [{ id: articleData.publicationId }] };
+        console.log('📰 Updating publication ID:', articleData.publicationId);
       }
 
-      console.log('💾 Updating article with data:', {
-        title: updateData.title,
-        status: updateData.view_status,
-        live: updateData.live,
-        publication: updateData.publication,
-        featured_image: updateData.featured_image
-      });
+      console.log('💾 Updating article');
 
-      // Update the article
-      const updatedArticle = await strapi.entityService.update('api::post.post', articleId, {
+      // STRAPI 5: Update document
+      const updatedArticle = await strapi.documents('api::post.post').update({
+        documentId: articleId,
         data: updateData,
         populate: {
           authors: true,
@@ -515,7 +519,6 @@ async saveArticle(ctx) {
 
       console.log('✅ Article updated successfully');
 
-      // Return formatted response
       return this.formatArticleResponse(updatedArticle, articleData);
 
     } catch (error) {
@@ -524,19 +527,17 @@ async saveArticle(ctx) {
     }
   },
 
-  /**
-   * Get next available wp_id
-   */
   async getNextWpId() {
     try {
-      const latestArticle = await strapi.entityService.findMany('api::post.post', {
+      // STRAPI 5: Use documents API
+      const latestArticles = await strapi.documents('api::post.post').findMany({
         sort: { wp_id: 'desc' },
         limit: 1,
         fields: ['wp_id']
       });
 
-      if (latestArticle && latestArticle.length > 0 && latestArticle[0].wp_id) {
-        return latestArticle[0].wp_id + 1;
+      if (latestArticles && latestArticles.length > 0 && latestArticles[0].wp_id) {
+        return latestArticles[0].wp_id + 1;
       }
 
       return 1;
@@ -546,9 +547,6 @@ async saveArticle(ctx) {
     }
   },
 
-  /**
-   * Process tags - create if they don't exist
-   */
   async processTagsForArticle(tagNames) {
     try {
       if (!tagNames || tagNames.length === 0) {
@@ -562,7 +560,8 @@ async saveArticle(ctx) {
         
         if (!cleanTagName) continue;
 
-        const existingTags = await strapi.entityService.findMany('api::tag.tag', {
+        // STRAPI 5: Find tag
+        const existingTags = await strapi.documents('api::tag.tag').findMany({
           filters: { name: cleanTagName },
           limit: 1
         });
@@ -573,7 +572,7 @@ async saveArticle(ctx) {
         } else {
           console.log('🏷️ Creating new tag:', cleanTagName);
           
-          const latestTag = await strapi.entityService.findMany('api::tag.tag', {
+          const latestTag = await strapi.documents('api::tag.tag').findMany({
             sort: { wp_id: 'desc' },
             limit: 1,
             fields: ['wp_id']
@@ -583,7 +582,8 @@ async saveArticle(ctx) {
             ? latestTag[0].wp_id + 1 
             : 1;
 
-          const newTag = await strapi.entityService.create('api::tag.tag', {
+          // STRAPI 5: Create tag
+          const newTag = await strapi.documents('api::tag.tag').create({
             data: {
               name: cleanTagName,
               slug: this.slugify(cleanTagName),
@@ -603,9 +603,6 @@ async saveArticle(ctx) {
     }
   },
 
-  /**
-   * Process authors
-   */
   async processAuthors(authors) {
     try {
       if (!authors || authors.length === 0) {
@@ -627,9 +624,6 @@ async saveArticle(ctx) {
     }
   },
 
-  /**
-   * Process categories
-   */
   async processCategories(primaryCategory, secondaryCategory) {
     try {
       const categoryIds = [];
@@ -651,9 +645,6 @@ async saveArticle(ctx) {
     }
   },
 
-  /**
-   * Process album images for article
-   */
   async processAlbumForArticle(albumImages) {
     try {
       if (!albumImages || albumImages.length === 0) {
@@ -674,12 +665,14 @@ async saveArticle(ctx) {
         }
 
         if (image.url) {
-          const existingFiles = await strapi.plugins['upload'].services.upload.find({
+          // STRAPI 5: Find media by URL
+          const uploadService = strapi.plugin('upload').service('upload');
+          const existingFiles = await uploadService.findMany({
             filters: { url: image.originalUrl || image.url }
           });
           
-          if (existingFiles && existingFiles.length > 0) {
-            imageIds.push(existingFiles[0].id);
+          if (existingFiles && existingFiles.results && existingFiles.results.length > 0) {
+            imageIds.push(existingFiles.results[0].id);
           }
         }
       }
@@ -691,17 +684,15 @@ async saveArticle(ctx) {
     }
   },
 
-  /**
-   * Generate unique slug
-   */
-  async generateUniqueSlug(title, existingSlug = null) {
+  async generateUniqueSlug(title) {
     try {
       let baseSlug = this.slugify(title);
       let slug = baseSlug;
       let counter = 1;
 
       while (true) {
-        const existing = await strapi.entityService.findMany('api::post.post', {
+        // STRAPI 5: Check for existing slug
+        const existing = await strapi.documents('api::post.post').findMany({
           filters: { slug: slug },
           limit: 1
         });
@@ -726,9 +717,6 @@ async saveArticle(ctx) {
     }
   },
 
-  /**
-   * Slugify string
-   */
   slugify(text) {
     if (!text) return '';
     
@@ -745,9 +733,6 @@ async saveArticle(ctx) {
       .replace(/-+$/, '');
   },
 
-  /**
-   * Extract excerpt from content
-   */
   extractExcerpt(content, maxLength = 160) {
     if (!content) return '';
     
@@ -776,15 +761,10 @@ async saveArticle(ctx) {
     return truncated + '...';
   },
 
-  /**
-   * Format article response to match frontend expectations
-   * FIX: Include publication data
-   */
   formatArticleResponse(article, originalData) {
     try {
       const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
       
-      // Format featured image
       let featuredImage = null;
       if (article.featured_image) {
         const img = article.featured_image;
@@ -810,7 +790,6 @@ async saveArticle(ctx) {
         };
       }
 
-      // Format album images
       const album = [];
       if (article.album && Array.isArray(article.album)) {
         article.album.forEach(img => {
@@ -839,7 +818,6 @@ async saveArticle(ctx) {
         });
       }
 
-      // Format authors
       const authors = [];
       const authorIds = [];
       
@@ -858,70 +836,46 @@ async saveArticle(ctx) {
         });
       }
 
-      // Format categories
       const category = article.categories?.[0]?.id || null;
       const secondaryCategory = article.categories?.[1]?.id || null;
-
-      // Format tags
       const tags = article.tags?.map(tag => tag.name) || [];
 
-      // FIX: Extract publicationId from publication relationship
       let publicationId = null;
       if (article.publication && Array.isArray(article.publication) && article.publication.length > 0) {
         publicationId = article.publication[0].id;
+        console.log('✅ Publication in response:', publicationId);
       } else if (originalData?.publicationId) {
         publicationId = originalData.publicationId;
+        console.warn('⚠️ Using original publicationId, not from saved article');
       }
 
       return {
-        id: article.id,
+        id: article.id || article.documentId,
         wp_id: article.wp_id,
         title: article.title,
         slug: article.slug,
-        
-        // Status
         view_status: article.view_status,
         status: article.view_status || 'draft',
         live: article.live || false,
-        
-        // Categories
         category: category,
         secondaryCategory: secondaryCategory,
-        
-        // Authors
         authors: authors,
         authorIds: authorIds,
-        
-        // Publishing
         publishedAt: article.wp_published_at,
-        
-        // Feature flags
         featured: article.featured || false,
         breakingNews: article.breakingNews || false,
         breakingDuration: article.breakingDuration || null,
         premium: article.isPremium || false,
-        
-        // Content
         tags: tags,
         summary: article.excerpt || '',
         content: article.content || '',
-        
-        // Media
         featuredImage: featuredImage,
         album: album,
-        
-        // FIX: Publication
         publicationId: publicationId,
-        
-        // Timestamps
         createdAt: article.createdAt,
         updatedAt: article.updatedAt,
-        
-        // SEO
         seo_title: article.seo_title,
         seo_description: article.seo_description,
-        
-        // Stats
         views: article.views || 0
       };
 
@@ -929,7 +883,7 @@ async saveArticle(ctx) {
       console.error('Error formatting article response:', error);
       
       return {
-        id: article.id,
+        id: article.id || article.documentId,
         title: article.title,
         status: article.view_status || 'draft',
         live: article.live || false,
@@ -941,8 +895,8 @@ async saveArticle(ctx) {
       };
     }
   }
-  
 };
+
 
 
 /*
