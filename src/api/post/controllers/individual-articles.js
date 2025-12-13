@@ -28,8 +28,8 @@ async findPostsByAuthorAndDate(ctx) {
 
     console.log('📅 Using date range:', startDate, 'to', endDate);
 
-    // Get CMS base URL from config
-    const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgard.visiongroup.co.ug');
+    // Get CMS base URL from config - CORRECTED TO cms-vgad
+    const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
     
     const articles = await strapi.entityService.findMany('api::post.post', {
       filters: {
@@ -219,7 +219,7 @@ async findPostsByAuthorAndDate(ctx) {
         summary: article.excerpt || '',
         content: article.content || '',
         
-        // Featured image with full URL
+        // Featured image with full URL starting with https://cms-vgad.visiongroup.co.ug/
         featuredImage: featuredImage,
         
         // FUTURE FIELD - CURRENT EMPTY ARRAY
