@@ -11,13 +11,16 @@ module.exports = {
    * Create or Update Article
    * POST /api/posts/save
    */
-  async saveArticle(ctx) {
+
+    async saveArticle(ctx) {
     try {
       console.log('📝 Save article request received');
       console.log('📋 Content-Type:', ctx.request.headers['content-type']);
       
       let articleData;
       let featuredImageFile = null;
+      let inlineImageFiles = [];
+      let inlineImagesMeta = [];
       
       // Check if it's multipart/form-data
       if (ctx.is('multipart')) {
@@ -27,8 +30,8 @@ module.exports = {
         const body = ctx.request.body;
         const files = ctx.request.files;
         
-        console.log('📊 Request body:', body);
-        console.log('📁 Request files:', files ? Object.keys(files) : 'No files');
+        console.log('📊 Request body keys:', body ? Object.keys(body) : 'No body');
+        console.log('🗂️ Request files keys:', files ? Object.keys(files) : 'No files');
         
         // Parse JSON data from FormData
         if (body && body.data) {
@@ -44,10 +47,39 @@ module.exports = {
           return ctx.badRequest('No data provided');
         }
         
-        // FIX: Get featured image file from request files
+        // Get featured image file
         if (files && files['files.featuredImage']) {
           featuredImageFile = files['files.featuredImage'];
           console.log('🖼️ Featured image file found:', featuredImageFile.name);
+        }
+        
+        // NEW: Get inline images files
+        if (files && files['files.inlineImages']) {
+          // Handle both single file and array of files
+          inlineImageFiles = Array.isArray(files['files.inlineImages']) 
+            ? files['files.inlineImages'] 
+            : [files['files.inlineImages']];
+          
+          console.log('📷 Found inline images to process:', inlineImageFiles.length);
+        }
+        
+        // NEW: Get inline images metadata
+        if (body && body.inlineImagesMeta) {
+          // Handle both single metadata and array
+          const metaArray = Array.isArray(body.inlineImagesMeta)
+            ? body.inlineImagesMeta
+            : [body.inlineImagesMeta];
+          
+          inlineImagesMeta = metaArray.map(meta => {
+            try {
+              return typeof meta === 'string' ? JSON.parse(meta) : meta;
+            } catch (e) {
+              console.error('Error parsing inline image meta:', e);
+              return null;
+            }
+          }).filter(Boolean);
+          
+          console.log('📋 Inline images metadata:', inlineImagesMeta.length);
         }
         
       } else {
@@ -74,7 +106,29 @@ module.exports = {
       console.log('✅ All validations passed');
       console.log('📰 Publication ID:', articleData.publicationId);
       console.log('📄 Title:', articleData.title);
-      console.log('📝 Content length:', articleData.content?.length || 0);
+      console.log('📏 Content length:', articleData.content?.length || 0);
+      console.log('📷 Inline images to process:', inlineImageFiles.length);
+      
+      // NEW: Process inline images FIRST (before processing content)
+      if (inlineImageFiles.length > 0) {
+        console.log('🔄 Processing inline images...');
+        const uploadedInlineImages = await this.processInlineImages(
+          inlineImageFiles,
+          inlineImagesMeta,
+          articleData.id || 'new',
+          articleData.publicationId
+        );
+        
+        // Replace inline image data URLs with server URLs in content
+        if (uploadedInlineImages.length > 0) {
+          console.log('🔄 Replacing inline image URLs in content...');
+          articleData.content = this.replaceInlineImageUrls(
+            articleData.content,
+            uploadedInlineImages
+          );
+          console.log('✅ Replaced URLs for', uploadedInlineImages.length, 'inline images');
+        }
+      }
       
       // Process featured image if provided
       if (featuredImageFile) {
@@ -106,6 +160,188 @@ module.exports = {
       strapi.log.error('Error in saveArticle:', error);
       return ctx.internalServerError('An error occurred while saving the article');
     }
+  },
+
+  /**
+   * NEW: Process inline images from content
+   * Uploads inline images to media library and returns URL mappings
+   */
+  async processInlineImages(inlineImageFiles, inlineImagesMeta, articleId, publicationId) {
+    try {
+      if (!inlineImageFiles || inlineImageFiles.length === 0) {
+        console.log('ℹ️ No inline images to process');
+        return [];
+      }
+
+      const uploadedImages = [];
+      const uploadService = strapi.plugin('upload').service('upload');
+      const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
+      
+      console.log(`📤 Processing ${inlineImageFiles.length} inline images...`);
+      
+      for (let i = 0; i < inlineImageFiles.length; i++) {
+        const imageFile = inlineImageFiles[i];
+        const meta = inlineImagesMeta[i] || {};
+        
+        try {
+          // CRITICAL FIX: Ensure 'path' property exists (Strapi 5 requirement)
+          if (!imageFile.path && imageFile.filepath) {
+            console.log('🔧 Fixing file object: adding path property from filepath');
+            imageFile.path = imageFile.filepath;
+          }
+          
+          console.log('📋 Processing inline image', i + 1, ':', {
+            hasPath: !!imageFile.path,
+            hasFilepath: !!imageFile.filepath,
+            name: imageFile.name || imageFile.originalFilename,
+            type: imageFile.type || imageFile.mimetype,
+            size: imageFile.size,
+            trackingId: meta.id
+          });
+          
+          // Generate descriptive filename
+          const timestamp = Date.now();
+          const pubPrefix = publicationId ? `pub${publicationId}` : 'nopub';
+          const sanitizedAlt = this.sanitizeFilename(meta.alt || 'inline-image');
+          const extension = meta.format === 'svg+xml' ? 'svg' : (meta.format || 'jpg');
+          const filename = `${pubPrefix}-${sanitizedAlt}-inline-${timestamp}-${i}.${extension}`;
+          
+          console.log(`📤 Uploading inline image ${i + 1}/${inlineImageFiles.length}: ${filename}`);
+          
+          // Upload to Strapi media library
+          const uploadedFiles = await uploadService.upload({
+            data: {
+              fileInfo: {
+                name: filename,
+                alternativeText: meta.alt || `Inline content image ${i + 1}`,
+                caption: ''
+              }
+            },
+            files: imageFile
+          });
+
+          if (uploadedFiles && uploadedFiles.length > 0) {
+            const uploadedFile = uploadedFiles[0];
+            
+            // Build full image URL
+            let imageUrl = uploadedFile.url;
+            if (!imageUrl.startsWith('http')) {
+              imageUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+              imageUrl = `${cmsBaseUrl}${imageUrl}`;
+            }
+            
+            uploadedImages.push({
+              id: meta.id,  // Original tracking ID from editor
+              url: imageUrl,  // New server URL
+              originalUrl: uploadedFile.url,
+              mediaId: uploadedFile.id,  // Strapi media library ID
+              alternativeText: uploadedFile.alternativeText,
+              name: uploadedFile.name,
+              mime: uploadedFile.mime,
+              size: uploadedFile.size
+            });
+            
+            console.log(`✅ Uploaded inline image ${i + 1}: ${imageUrl}`);
+            console.log(`   Media library ID: ${uploadedFile.id}`);
+          }
+        } catch (imgError) {
+          console.error(`❌ Error uploading inline image ${i + 1}:`, imgError);
+          console.error('   Error details:', imgError.message);
+          // Continue with other images even if one fails
+        }
+      }
+      
+      console.log(`✅ Successfully uploaded ${uploadedImages.length}/${inlineImageFiles.length} inline images`);
+      return uploadedImages;
+      
+    } catch (error) {
+      console.error('❌ Error in processInlineImages:', error);
+      console.error('❌ Error stack:', error.stack);
+      return [];
+    }
+  },
+
+  /**
+   * NEW: Replace inline image data URLs with server URLs in content
+   */
+  replaceInlineImageUrls(content, uploadedImages) {
+    try {
+      if (!content || !uploadedImages || uploadedImages.length === 0) {
+        return content;
+      }
+
+      let processedContent = content;
+      
+      uploadedImages.forEach((uploaded, index) => {
+        console.log(`🔄 Replacing URL for image ${index + 1} (ID: ${uploaded.id})`);
+        
+        // Create regex to find the image with this tracking ID
+        // Match: <img ... data-inline-id="inline-123-456" ... src="data:image/..." ... >
+        const regex = new RegExp(
+          `<img([^>]*)data-inline-id="${this.escapeRegex(uploaded.id)}"([^>]*)>`,
+          'gi'
+        );
+        
+        // Replace the entire img tag
+        processedContent = processedContent.replace(regex, (match) => {
+          console.log(`  Found image tag for ${uploaded.id}`);
+          
+          // Remove the data-inline-id attribute
+          let newTag = match.replace(/\s*data-inline-id="[^"]*"/gi, '');
+          
+          // Replace the src with new URL
+          newTag = newTag.replace(
+            /src="data:image\/[^"]+"/gi,
+            `src="${uploaded.url}"`
+          );
+          
+          console.log(`  ✅ Replaced with server URL: ${uploaded.url.substring(0, 50)}...`);
+          return newTag;
+        });
+      });
+      
+      return processedContent;
+      
+    } catch (error) {
+      console.error('❌ Error replacing inline image URLs:', error);
+      return content;
+    }
+  },
+
+  /**
+   * Helper: Escape special regex characters
+   */
+  escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  },
+
+  /**
+   * Helper: Sanitize filename for storage
+   */
+  sanitizeFilename(filename) {
+    if (!filename) return 'image';
+    
+    return filename
+      .toString()
+      .toLowerCase()
+      // Remove file extension if present
+      .replace(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i, '')
+      // Normalize unicode characters
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      // Replace spaces and underscores with hyphens
+      .replace(/[\s_]+/g, '-')
+      // Remove any character that's not alphanumeric or hyphen
+      .replace(/[^a-z0-9\-]+/g, '')
+      // Replace multiple hyphens with single hyphen
+      .replace(/\-\-+/g, '-')
+      // Remove leading/trailing hyphens
+      .replace(/^-+/, '')
+      .replace(/-+$/, '')
+      // Limit length
+      .substring(0, 50)
+      // Ensure we have something left
+      || 'image';
   },
 
   /**
@@ -145,7 +381,6 @@ module.exports = {
       const uploadService = strapi.plugin('upload').service('upload');
       
       // Upload to Strapi media library
-      // Now the file object has the 'path' property that getStream() needs
       const uploadedFiles = await uploadService.upload({
         data: {
           fileInfo: {
@@ -189,126 +424,6 @@ module.exports = {
   },
 
   /**
-   * Process inline images from content
-   * STRAPI 5 VERSION - Better naming with publicationId and original filename
-   */
-  async processContentImages(content, articleId, publicationId = null) {
-    try {
-      if (!content) return content;
-      
-      // Match <img> tags with base64 data
-      // Capture the full img tag to extract alt/title attributes for original filename
-      const imgTagRegex = /<img[^>]*src="data:image\/(png|jpeg|jpg|gif|webp|bmp|svg\+xml);base64,([^"]+)"[^>]*>/gi;
-      const matches = [...content.matchAll(imgTagRegex)];
-      
-      if (matches.length === 0) {
-        console.log('ℹ️ No base64 images found in content');
-        return content;
-      }
-
-      console.log(`🖼️ Found ${matches.length} base64 images in content`);
-      
-      let processedContent = content;
-      const uploadService = strapi.plugin('upload').service('upload');
-      const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
-      
-      // Import required modules
-      const fs = require('fs');
-      const path = require('path');
-      const os = require('os');
-      
-      for (let i = 0; i < matches.length; i++) {
-        const [fullImgTag, format, base64Data] = matches[i];
-        
-        try {
-          // Extract original filename from alt, title, or data-filename attributes
-          let originalName = this.extractOriginalFilename(fullImgTag, i);
-          
-          // Sanitize filename: remove special characters, spaces, etc.
-          originalName = this.sanitizeFilename(originalName);
-          
-          // Generate filename: {publicationId}-{originalName}-{timestamp}.{extension}
-          const timestamp = Date.now();
-          const extension = format === 'svg+xml' ? 'svg' : format;
-          const pubPrefix = publicationId ? `pub${publicationId}` : 'nopub';
-          const filename = `${pubPrefix}-${originalName}-${timestamp}.${extension}`;
-          
-          console.log(`📤 Uploading inline image ${i + 1}/${matches.length}: ${filename}`);
-          
-          const buffer = Buffer.from(base64Data, 'base64');
-          
-          // STRAPI 5 FIX: Create a temporary file
-          const tmpDir = os.tmpdir();
-          const tmpFilePath = path.join(tmpDir, filename);
-          
-          // Write buffer to temporary file
-          fs.writeFileSync(tmpFilePath, buffer);
-          console.log(`💾 Created temp file: ${tmpFilePath}`);
-          
-          // Create file object with proper 'path' property
-          const tempFile = {
-            name: filename,
-            type: `image/${format}`,
-            size: buffer.length,
-            path: tmpFilePath
-          };
-          
-          const uploadedFiles = await uploadService.upload({
-            data: {
-              fileInfo: {
-                name: filename,
-                alternativeText: originalName || `Content image ${i + 1}`,
-                caption: ''
-              }
-            },
-            files: tempFile
-          });
-
-          // Clean up temporary file
-          try {
-            fs.unlinkSync(tmpFilePath);
-            console.log(`🗑️ Deleted temp file: ${tmpFilePath}`);
-          } catch (cleanupError) {
-            console.warn('⚠️ Could not delete temp file:', tmpFilePath);
-          }
-
-          if (uploadedFiles && uploadedFiles.length > 0) {
-            const uploadedFile = uploadedFiles[0];
-            
-            // Build full image URL: https://cms-vgad.visiongroup.co.ug/uploads/...
-            let imageUrl = uploadedFile.url;
-            if (!imageUrl.startsWith('http')) {
-              // Ensure URL starts with forward slash
-              imageUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-              imageUrl = `${cmsBaseUrl}${imageUrl}`;
-            }
-            
-            console.log(`✅ Uploaded inline image ${i + 1}: ${imageUrl}`);
-            console.log(`📋 Media library ID: ${uploadedFile.id}`);
-            
-            // Replace the entire img tag's src attribute with the new URL
-            const newImgTag = fullImgTag.replace(
-              /src="data:image\/[^"]+"/,
-              `src="${imageUrl}"`
-            );
-            
-            processedContent = processedContent.replace(fullImgTag, newImgTag);
-          }
-        } catch (imgError) {
-          console.error(`❌ Error processing inline image ${i + 1}:`, imgError);
-        }
-      }
-      
-      console.log(`✅ Processed ${matches.length} inline images`);
-      return processedContent;
-      
-    } catch (error) {
-      console.error('❌ Error processing content images:', error);
-      return content;
-    }
-  },
-
-  /**
    * Create New Article
    */
   async createNewArticle(ctx, articleData) {
@@ -331,12 +446,9 @@ module.exports = {
       const slug = await this.generateUniqueSlug(articleData.title);
       console.log('🔗 Generated slug:', slug);
 
-      console.log('🖼️ Processing inline images in content...');
-      const processedContent = await this.processContentImages(
-        articleData.content, 
-        'new',
-        articleData.publicationId  // Pass publication ID for better filename
-      );
+      // NOTE: Content already has inline images processed with server URLs
+      const processedContent = articleData.content;
+      console.log('📝 Using processed content (inline images already replaced)');
 
       const createData = {
         title: articleData.title,
@@ -369,7 +481,6 @@ module.exports = {
         createData.album = albumImageIds;
       }
 
-      // FIX: Publication relationship as array
       if (articleData.publicationId) {
         createData.publication = [articleData.publicationId];
         console.log('📰 Adding publication relationship:', articleData.publicationId);
@@ -381,7 +492,8 @@ module.exports = {
         authors: createData.authors,
         categories: createData.categories,
         publication: createData.publication,
-        featured_image: createData.featured_image
+        featured_image: createData.featured_image,
+        contentLength: createData.content.length
       });
 
       const createdArticle = await strapi.entityService.create('api::post.post', {
@@ -398,7 +510,6 @@ module.exports = {
 
       console.log('✅ Article created successfully with ID:', createdArticle.id);
       
-      // VERIFICATION: Check if publication was saved
       if (createdArticle.publication) {
         console.log('✅ Publication relationship saved:', createdArticle.publication);
       } else {
@@ -442,12 +553,9 @@ module.exports = {
       const categoryIds = await this.processCategories(articleData.category, articleData.secondaryCategory);
       const albumImageIds = await this.processAlbumForArticle(articleData.album || []);
 
-      console.log('🖼️ Processing inline images in content...');
-      const processedContent = await this.processContentImages(
-        articleData.content, 
-        articleId,
-        articleData.publicationId  // Pass publication ID for better filename
-      );
+      // NOTE: Content already has inline images processed with server URLs
+      const processedContent = articleData.content;
+      console.log('📝 Using processed content (inline images already replaced)');
 
       const updateData = {
         title: articleData.title,
@@ -487,7 +595,8 @@ module.exports = {
         status: updateData.view_status,
         live: updateData.live,
         publication: updateData.publication,
-        featured_image: updateData.featured_image
+        featured_image: updateData.featured_image,
+        contentLength: updateData.content.length
       });
 
       const updatedArticle = await strapi.entityService.update('api::post.post', articleId, {
@@ -510,7 +619,9 @@ module.exports = {
       console.error('❌ Error updating article:', error);
       throw error;
     }
-  },
+  }
+  
+  ,
 
   async getNextWpId() {
     try {
