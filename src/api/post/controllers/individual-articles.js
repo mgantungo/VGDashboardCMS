@@ -125,17 +125,19 @@ async findPostsByAuthorAndDate(ctx) {
       if (article.featured_image) {
         const img = article.featured_image;
         
-        // Build full image URL - SIMPLIFIED LOGIC
+        // Build full image URL - SIMPLER AND MORE EXPLICIT LOGIC
         let imageUrl = img.url;
         
-        // Always prepend base URL if it doesn't already start with http/https
-        if (!imageUrl.startsWith('http')) {
-          // Ensure the URL has a leading slash before appending
+        // If URL doesn't already have full http/https prefix, prepend base URL
+        if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+          // Clean up the URL to ensure it has proper format
           if (!imageUrl.startsWith('/')) {
             imageUrl = '/' + imageUrl;
           }
           imageUrl = cmsBaseUrl + imageUrl;
         }
+        
+        console.log(`📸 Processed image URL: ${imageUrl}`); // Debug log
         
         // Check for different image formats if available
         const imageFormats = {};
@@ -143,7 +145,7 @@ async findPostsByAuthorAndDate(ctx) {
           Object.keys(img.formats).forEach(format => {
             let formatUrl = img.formats[format].url;
             // Apply same logic to format URLs
-            if (!formatUrl.startsWith('http')) {
+            if (!formatUrl.startsWith('http://') && !formatUrl.startsWith('https://')) {
               if (!formatUrl.startsWith('/')) {
                 formatUrl = '/' + formatUrl;
               }
