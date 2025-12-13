@@ -28,7 +28,7 @@ async findPostsByAuthorAndDate(ctx) {
 
     console.log('📅 Using date range:', startDate, 'to', endDate);
 
-    // Get CMS base URL from config - CORRECTED TO cms-vgad
+    // Get CMS base URL from config
     const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
     
     const articles = await strapi.entityService.findMany('api::post.post', {
@@ -125,18 +125,16 @@ async findPostsByAuthorAndDate(ctx) {
       if (article.featured_image) {
         const img = article.featured_image;
         
-        // Build full image URL
+        // Build full image URL - SIMPLIFIED LOGIC
         let imageUrl = img.url;
         
-        // Check if URL already contains the full domain
+        // Always prepend base URL if it doesn't already start with http/https
         if (!imageUrl.startsWith('http')) {
-          // If it's a relative URL, prepend the CMS base URL
-          if (imageUrl.startsWith('/')) {
-            imageUrl = `${cmsBaseUrl}${imageUrl}`;
-          } else {
-            // If it doesn't start with slash, add it
-            imageUrl = `${cmsBaseUrl}/${imageUrl}`;
+          // Ensure the URL has a leading slash before appending
+          if (!imageUrl.startsWith('/')) {
+            imageUrl = '/' + imageUrl;
           }
+          imageUrl = cmsBaseUrl + imageUrl;
         }
         
         // Check for different image formats if available
@@ -144,12 +142,12 @@ async findPostsByAuthorAndDate(ctx) {
         if (img.formats) {
           Object.keys(img.formats).forEach(format => {
             let formatUrl = img.formats[format].url;
+            // Apply same logic to format URLs
             if (!formatUrl.startsWith('http')) {
-              if (formatUrl.startsWith('/')) {
-                formatUrl = `${cmsBaseUrl}${formatUrl}`;
-              } else {
-                formatUrl = `${cmsBaseUrl}/${formatUrl}`;
+              if (!formatUrl.startsWith('/')) {
+                formatUrl = '/' + formatUrl;
               }
+              formatUrl = cmsBaseUrl + formatUrl;
             }
             imageFormats[format] = {
               url: formatUrl,
