@@ -11,8 +11,6 @@ module.exports = {
    * Create or Update Article
    * POST /api/posts/save
    */
-
-
   async saveArticle(ctx) {
     try {
       console.log('📝 Save article request received');
@@ -21,14 +19,15 @@ module.exports = {
       let articleData;
       let featuredImageFile = null;
       
-      // STRAPI 5: Handle multipart form data
+      // Check if it's multipart/form-data
       if (ctx.is('multipart')) {
         console.log('✅ Is multipart/form-data');
         
-        // STRAPI 5: Access body and files from ctx.request
-        const { body, files } = ctx.request;
+        // STRAPI V4 FIX: Get data and files directly from ctx.request
+        const body = ctx.request.body;
+        const files = ctx.request.files;
         
-        console.log('📊 Request body:', body ? 'Present' : 'Missing');
+        console.log('📊 Request body:', body);
         console.log('📁 Request files:', files ? Object.keys(files) : 'No files');
         
         // Parse JSON data from FormData
@@ -42,23 +41,13 @@ module.exports = {
           }
         } else {
           console.error('❌ No data found in request body');
-          console.log('📋 Body structure:', JSON.stringify(body, null, 2));
           return ctx.badRequest('No data provided');
         }
         
-        // STRAPI 5: Get featured image file
-        if (files) {
-          // Try different possible field names
-          featuredImageFile = files['files.featuredImage'] || 
-                             files['featuredImage'] || 
-                             files.featuredImage;
-          
-          if (featuredImageFile) {
-            console.log('🖼️ Featured image file found:', featuredImageFile.name || featuredImageFile.originalFilename);
-          } else {
-            console.log('ℹ️ No featured image file in request');
-            console.log('📋 Available file fields:', Object.keys(files));
-          }
+        // FIX: Get featured image file from request files
+        if (files && files['files.featuredImage']) {
+          featuredImageFile = files['files.featuredImage'];
+          console.log('🖼️ Featured image file found:', featuredImageFile.name);
         }
         
       } else {
@@ -68,7 +57,7 @@ module.exports = {
       }
       
       // Validate required fields
-      if (!articleData || !articleData.title || articleData.title.trim() === '') {
+      if (!articleData.title || articleData.title.trim() === '') {
         console.error('❌ Title validation failed');
         return ctx.badRequest('Article title is required');
       }
@@ -114,61 +103,63 @@ module.exports = {
     } catch (error) {
       console.error('❌ Error in saveArticle:', error);
       console.error('❌ Error stack:', error.stack);
+      strapi.log.error('Error in saveArticle:', error);
       return ctx.internalServerError('An error occurred while saving the article');
     }
   },
 
   /**
    * Process featured image upload to Strapi media library
-   * STRAPI 5 VERSION
+   * STRAPI 5 CORRECTED VERSION - Fix filepath vs path issue
    */
-  async processFeaturedImageUpload(file) {
+  async processFeaturedImageUpload(featuredImageFile) {
     try {
-      if (!file) {
+      if (!featuredImageFile) {
         console.log('ℹ️ No file provided for upload');
         return null;
       }
 
       console.log('📤 Uploading featured image to media library');
-      console.log('📋 File details:', {
-        name: file.name || file.originalFilename,
-        type: file.type || file.mimetype,
-        size: file.size
+      console.log('📋 Original file object keys:', Object.keys(featuredImageFile));
+      
+      // CRITICAL FIX: Strapi 5's upload service calls getStream() which does:
+      // fs.createReadStream(file.path) 
+      // But the file from multipart has 'filepath' not 'path'
+      // We need to ensure 'path' property exists
+      
+      if (!featuredImageFile.path && featuredImageFile.filepath) {
+        console.log('🔧 Fixing file object: adding path property from filepath');
+        featuredImageFile.path = featuredImageFile.filepath;
+      }
+      
+      console.log('📋 File details for upload:', {
+        hasPath: !!featuredImageFile.path,
+        hasFilepath: !!featuredImageFile.filepath,
+        path: featuredImageFile.path,
+        name: featuredImageFile.name || featuredImageFile.originalFilename,
+        type: featuredImageFile.type || featuredImageFile.mimetype,
+        size: featuredImageFile.size
       });
       
       // STRAPI 5: Get upload service
       const uploadService = strapi.plugin('upload').service('upload');
       
-      // STRAPI 5: Prepare file for upload
-      const fileData = {
-        path: file.filepath || file.path,
-        name: file.name || file.originalFilename || 'featured-image.jpg',
-        type: file.type || file.mimetype || 'image/jpeg',
-        size: file.size
-      };
-      
-      console.log('📋 Prepared file data:', fileData);
-      
-      // STRAPI 5: Upload to media library
+      // Upload to Strapi media library
+      // Now the file object has the 'path' property that getStream() needs
       const uploadedFiles = await uploadService.upload({
         data: {
           fileInfo: {
-            name: fileData.name,
+            name: featuredImageFile.name || featuredImageFile.originalFilename || 'featured-image.jpg',
             alternativeText: 'Featured image for article',
             caption: ''
           }
         },
-        files: fileData
+        files: featuredImageFile
       });
 
       if (uploadedFiles && uploadedFiles.length > 0) {
         const uploadedFile = uploadedFiles[0];
-        console.log('✅ Featured image uploaded successfully');
-        console.log('📋 Upload result:', {
-          id: uploadedFile.id,
-          url: uploadedFile.url,
-          name: uploadedFile.name
-        });
+        console.log('✅ Featured image uploaded to media library with ID:', uploadedFile.id);
         
         const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
         const imageUrl = uploadedFile.url.startsWith('http') 
@@ -189,29 +180,21 @@ module.exports = {
         };
       }
 
-      console.warn('⚠️ Upload completed but no files returned');
       return null;
-      
     } catch (error) {
       console.error('❌ Error uploading featured image:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        stack: error.stack
-      });
+      console.error('❌ Error stack:', error.stack);
       return null;
     }
   },
 
   /**
    * Process inline images from content
-   * STRAPI 5 VERSION
+   * STRAPI 5 CORRECTED VERSION - Creates temp files properly
    */
   async processContentImages(content, articleId) {
     try {
-      if (!content) {
-        console.log('ℹ️ No content provided for image processing');
-        return content;
-      }
+      if (!content) return content;
       
       const base64Regex = /data:image\/(png|jpeg|jpg|gif|webp|bmp|svg\+xml);base64,([^"'\s<>]+)/gi;
       const matches = [...content.matchAll(base64Regex)];
@@ -227,6 +210,11 @@ module.exports = {
       const uploadService = strapi.plugin('upload').service('upload');
       const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
       
+      // Import required modules
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      
       for (let i = 0; i < matches.length; i++) {
         const [fullMatch, format, base64Data] = matches[i];
         
@@ -238,21 +226,20 @@ module.exports = {
           
           console.log(`📤 Uploading inline image ${i + 1}/${matches.length}: ${filename}`);
           
-          // STRAPI 5: Create temporary file for upload
-          const fs = require('fs');
-          const path = require('path');
-          const os = require('os');
+          // STRAPI 5 FIX: Create a temporary file
           const tmpDir = os.tmpdir();
           const tmpFilePath = path.join(tmpDir, filename);
           
           // Write buffer to temporary file
           fs.writeFileSync(tmpFilePath, buffer);
+          console.log(`💾 Created temp file: ${tmpFilePath}`);
           
-          const fileData = {
-            path: tmpFilePath,
+          // Create file object with proper 'path' property
+          const tempFile = {
             name: filename,
             type: `image/${format}`,
-            size: buffer.length
+            size: buffer.length,
+            path: tmpFilePath  // This is the actual file path Strapi needs
           };
           
           const uploadedFiles = await uploadService.upload({
@@ -263,12 +250,13 @@ module.exports = {
                 caption: ''
               }
             },
-            files: fileData
+            files: tempFile
           });
 
           // Clean up temporary file
           try {
             fs.unlinkSync(tmpFilePath);
+            console.log(`🗑️ Deleted temp file: ${tmpFilePath}`);
           } catch (cleanupError) {
             console.warn('⚠️ Could not delete temp file:', tmpFilePath);
           }
@@ -298,7 +286,6 @@ module.exports = {
 
   /**
    * Create New Article
-   * STRAPI 5 VERSION
    */
   async createNewArticle(ctx, articleData) {
     try {
@@ -323,7 +310,6 @@ module.exports = {
       console.log('🖼️ Processing inline images in content...');
       const processedContent = await this.processContentImages(articleData.content, 'new');
 
-      // STRAPI 5: Prepare create data
       const createData = {
         title: articleData.title,
         slug: slug,
@@ -341,49 +327,36 @@ module.exports = {
         seo_title: articleData.title,
         seo_description: articleData.summary || this.extractExcerpt(processedContent, 160),
         views: 0,
+        authors: authorIds,
+        categories: categoryIds,
+        tags: tagIds,
       };
 
-      // STRAPI 5: Connect relations
-      if (authorIds.length > 0) {
-        createData.authors = { connect: authorIds.map(id => ({ id })) };
-      }
-
-      if (categoryIds.length > 0) {
-        createData.categories = { connect: categoryIds.map(id => ({ id })) };
-      }
-
-      if (tagIds.length > 0) {
-        createData.tags = { connect: tagIds.map(id => ({ id })) };
-      }
-
-      // STRAPI 5: Connect featured image
       if (articleData.featuredImageId) {
-        createData.featured_image = { connect: [{ id: articleData.featuredImageId }] };
-        console.log('🖼️ Connecting featured image ID:', articleData.featuredImageId);
+        createData.featured_image = articleData.featuredImageId;
+        console.log('🖼️ Adding featured image ID:', articleData.featuredImageId);
       }
 
-      // STRAPI 5: Connect album
       if (albumImageIds.length > 0) {
-        createData.album = { connect: albumImageIds.map(id => ({ id })) };
+        createData.album = albumImageIds;
       }
 
-      // STRAPI 5: Connect publication
+      // FIX: Publication relationship as array
       if (articleData.publicationId) {
-        createData.publication = { connect: [{ id: articleData.publicationId }] };
-        console.log('📰 Connecting publication ID:', articleData.publicationId);
+        createData.publication = [articleData.publicationId];
+        console.log('📰 Adding publication relationship:', articleData.publicationId);
       }
 
       console.log('💾 Creating article with data:', {
         title: createData.title,
         status: createData.view_status,
-        hasAuthors: !!createData.authors,
-        hasCategories: !!createData.categories,
-        hasPublication: !!createData.publication,
-        hasFeaturedImage: !!createData.featured_image
+        authors: createData.authors,
+        categories: createData.categories,
+        publication: createData.publication,
+        featured_image: createData.featured_image
       });
 
-      // STRAPI 5: Create entity
-      const createdArticle = await strapi.documents('api::post.post').create({
+      const createdArticle = await strapi.entityService.create('api::post.post', {
         data: createData,
         populate: {
           authors: true,
@@ -395,44 +368,31 @@ module.exports = {
         }
       });
 
-      console.log('✅ Article created successfully with ID:', createdArticle.documentId || createdArticle.id);
+      console.log('✅ Article created successfully with ID:', createdArticle.id);
       
-      // Verification
+      // VERIFICATION: Check if publication was saved
       if (createdArticle.publication) {
         console.log('✅ Publication relationship saved:', createdArticle.publication);
       } else {
         console.warn('⚠️ Publication relationship NOT saved!');
       }
 
-      if (createdArticle.featured_image) {
-        console.log('✅ Featured image relationship saved:', createdArticle.featured_image.id);
-      } else if (articleData.featuredImageId) {
-        console.warn('⚠️ Featured image relationship NOT saved!');
-      }
-
       return this.formatArticleResponse(createdArticle, articleData);
 
     } catch (error) {
       console.error('❌ Error creating article:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        stack: error.stack
-      });
       throw error;
     }
   },
 
   /**
    * Update Existing Article
-   * STRAPI 5 VERSION
    */
   async updateExistingArticle(ctx, articleData) {
     try {
       const articleId = articleData.id;
 
-      // STRAPI 5: Find document
-      const existingArticle = await strapi.documents('api::post.post').findOne({
-        documentId: articleId,
+      const existingArticle = await strapi.entityService.findOne('api::post.post', articleId, {
         populate: {
           authors: true,
           categories: true,
@@ -457,7 +417,6 @@ module.exports = {
       console.log('🖼️ Processing inline images in content...');
       const processedContent = await this.processContentImages(articleData.content, articleId);
 
-      // STRAPI 5: Prepare update data
       const updateData = {
         title: articleData.title,
         content: processedContent,
@@ -472,40 +431,34 @@ module.exports = {
         breakingDuration: articleData.breakingDuration || null,
         seo_title: articleData.title,
         seo_description: articleData.summary || this.extractExcerpt(processedContent, 160),
+        authors: authorIds,
+        categories: categoryIds,
+        tags: tagIds,
       };
 
-      // STRAPI 5: Set relations (replace all)
-      if (authorIds.length > 0) {
-        updateData.authors = { set: authorIds.map(id => ({ id })) };
-      }
-
-      if (categoryIds.length > 0) {
-        updateData.categories = { set: categoryIds.map(id => ({ id })) };
-      }
-
-      if (tagIds.length > 0) {
-        updateData.tags = { set: tagIds.map(id => ({ id })) };
-      }
-
       if (articleData.featuredImageId) {
-        updateData.featured_image = { set: [{ id: articleData.featuredImageId }] };
+        updateData.featured_image = articleData.featuredImageId;
         console.log('🖼️ Updating featured image ID:', articleData.featuredImageId);
       }
 
       if (albumImageIds.length > 0) {
-        updateData.album = { set: albumImageIds.map(id => ({ id })) };
+        updateData.album = albumImageIds;
       }
 
       if (articleData.publicationId) {
-        updateData.publication = { set: [{ id: articleData.publicationId }] };
-        console.log('📰 Updating publication ID:', articleData.publicationId);
+        updateData.publication = [articleData.publicationId];
+        console.log('📰 Updating publication relationship:', articleData.publicationId);
       }
 
-      console.log('💾 Updating article');
+      console.log('💾 Updating article with data:', {
+        title: updateData.title,
+        status: updateData.view_status,
+        live: updateData.live,
+        publication: updateData.publication,
+        featured_image: updateData.featured_image
+      });
 
-      // STRAPI 5: Update document
-      const updatedArticle = await strapi.documents('api::post.post').update({
-        documentId: articleId,
+      const updatedArticle = await strapi.entityService.update('api::post.post', articleId, {
         data: updateData,
         populate: {
           authors: true,
@@ -529,15 +482,14 @@ module.exports = {
 
   async getNextWpId() {
     try {
-      // STRAPI 5: Use documents API
-      const latestArticles = await strapi.documents('api::post.post').findMany({
+      const latestArticle = await strapi.entityService.findMany('api::post.post', {
         sort: { wp_id: 'desc' },
         limit: 1,
         fields: ['wp_id']
       });
 
-      if (latestArticles && latestArticles.length > 0 && latestArticles[0].wp_id) {
-        return latestArticles[0].wp_id + 1;
+      if (latestArticle && latestArticle.length > 0 && latestArticle[0].wp_id) {
+        return latestArticle[0].wp_id + 1;
       }
 
       return 1;
@@ -560,8 +512,7 @@ module.exports = {
         
         if (!cleanTagName) continue;
 
-        // STRAPI 5: Find tag
-        const existingTags = await strapi.documents('api::tag.tag').findMany({
+        const existingTags = await strapi.entityService.findMany('api::tag.tag', {
           filters: { name: cleanTagName },
           limit: 1
         });
@@ -572,7 +523,7 @@ module.exports = {
         } else {
           console.log('🏷️ Creating new tag:', cleanTagName);
           
-          const latestTag = await strapi.documents('api::tag.tag').findMany({
+          const latestTag = await strapi.entityService.findMany('api::tag.tag', {
             sort: { wp_id: 'desc' },
             limit: 1,
             fields: ['wp_id']
@@ -582,8 +533,7 @@ module.exports = {
             ? latestTag[0].wp_id + 1 
             : 1;
 
-          // STRAPI 5: Create tag
-          const newTag = await strapi.documents('api::tag.tag').create({
+          const newTag = await strapi.entityService.create('api::tag.tag', {
             data: {
               name: cleanTagName,
               slug: this.slugify(cleanTagName),
@@ -665,9 +615,7 @@ module.exports = {
         }
 
         if (image.url) {
-          // STRAPI 5: Find media by URL
-          const uploadService = strapi.plugin('upload').service('upload');
-          const existingFiles = await uploadService.findMany({
+          const existingFiles = await strapi.plugin('upload').service('upload').findMany({
             filters: { url: image.originalUrl || image.url }
           });
           
@@ -691,8 +639,7 @@ module.exports = {
       let counter = 1;
 
       while (true) {
-        // STRAPI 5: Check for existing slug
-        const existing = await strapi.documents('api::post.post').findMany({
+        const existing = await strapi.entityService.findMany('api::post.post', {
           filters: { slug: slug },
           limit: 1
         });
@@ -850,7 +797,7 @@ module.exports = {
       }
 
       return {
-        id: article.id || article.documentId,
+        id: article.id,
         wp_id: article.wp_id,
         title: article.title,
         slug: article.slug,
@@ -883,7 +830,7 @@ module.exports = {
       console.error('Error formatting article response:', error);
       
       return {
-        id: article.id || article.documentId,
+        id: article.id,
         title: article.title,
         status: article.view_status || 'draft',
         live: article.live || false,
@@ -895,6 +842,8 @@ module.exports = {
       };
     }
   }
+
+
 };
 
 
