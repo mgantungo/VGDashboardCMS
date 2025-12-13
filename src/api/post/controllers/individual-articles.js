@@ -29,8 +29,10 @@ async findPostsByAuthorAndDate(ctx) {
     console.log('📅 Using date range:', startDate, 'to', endDate);
 
     // Get CMS base URL from config
-    const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
-    
+    //const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
+   
+    const cmsBaseUrl = 'https://cms-vgad.visiongroup.co.ug';
+   
     const articles = await strapi.entityService.findMany('api::post.post', {
       filters: {
         authors: {
