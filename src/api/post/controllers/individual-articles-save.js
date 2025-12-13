@@ -190,14 +190,16 @@ module.exports = {
 
   /**
    * Process inline images from content
-   * STRAPI 5 CORRECTED VERSION - Creates temp files properly
+   * STRAPI 5 VERSION - Better naming with publicationId and original filename
    */
-  async processContentImages(content, articleId) {
+  async processContentImages(content, articleId, publicationId = null) {
     try {
       if (!content) return content;
       
-      const base64Regex = /data:image\/(png|jpeg|jpg|gif|webp|bmp|svg\+xml);base64,([^"'\s<>]+)/gi;
-      const matches = [...content.matchAll(base64Regex)];
+      // Match <img> tags with base64 data
+      // Capture the full img tag to extract alt/title attributes for original filename
+      const imgTagRegex = /<img[^>]*src="data:image\/(png|jpeg|jpg|gif|webp|bmp|svg\+xml);base64,([^"]+)"[^>]*>/gi;
+      const matches = [...content.matchAll(imgTagRegex)];
       
       if (matches.length === 0) {
         console.log('ℹ️ No base64 images found in content');
@@ -216,15 +218,24 @@ module.exports = {
       const os = require('os');
       
       for (let i = 0; i < matches.length; i++) {
-        const [fullMatch, format, base64Data] = matches[i];
+        const [fullImgTag, format, base64Data] = matches[i];
         
         try {
-          const buffer = Buffer.from(base64Data, 'base64');
+          // Extract original filename from alt, title, or data-filename attributes
+          let originalName = this.extractOriginalFilename(fullImgTag, i);
+          
+          // Sanitize filename: remove special characters, spaces, etc.
+          originalName = this.sanitizeFilename(originalName);
+          
+          // Generate filename: {publicationId}-{originalName}-{timestamp}.{extension}
           const timestamp = Date.now();
-          const random = Math.random().toString(36).substr(2, 9);
-          const filename = `content-image-${articleId || 'new'}-${timestamp}-${random}.${format}`;
+          const extension = format === 'svg+xml' ? 'svg' : format;
+          const pubPrefix = publicationId ? `pub${publicationId}` : 'nopub';
+          const filename = `${pubPrefix}-${originalName}-${timestamp}.${extension}`;
           
           console.log(`📤 Uploading inline image ${i + 1}/${matches.length}: ${filename}`);
+          
+          const buffer = Buffer.from(base64Data, 'base64');
           
           // STRAPI 5 FIX: Create a temporary file
           const tmpDir = os.tmpdir();
@@ -239,14 +250,14 @@ module.exports = {
             name: filename,
             type: `image/${format}`,
             size: buffer.length,
-            path: tmpFilePath  // This is the actual file path Strapi needs
+            path: tmpFilePath
           };
           
           const uploadedFiles = await uploadService.upload({
             data: {
               fileInfo: {
                 name: filename,
-                alternativeText: `Content image ${i + 1} for article ${articleId || 'new'}`,
+                alternativeText: originalName || `Content image ${i + 1}`,
                 caption: ''
               }
             },
@@ -263,12 +274,25 @@ module.exports = {
 
           if (uploadedFiles && uploadedFiles.length > 0) {
             const uploadedFile = uploadedFiles[0];
-            const imageUrl = uploadedFile.url.startsWith('http') 
-              ? uploadedFile.url 
-              : `${cmsBaseUrl}${uploadedFile.url}`;
+            
+            // Build full image URL: https://cms-vgad.visiongroup.co.ug/uploads/...
+            let imageUrl = uploadedFile.url;
+            if (!imageUrl.startsWith('http')) {
+              // Ensure URL starts with forward slash
+              imageUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+              imageUrl = `${cmsBaseUrl}${imageUrl}`;
+            }
             
             console.log(`✅ Uploaded inline image ${i + 1}: ${imageUrl}`);
-            processedContent = processedContent.replace(fullMatch, imageUrl);
+            console.log(`📋 Media library ID: ${uploadedFile.id}`);
+            
+            // Replace the entire img tag's src attribute with the new URL
+            const newImgTag = fullImgTag.replace(
+              /src="data:image\/[^"]+"/,
+              `src="${imageUrl}"`
+            );
+            
+            processedContent = processedContent.replace(fullImgTag, newImgTag);
           }
         } catch (imgError) {
           console.error(`❌ Error processing inline image ${i + 1}:`, imgError);
@@ -308,7 +332,11 @@ module.exports = {
       console.log('🔗 Generated slug:', slug);
 
       console.log('🖼️ Processing inline images in content...');
-      const processedContent = await this.processContentImages(articleData.content, 'new');
+      const processedContent = await this.processContentImages(
+        articleData.content, 
+        'new',
+        articleData.publicationId  // Pass publication ID for better filename
+      );
 
       const createData = {
         title: articleData.title,
@@ -415,7 +443,11 @@ module.exports = {
       const albumImageIds = await this.processAlbumForArticle(articleData.album || []);
 
       console.log('🖼️ Processing inline images in content...');
-      const processedContent = await this.processContentImages(articleData.content, articleId);
+      const processedContent = await this.processContentImages(
+        articleData.content, 
+        articleId,
+        articleData.publicationId  // Pass publication ID for better filename
+      );
 
       const updateData = {
         title: articleData.title,
@@ -680,6 +712,63 @@ module.exports = {
       .replace(/-+$/, '');
   },
 
+  /**
+   * Extract original filename from img tag attributes
+   * Checks alt, title, data-filename attributes
+   */
+  extractOriginalFilename(imgTag, index) {
+    // Try to extract from alt attribute
+    const altMatch = imgTag.match(/alt="([^"]+)"/i);
+    if (altMatch && altMatch[1]) {
+      return altMatch[1];
+    }
+    
+    // Try to extract from title attribute
+    const titleMatch = imgTag.match(/title="([^"]+)"/i);
+    if (titleMatch && titleMatch[1]) {
+      return titleMatch[1];
+    }
+    
+    // Try to extract from data-filename attribute
+    const dataFilenameMatch = imgTag.match(/data-filename="([^"]+)"/i);
+    if (dataFilenameMatch && dataFilenameMatch[1]) {
+      return dataFilenameMatch[1];
+    }
+    
+    // Default: use generic name with index
+    return `inline-image-${index + 1}`;
+  },
+
+  /**
+   * Sanitize filename for storage
+   * Removes special characters, spaces, keeps only alphanumeric and hyphens
+   */
+  sanitizeFilename(filename) {
+    if (!filename) return 'image';
+    
+    return filename
+      .toString()
+      .toLowerCase()
+      // Remove file extension if present
+      .replace(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i, '')
+      // Normalize unicode characters
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      // Replace spaces and underscores with hyphens
+      .replace(/[\s_]+/g, '-')
+      // Remove any character that's not alphanumeric or hyphen
+      .replace(/[^a-z0-9\-]+/g, '')
+      // Replace multiple hyphens with single hyphen
+      .replace(/\-\-+/g, '-')
+      // Remove leading/trailing hyphens
+      .replace(/^-+/, '')
+      .replace(/-+$/, '')
+      // Limit length
+      .substring(0, 50)
+      // Ensure we have something left
+      || 'image';
+  },
+
   extractExcerpt(content, maxLength = 160) {
     if (!content) return '';
     
@@ -842,8 +931,6 @@ module.exports = {
       };
     }
   }
-
-
 };
 
 
