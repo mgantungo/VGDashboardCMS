@@ -109,6 +109,20 @@ module.exports = {
       console.log('📏 Content length:', articleData.content?.length || 0);
       console.log('📷 Inline images to process:', inlineImageFiles.length);
       
+      // NEW: Debug - check what's in the content
+      if (inlineImageFiles.length > 0) {
+        console.log('🔍 DEBUG: Checking content for data-inline-id patterns...');
+        // Look for all data-inline-id patterns in the content
+        const inlineIdPattern = /data-inline-id=["']([^"']+)["']/gi;
+        const foundIds = [];
+        let match;
+        while ((match = inlineIdPattern.exec(articleData.content)) !== null) {
+          foundIds.push(match[1]);
+        }
+        console.log('🔍 DEBUG: Found data-inline-id values in content:', foundIds);
+        console.log('🔍 DEBUG: Inline image IDs from metadata:', inlineImagesMeta.map(m => m?.id));
+      }
+      
       // NEW: Process inline images FIRST (before processing content)
       if (inlineImageFiles.length > 0) {
         console.log('🔄 Processing inline images...');
@@ -263,54 +277,192 @@ module.exports = {
 
   /**
    * NEW: Replace inline image data URLs with server URLs in content
+   * Fixed regex method that handles multiple images properly
    */
   replaceInlineImageUrls(content, uploadedImages) {
-  try {
-    if (!content || !uploadedImages || uploadedImages.length === 0) {
-      return content;
-    }
+    try {
+      if (!content || !uploadedImages || uploadedImages.length === 0) {
+        return content;
+      }
 
-    let processedContent = content;
-    
-    uploadedImages.forEach((uploaded, index) => {
-      console.log(`🔄 Replacing URL for image ${index + 1} (ID: ${uploaded.id})`);
+      console.log('🔄 Starting URL replacement for', uploadedImages.length, 'images');
       
-      // Create a more flexible regex pattern
-      // Match any img tag containing data-inline-id attribute
-      const regex = new RegExp(
-        `(<img[^>]*?data-inline-id=["']${this.escapeRegex(uploaded.id)}["'][^>]*>)`,
-        'gi'
-      );
-      
-      processedContent = processedContent.replace(regex, (match, imgTag) => {
-        console.log(`  Found image tag for ${uploaded.id}`);
-        
-        // Remove the data-inline-id attribute
-        let newTag = imgTag.replace(
-          new RegExp(`\\s*data-inline-id=["']${this.escapeRegex(uploaded.id)}["']`, 'i'),
-          ''
-        );
-        
-        // Replace the src with new URL
-        newTag = newTag.replace(
-          /src="data:image\/[^"]+"/gi,
-          `src="${uploaded.url}"`
-        );
-        
-        console.log(`  ✅ Replaced with server URL: ${uploaded.url.substring(0, 50)}...`);
-        return newTag;
+      // Create a map for quick lookup
+      const imageMap = {};
+      uploadedImages.forEach(img => {
+        imageMap[img.id] = img.url;
+        console.log(`  Mapping: ${img.id} -> ${img.url}`);
       });
-    });
-    
-    console.log('✅ Content after URL replacement (first 500 chars):', processedContent.substring(0, 500));
-    return processedContent;
-    
-  } catch (error) {
-    console.error('❌ Error replacing inline image URLs:', error);
-    return content;
-  }
-}
-  ,
+      
+      let processedContent = content;
+      let totalReplacements = 0;
+      
+      // Process each uploaded image
+      uploadedImages.forEach((uploaded, index) => {
+        console.log(`\n🔄 Processing image ${index + 1} (ID: ${uploaded.id})`);
+        
+        // Find and count all occurrences of this ID in the content
+        const idPattern = new RegExp(`data-inline-id=["']${this.escapeRegex(uploaded.id)}["']`, 'gi');
+        const matches = (processedContent.match(idPattern) || []);
+        console.log(`  Found ${matches.length} occurrences of ID "${uploaded.id}" in content`);
+        
+        if (matches.length === 0) {
+          console.log(`  ❌ No matches found for ID "${uploaded.id}"`);
+          console.log(`  Searching for similar patterns...`);
+          // Try to find if the ID exists in a slightly different format
+          const partialMatch = processedContent.includes(uploaded.id.substring(0, 10));
+          if (partialMatch) {
+            console.log(`  ⚠️ Found partial match for ID "${uploaded.id}"`);
+          }
+          return; // Skip to next image
+        }
+        
+        // Create a comprehensive regex pattern to match the entire img tag
+        // This pattern handles:
+        // 1. Attributes in any order
+        // 2. Both single and double quotes
+        // 3. The data-inline-id attribute anywhere in the tag
+        const pattern = `(<img[^>]*?data-inline-id=["']${this.escapeRegex(uploaded.id)}["'][^>]*?>)`;
+        const regex = new RegExp(pattern, 'gi');
+        
+        // Replace all occurrences
+        let replacementsForThisImage = 0;
+        processedContent = processedContent.replace(regex, (match) => {
+          replacementsForThisImage++;
+          
+          // Remove the data-inline-id attribute
+          let newTag = match.replace(
+            new RegExp(`\\s*data-inline-id=["']${this.escapeRegex(uploaded.id)}["']`, 'i'),
+            ''
+          );
+          
+          // Replace the src attribute (handles both single and double quotes)
+          newTag = newTag.replace(
+            /src=["']data:image\/[^"']+["']/gi,
+            `src="${uploaded.url}"`
+          );
+          
+          console.log(`  ✅ Replaced occurrence ${replacementsForThisImage}`);
+          return newTag;
+        });
+        
+        totalReplacements += replacementsForThisImage;
+        console.log(`  ➤ Total replacements for this image: ${replacementsForThisImage}`);
+      });
+      
+      console.log(`\n✅ Total replacements made: ${totalReplacements}`);
+      
+      // Final verification
+      const remainingDataUrls = (processedContent.match(/src=["']data:image\/[^"']+["']/gi) || []).length;
+      const remainingInlineIds = (processedContent.match(/data-inline-id=["'][^"']+["']/gi) || []).length;
+      
+      console.log(`🔍 Final check:`);
+      console.log(`  - Images still with data URLs: ${remainingDataUrls}`);
+      console.log(`  - Images still with data-inline-id: ${remainingInlineIds}`);
+      
+      if (remainingDataUrls > 0) {
+        console.log('⚠️ WARNING: Some images still have data URLs!');
+        // Log the remaining data URLs for debugging
+        const dataUrlMatches = processedContent.match(/src=["'](data:image\/[^"']+)["']/gi);
+        if (dataUrlMatches) {
+          console.log('  Remaining data URLs:');
+          dataUrlMatches.forEach((match, i) => {
+            console.log(`    ${i + 1}: ${match.substring(0, 100)}...`);
+          });
+        }
+      }
+      
+      return processedContent;
+      
+    } catch (error) {
+      console.error('❌ Error in replaceInlineImageUrls:', error);
+      console.error('❌ Error stack:', error.stack);
+      
+      // Try a simpler fallback approach
+      console.log('🔄 Trying fallback replacement...');
+      return this.replaceInlineImageUrlsFallback(content, uploadedImages);
+    }
+  },
+
+  /**
+   * Fallback method for URL replacement (simpler but less robust)
+   */
+  replaceInlineImageUrlsFallback(content, uploadedImages) {
+    try {
+      console.log('🔄 Using fallback replacement method');
+      
+      let processedContent = content;
+      
+      uploadedImages.forEach((uploaded, index) => {
+        console.log(`  Processing image ${index + 1} (ID: ${uploaded.id})`);
+        
+        // Simple string replacement approach
+        // Look for the pattern and replace it
+        const searchPattern = `data-inline-id="${uploaded.id}"`;
+        
+        if (processedContent.includes(searchPattern)) {
+          console.log(`    Found pattern "${searchPattern}"`);
+          
+          // Find the position of this pattern
+          let startPos = processedContent.indexOf(searchPattern);
+          let attempts = 0;
+          const maxAttempts = 10; // Prevent infinite loops
+          
+          while (startPos !== -1 && attempts < maxAttempts) {
+            attempts++;
+            
+            // Find the start of the img tag (go backwards)
+            let tagStart = processedContent.lastIndexOf('<img', startPos);
+            if (tagStart === -1) {
+              console.log(`    ❌ Could not find <img tag for pattern at position ${startPos}`);
+              break;
+            }
+            
+            // Find the end of the img tag (go forwards)
+            let tagEnd = processedContent.indexOf('>', startPos);
+            if (tagEnd === -1) {
+              console.log(`    ❌ Could not find > for img tag at position ${startPos}`);
+              break;
+            }
+            
+            // Extract the img tag
+            const imgTag = processedContent.substring(tagStart, tagEnd + 1);
+            
+            // Create new tag
+            let newTag = imgTag;
+            
+            // Remove data-inline-id
+            newTag = newTag.replace(searchPattern, '');
+            
+            // Replace src
+            const srcMatch = newTag.match(/src="([^"]*)"/);
+            if (srcMatch && srcMatch[1] && srcMatch[1].startsWith('data:image/')) {
+              newTag = newTag.replace(srcMatch[0], `src="${uploaded.url}"`);
+              console.log(`    ✅ Replaced data URL with server URL`);
+            }
+            
+            // Replace in content
+            processedContent = processedContent.substring(0, tagStart) + 
+                              newTag + 
+                              processedContent.substring(tagEnd + 1);
+            
+            // Look for next occurrence
+            startPos = processedContent.indexOf(searchPattern, tagStart + newTag.length);
+          }
+          
+          console.log(`    Made ${attempts} replacement(s) for this pattern`);
+        } else {
+          console.log(`    ❌ Pattern "${searchPattern}" not found`);
+        }
+      });
+      
+      return processedContent;
+      
+    } catch (error) {
+      console.error('❌ Error in fallback replacement:', error);
+      return content; // Return original content if all fails
+    }
+  },
 
   /**
    * Helper: Escape special regex characters
@@ -854,36 +1006,6 @@ module.exports = {
     return `inline-image-${index + 1}`;
   },
 
-  /**
-   * Sanitize filename for storage
-   * Removes special characters, spaces, keeps only alphanumeric and hyphens
-   */
-  sanitizeFilename(filename) {
-    if (!filename) return 'image';
-    
-    return filename
-      .toString()
-      .toLowerCase()
-      // Remove file extension if present
-      .replace(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i, '')
-      // Normalize unicode characters
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      // Replace spaces and underscores with hyphens
-      .replace(/[\s_]+/g, '-')
-      // Remove any character that's not alphanumeric or hyphen
-      .replace(/[^a-z0-9\-]+/g, '')
-      // Replace multiple hyphens with single hyphen
-      .replace(/\-\-+/g, '-')
-      // Remove leading/trailing hyphens
-      .replace(/^-+/, '')
-      .replace(/-+$/, '')
-      // Limit length
-      .substring(0, 50)
-      // Ensure we have something left
-      || 'image';
-  },
-
   extractExcerpt(content, maxLength = 160) {
     if (!content) return '';
     
@@ -1047,27 +1169,3 @@ module.exports = {
     }
   }
 };
-
-
-
-/*
-Full Multipart Form Data Handling: Properly processes file uploads with FormData
-
-Featured Image Upload: Uploads featured images to Strapi media library
-
-Content Image Processing: Extracts base64 images from content and uploads them
-
-Album Image Support: Handles multiple album images
-
-Tag Creation: Creates new tags if they don't exist
-
-Unique Slug Generation: Creates SEO-friendly slugs
-
-Proper Error Handling: Comprehensive error handling throughout
-
-Image URL Processing: Converts Strapi media URLs to absolute URLs
-
-Response Formatting: Returns data in the exact format expected by your Vue frontend
-
-Logging: Detailed console logging for debugging
-*/
