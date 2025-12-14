@@ -265,48 +265,52 @@ module.exports = {
    * NEW: Replace inline image data URLs with server URLs in content
    */
   replaceInlineImageUrls(content, uploadedImages) {
-    try {
-      if (!content || !uploadedImages || uploadedImages.length === 0) {
-        return content;
-      }
-
-      let processedContent = content;
-      
-      uploadedImages.forEach((uploaded, index) => {
-        console.log(`🔄 Replacing URL for image ${index + 1} (ID: ${uploaded.id})`);
-        
-        // Create regex to find the image with this tracking ID
-        // Match: <img ... data-inline-id="inline-123-456" ... src="data:image/..." ... >
-        const regex = new RegExp(
-          `<img([^>]*)data-inline-id="${this.escapeRegex(uploaded.id)}"([^>]*)>`,
-          'gi'
-        );
-        
-        // Replace the entire img tag
-        processedContent = processedContent.replace(regex, (match) => {
-          console.log(`  Found image tag for ${uploaded.id}`);
-          
-          // Remove the data-inline-id attribute
-          let newTag = match.replace(/\s*data-inline-id="[^"]*"/gi, '');
-          
-          // Replace the src with new URL
-          newTag = newTag.replace(
-            /src="data:image\/[^"]+"/gi,
-            `src="${uploaded.url}"`
-          );
-          
-          console.log(`  ✅ Replaced with server URL: ${uploaded.url.substring(0, 50)}...`);
-          return newTag;
-        });
-      });
-      
-      return processedContent;
-      
-    } catch (error) {
-      console.error('❌ Error replacing inline image URLs:', error);
+  try {
+    if (!content || !uploadedImages || uploadedImages.length === 0) {
       return content;
     }
-  },
+
+    let processedContent = content;
+    
+    uploadedImages.forEach((uploaded, index) => {
+      console.log(`🔄 Replacing URL for image ${index + 1} (ID: ${uploaded.id})`);
+      
+      // Create a more flexible regex pattern
+      // Match any img tag containing data-inline-id attribute
+      const regex = new RegExp(
+        `(<img[^>]*?data-inline-id=["']${this.escapeRegex(uploaded.id)}["'][^>]*>)`,
+        'gi'
+      );
+      
+      processedContent = processedContent.replace(regex, (match, imgTag) => {
+        console.log(`  Found image tag for ${uploaded.id}`);
+        
+        // Remove the data-inline-id attribute
+        let newTag = imgTag.replace(
+          new RegExp(`\\s*data-inline-id=["']${this.escapeRegex(uploaded.id)}["']`, 'i'),
+          ''
+        );
+        
+        // Replace the src with new URL
+        newTag = newTag.replace(
+          /src="data:image\/[^"]+"/gi,
+          `src="${uploaded.url}"`
+        );
+        
+        console.log(`  ✅ Replaced with server URL: ${uploaded.url.substring(0, 50)}...`);
+        return newTag;
+      });
+    });
+    
+    console.log('✅ Content after URL replacement (first 500 chars):', processedContent.substring(0, 500));
+    return processedContent;
+    
+  } catch (error) {
+    console.error('❌ Error replacing inline image URLs:', error);
+    return content;
+  }
+}
+  ,
 
   /**
    * Helper: Escape special regex characters
