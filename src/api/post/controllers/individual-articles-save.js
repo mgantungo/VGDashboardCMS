@@ -180,100 +180,110 @@ module.exports = {
    * NEW: Process inline images from content
    * Uploads inline images to media library and returns URL mappings
    */
-  async processInlineImages(inlineImageFiles, inlineImagesMeta, articleId, publicationId) {
-    try {
-      if (!inlineImageFiles || inlineImageFiles.length === 0) {
-        console.log('ℹ️ No inline images to process');
-        return [];
-      }
-
-      const uploadedImages = [];
-      const uploadService = strapi.plugin('upload').service('upload');
-      const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
-      
-      console.log(`📤 Processing ${inlineImageFiles.length} inline images...`);
-      
-      for (let i = 0; i < inlineImageFiles.length; i++) {
-        const imageFile = inlineImageFiles[i];
-        const meta = inlineImagesMeta[i] || {};
-        
-        try {
-          // CRITICAL FIX: Ensure 'path' property exists (Strapi 5 requirement)
-          if (!imageFile.path && imageFile.filepath) {
-            console.log('🔧 Fixing file object: adding path property from filepath');
-            imageFile.path = imageFile.filepath;
-          }
-          
-          console.log('📋 Processing inline image', i + 1, ':', {
-            hasPath: !!imageFile.path,
-            hasFilepath: !!imageFile.filepath,
-            name: imageFile.name || imageFile.originalFilename,
-            type: imageFile.type || imageFile.mimetype,
-            size: imageFile.size,
-            trackingId: meta.id
-          });
-          
-          // Generate descriptive filename
-          const timestamp = Date.now();
-          const pubPrefix = publicationId ? `pub${publicationId}` : 'nopub';
-          const sanitizedAlt = this.sanitizeFilename(meta.alt || 'inline-image');
-          const extension = meta.format === 'svg+xml' ? 'svg' : (meta.format || 'jpg');
-          const filename = `${pubPrefix}-${sanitizedAlt}-inline-${timestamp}-${i}.${extension}`;
-          
-          console.log(`📤 Uploading inline image ${i + 1}/${inlineImageFiles.length}: ${filename}`);
-          
-          // Upload to Strapi media library
-          const uploadedFiles = await uploadService.upload({
-            data: {
-              fileInfo: {
-                name: filename,
-                alternativeText: meta.alt || `Inline content image ${i + 1}`,
-                caption: ''
-              }
-            },
-            files: imageFile
-          });
-
-          if (uploadedFiles && uploadedFiles.length > 0) {
-            const uploadedFile = uploadedFiles[0];
-            
-            // Build full image URL
-            let imageUrl = uploadedFile.url;
-            if (!imageUrl.startsWith('http')) {
-              imageUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-              imageUrl = `${cmsBaseUrl}${imageUrl}`;
-            }
-            
-            uploadedImages.push({
-              id: meta.id,  // Original tracking ID from editor
-              url: imageUrl,  // New server URL
-              originalUrl: uploadedFile.url,
-              mediaId: uploadedFile.id,  // Strapi media library ID
-              alternativeText: uploadedFile.alternativeText,
-              name: uploadedFile.name,
-              mime: uploadedFile.mime,
-              size: uploadedFile.size
-            });
-            
-            console.log(`✅ Uploaded inline image ${i + 1}: ${imageUrl}`);
-            console.log(`   Media library ID: ${uploadedFile.id}`);
-          }
-        } catch (imgError) {
-          console.error(`❌ Error uploading inline image ${i + 1}:`, imgError);
-          console.error('   Error details:', imgError.message);
-          // Continue with other images even if one fails
-        }
-      }
-      
-      console.log(`✅ Successfully uploaded ${uploadedImages.length}/${inlineImageFiles.length} inline images`);
-      return uploadedImages;
-      
-    } catch (error) {
-      console.error('❌ Error in processInlineImages:', error);
-      console.error('❌ Error stack:', error.stack);
+async processInlineImages(inlineImageFiles, inlineImagesMeta, articleId, publicationId) {
+  try {
+    if (!inlineImageFiles || inlineImageFiles.length === 0) {
+      console.log('ℹ️ No inline images to process');
       return [];
     }
-  },
+
+    const uploadedImages = [];
+    const uploadService = strapi.plugin('upload').service('upload');
+    const cmsBaseUrl = strapi.config.get('server.url', 'https://cms-vgad.visiongroup.co.ug');
+    
+    console.log(`📤 Processing ${inlineImageFiles.length} inline images...`);
+    console.log(`🌐 Using CMS base URL: ${cmsBaseUrl}`);
+    
+    for (let i = 0; i < inlineImageFiles.length; i++) {
+      const imageFile = inlineImageFiles[i];
+      const meta = inlineImagesMeta[i] || {};
+      
+      try {
+        // CRITICAL FIX: Ensure 'path' property exists (Strapi 5 requirement)
+        if (!imageFile.path && imageFile.filepath) {
+          console.log('🔧 Fixing file object: adding path property from filepath');
+          imageFile.path = imageFile.filepath;
+        }
+        
+        console.log('📋 Processing inline image', i + 1, ':', {
+          hasPath: !!imageFile.path,
+          hasFilepath: !!imageFile.filepath,
+          name: imageFile.name || imageFile.originalFilename,
+          type: imageFile.type || imageFile.mimetype,
+          size: imageFile.size,
+          trackingId: meta.id
+        });
+        
+        // Generate descriptive filename
+        const timestamp = Date.now();
+        const pubPrefix = publicationId ? `pub${publicationId}` : 'nopub';
+        const sanitizedAlt = this.sanitizeFilename(meta.alt || 'inline-image');
+        const extension = meta.format === 'svg+xml' ? 'svg' : (meta.format || 'jpg');
+        const filename = `${pubPrefix}-${sanitizedAlt}-inline-${timestamp}-${i}.${extension}`;
+        
+        console.log(`📤 Uploading inline image ${i + 1}/${inlineImageFiles.length}: ${filename}`);
+        
+        // Upload to Strapi media library
+        const uploadedFiles = await uploadService.upload({
+          data: {
+            fileInfo: {
+              name: filename,
+              alternativeText: meta.alt || `Inline content image ${i + 1}`,
+              caption: ''
+            }
+          },
+          files: imageFile
+        });
+
+        if (uploadedFiles && uploadedFiles.length > 0) {
+          const uploadedFile = uploadedFiles[0];
+          
+          // FIX: ALWAYS build URL with cmsBaseUrl for inline images
+          let imageUrl = uploadedFile.url;
+          
+          // Remove leading slash if present to avoid double slash
+          if (imageUrl && imageUrl.startsWith('/')) {
+            imageUrl = imageUrl.substring(1);
+          }
+          
+          // Always prepend with cmsBaseUrl
+          if (imageUrl) {
+            imageUrl = `${cmsBaseUrl}/${imageUrl}`;
+          } else {
+            // Fallback using hash and extension
+            imageUrl = `${cmsBaseUrl}/uploads/${uploadedFile.hash}${uploadedFile.ext}`;
+          }
+          
+          console.log(`✅ Uploaded inline image ${i + 1}: ${imageUrl}`);
+          console.log(`   Media library ID: ${uploadedFile.id}`);
+          
+          uploadedImages.push({
+            id: meta.id,  // Original tracking ID from editor
+            url: imageUrl,  // ALWAYS use full URL with cmsBaseUrl
+            originalUrl: uploadedFile.url,
+            mediaId: uploadedFile.id,  // Strapi media library ID
+            alternativeText: uploadedFile.alternativeText,
+            name: uploadedFile.name,
+            mime: uploadedFile.mime,
+            size: uploadedFile.size
+          });
+        }
+      } catch (imgError) {
+        console.error(`❌ Error uploading inline image ${i + 1}:`, imgError);
+        console.error('   Error details:', imgError.message);
+        // Continue with other images even if one fails
+      }
+    }
+    
+    console.log(`✅ Successfully uploaded ${uploadedImages.length}/${inlineImageFiles.length} inline images`);
+    return uploadedImages;
+    
+  } catch (error) {
+    console.error('❌ Error in processInlineImages:', error);
+    console.error('❌ Error stack:', error.stack);
+    return [];
+  }
+},
 
   /**
    * NEW: Replace inline image data URLs with server URLs in content
