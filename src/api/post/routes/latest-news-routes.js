@@ -48,6 +48,16 @@ module.exports = {
         policies: [],
         middlewares: [],
       },
+    },
+    {
+      method: 'GET',
+      path: '/posts/latest-featured',
+      handler: 'latest-news.getLatestFeatured',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
     }
     
   ],
