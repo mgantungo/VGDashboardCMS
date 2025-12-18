@@ -1074,6 +1074,234 @@ async getByCategories(ctx) {
       ctx.status = 500;
     }
   }
+  ,
+async getLatestFeatured(ctx) {
+  try {
+    console.log('Fetching latest featured post...');
+
+    // Helper function to format a single article
+    const formatArticle = (post) => {
+      const data = post;
+      const postId = post.id;
+      
+      // Extract authors
+      let authorName = 'Anonymous';
+      try {
+        if (data.authors && Array.isArray(data.authors)) {
+          if (data.authors.length > 0) {
+            const firstAuthor = data.authors[0];
+            authorName = firstAuthor.display_name || firstAuthor.username || 'Anonymous';
+          }
+        }
+      } catch (e) {
+        console.log(`Error extracting author:`, e.message);
+      }
+
+      // Extract categories
+      let categoryName = 'Uncategorized';
+      let categorySlug = 'uncategorized';
+      try {
+        if (data.categories && Array.isArray(data.categories)) {
+          if (data.categories.length > 0) {
+            const firstCat = data.categories[0];
+            categoryName = firstCat.name || 'Uncategorized';
+            categorySlug = firstCat.slug || 'uncategorized';
+          }
+        }
+      } catch (e) {
+        console.log(`Error extracting category:`, e.message);
+      }
+
+      // Extract featured image
+      let imageUrl = null;
+      let imageAlt = 'Featured image';
+      
+      try {
+        if (data.featured_image) {
+          let featuredImage = data.featured_image;
+          
+          // Method 1: Direct media object (most common)
+          if (featuredImage && featuredImage.url) {
+            imageUrl = featuredImage.url;
+            imageAlt = featuredImage.alternativeText || featuredImage.caption || data.title;
+          }
+          // Method 2: Array of media objects
+          else if (Array.isArray(featuredImage) && featuredImage.length > 0) {
+            const firstImage = featuredImage[0];
+            if (firstImage && firstImage.url) {
+              imageUrl = firstImage.url;
+              imageAlt = firstImage.alternativeText || firstImage.caption || data.title;
+            }
+          }
+          // Method 3: Nested data structure (Strapi v4 style)
+          else if (featuredImage.data) {
+            const mediaData = Array.isArray(featuredImage.data) 
+              ? featuredImage.data[0] 
+              : featuredImage.data;
+            
+            if (mediaData && mediaData.attributes) {
+              imageUrl = mediaData.attributes.url;
+              imageAlt = mediaData.attributes.alternativeText || mediaData.attributes.caption || data.title;
+            } else if (mediaData && mediaData.url) {
+              imageUrl = mediaData.url;
+              imageAlt = mediaData.alternativeText || mediaData.caption || data.title;
+            }
+          }
+
+          // Prepend server URL if needed (for local files)
+          if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('//')) {
+            imageUrl = `${strapi.config.server.url}${imageUrl}`;
+          }
+        }
+      } catch (e) {
+        console.log(`Error extracting image for post ${postId}:`, e.message);
+      }
+
+      // Use fallback image if no featured image found
+      if (!imageUrl) {
+        imageUrl = 'https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?q=80&w=2070';
+      }
+
+      // Calculate read time
+      let readTime = 5;
+      try {
+        if (data.content) {
+          const text = data.content.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, '');
+          const wordCount = text.trim().split(/\s+/).length;
+          readTime = Math.max(1, Math.ceil(wordCount / 200));
+        }
+      } catch (e) {
+        console.log(`Error calculating read time:`, e.message);
+      }
+
+      // Format date - PRIORITIZE wp_published_at
+      let formattedDate = 'Recently';
+      try {
+        const dateSource = data.wp_published_at || data.publishedAt || data.createdAt || data.updatedAt || Date.now();
+        const publishDate = new Date(dateSource);
+        formattedDate = publishDate.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      } catch (e) {
+        console.log(`Error formatting date:`, e.message);
+      }
+
+      return {
+        id: postId,
+        slug: data.slug,
+        title: data.title || 'Untitled',
+        excerpt: data.excerpt || '',
+        content: data.content || '',
+        image: imageUrl,
+        imageAlt: imageAlt,
+        category: categoryName,
+        categorySlug: categorySlug,
+        readTime: `${readTime} min read`,
+        date: formattedDate,
+        author: authorName,
+        isPremium: data.isPremium || false,
+        isFeatured: data.featured || false,
+        views: data.views || 0,
+      };
+    };
+
+    // Fetch the single most recent featured post
+    // First try with published posts that have featured = true
+    let featuredPosts = await strapi.db.query('api::post.post').findMany({
+      where: {
+        $and: [
+          {
+            $or: [
+              { wp_published_at: { $notNull: true } },
+              { publishedAt: { $notNull: true } }
+            ]
+          },
+          { featured: true }
+        ]
+      },
+      orderBy: [
+        { wp_published_at: 'desc' },
+        { publishedAt: 'desc' }
+      ],
+      limit: 1,
+      populate: {
+        authors: {
+          select: ['id', 'display_name', 'username']
+        },
+        categories: {
+          select: ['id', 'name', 'slug', 'isFeatured', 'isActive']
+        },
+        featured_image: {
+          populate: ['*']
+        }
+      },
+    });
+
+    // If no featured posts found, fall back to the most recent published post
+    if (featuredPosts.length === 0) {
+      console.log('No featured posts found, fetching most recent post instead...');
+      
+      featuredPosts = await strapi.db.query('api::post.post').findMany({
+        where: {
+          $or: [
+            { wp_published_at: { $notNull: true } },
+            { publishedAt: { $notNull: true } }
+          ]
+        },
+        orderBy: [
+          { wp_published_at: 'desc' },
+          { publishedAt: 'desc' }
+        ],
+        limit: 1,
+        populate: {
+          authors: {
+            select: ['id', 'display_name', 'username']
+          },
+          categories: {
+            select: ['id', 'name', 'slug', 'isFeatured', 'isActive']
+          },
+          featured_image: {
+            populate: ['*']
+          }
+        },
+      });
+    }
+
+    let featuredPost = null;
+    
+    if (featuredPosts.length > 0) {
+      featuredPost = formatArticle(featuredPosts[0]);
+      console.log(`Found featured post: "${featuredPost.title}" (ID: ${featuredPost.id})`);
+    } else {
+      console.log('No posts found at all');
+    }
+
+    const response = {
+      data: featuredPost,
+      meta: {
+        isFeatured: featuredPost ? true : false,
+        hasFallback: featuredPosts.length === 0 ? false : (featuredPosts[0].featured === true),
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    console.log('=== LATEST FEATURED POST RESPONSE ===');
+    console.log('Found post:', !!featuredPost);
+    if (featuredPost) {
+      console.log(`- Title: ${featuredPost.title}`);
+      console.log(`- Category: ${featuredPost.category}`);
+      console.log(`- Date: ${featuredPost.date}`);
+    }
+
+    return ctx.send(response);
+
+  } catch (error) {
+    console.error('Error in getLatestFeatured:', error);
+    ctx.throw(500, `Error fetching latest featured post: ${error.message}`);
+  }
+}
 
 
 };
