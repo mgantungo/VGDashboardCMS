@@ -12,169 +12,249 @@ module.exports = {
    * POST /api/posts/save
    */
 
-    async saveArticle(ctx) {
-    try {
-      console.log('📝 Save article request received');
-      console.log('📋 Content-Type:', ctx.request.headers['content-type']);
+async saveArticle(ctx) {
+  try {
+    console.log('📝 Save article request received');
+    console.log('📋 Content-Type:', ctx.request.headers['content-type']);
+    
+    let articleData;
+    let featuredImageFile = null;
+    let inlineImageFiles = [];
+    let inlineImagesMeta = [];
+    
+    // Check if it's multipart/form-data
+    if (ctx.is('multipart')) {
+      console.log('✅ Is multipart/form-data');
       
-      let articleData;
-      let featuredImageFile = null;
-      let inlineImageFiles = [];
-      let inlineImagesMeta = [];
+      // STRAPI V4 FIX: Get data and files directly from ctx.request
+      const body = ctx.request.body;
+      const files = ctx.request.files;
       
-      // Check if it's multipart/form-data
-      if (ctx.is('multipart')) {
-        console.log('✅ Is multipart/form-data');
+      console.log('📊 Request body keys:', body ? Object.keys(body) : 'No body');
+      console.log('🗂️ Request files keys:', files ? Object.keys(files) : 'No files');
+      
+      // Parse JSON data from FormData
+      if (body && body.data) {
+        try {
+          articleData = JSON.parse(body.data);
+          console.log('✅ Parsed JSON from body.data:', articleData.title);
+        } catch (parseError) {
+          console.error('❌ Error parsing body.data JSON:', parseError);
+          return ctx.badRequest('Invalid JSON in data field');
+        }
+      } else {
+        console.error('❌ No data found in request body');
+        return ctx.badRequest('No data provided');
+      }
+      
+      // Get featured image file
+      if (files && files['files.featuredImage']) {
+        featuredImageFile = files['files.featuredImage'];
+        console.log('🖼️ Featured image file found:', featuredImageFile.name);
+      }
+      
+      // NEW: Get inline images files
+      if (files && files['files.inlineImages']) {
+        // Handle both single file and array of files
+        inlineImageFiles = Array.isArray(files['files.inlineImages']) 
+          ? files['files.inlineImages'] 
+          : [files['files.inlineImages']];
         
-        // STRAPI V4 FIX: Get data and files directly from ctx.request
-        const body = ctx.request.body;
-        const files = ctx.request.files;
+        console.log('📷 Found inline images to process:', inlineImageFiles.length);
+      }
+      
+      // NEW: Get inline images metadata
+      if (body && body.inlineImagesMeta) {
+        // Handle both single metadata and array
+        const metaArray = Array.isArray(body.inlineImagesMeta)
+          ? body.inlineImagesMeta
+          : [body.inlineImagesMeta];
         
-        console.log('📊 Request body keys:', body ? Object.keys(body) : 'No body');
-        console.log('🗂️ Request files keys:', files ? Object.keys(files) : 'No files');
-        
-        // Parse JSON data from FormData
-        if (body && body.data) {
+        inlineImagesMeta = metaArray.map(meta => {
           try {
-            articleData = JSON.parse(body.data);
-            console.log('✅ Parsed JSON from body.data:', articleData.title);
-          } catch (parseError) {
-            console.error('❌ Error parsing body.data JSON:', parseError);
-            return ctx.badRequest('Invalid JSON in data field');
+            return typeof meta === 'string' ? JSON.parse(meta) : meta;
+          } catch (e) {
+            console.error('Error parsing inline image meta:', e);
+            return null;
           }
-        } else {
-          console.error('❌ No data found in request body');
-          return ctx.badRequest('No data provided');
-        }
+        }).filter(Boolean);
         
-        // Get featured image file
-        if (files && files['files.featuredImage']) {
-          featuredImageFile = files['files.featuredImage'];
-          console.log('🖼️ Featured image file found:', featuredImageFile.name);
-        }
-        
-        // NEW: Get inline images files
-        if (files && files['files.inlineImages']) {
-          // Handle both single file and array of files
-          inlineImageFiles = Array.isArray(files['files.inlineImages']) 
-            ? files['files.inlineImages'] 
-            : [files['files.inlineImages']];
-          
-          console.log('📷 Found inline images to process:', inlineImageFiles.length);
-        }
-        
-        // NEW: Get inline images metadata
-        if (body && body.inlineImagesMeta) {
-          // Handle both single metadata and array
-          const metaArray = Array.isArray(body.inlineImagesMeta)
-            ? body.inlineImagesMeta
-            : [body.inlineImagesMeta];
-          
-          inlineImagesMeta = metaArray.map(meta => {
-            try {
-              return typeof meta === 'string' ? JSON.parse(meta) : meta;
-            } catch (e) {
-              console.error('Error parsing inline image meta:', e);
-              return null;
-            }
-          }).filter(Boolean);
-          
-          console.log('📋 Inline images metadata:', inlineImagesMeta.length);
-        }
-        
-      } else {
-        // Handle regular JSON request
-        console.log('📄 Handling JSON request');
-        articleData = ctx.request.body;
+        console.log('📋 Inline images metadata:', inlineImagesMeta.length);
       }
       
-      // Validate required fields
-      if (!articleData.title || articleData.title.trim() === '') {
-        console.error('❌ Title validation failed');
-        return ctx.badRequest('Article title is required');
-      }
-
-      if (!articleData.content || articleData.content.trim() === '') {
-        return ctx.badRequest('Article content is required');
-      }
-      
-      if (!articleData.publicationId) {
-        console.error('❌ PublicationId validation failed');
-        return ctx.badRequest('Publication is required');
-      }
-      
-      console.log('✅ All validations passed');
-      console.log('📰 Publication ID:', articleData.publicationId);
-      console.log('📄 Title:', articleData.title);
-      console.log('📏 Content length:', articleData.content?.length || 0);
-      console.log('📷 Inline images to process:', inlineImageFiles.length);
-      
-      // NEW: Debug - check what's in the content
-      if (inlineImageFiles.length > 0) {
-        console.log('🔍 DEBUG: Checking content for data-inline-id patterns...');
-        // Look for all data-inline-id patterns in the content
-        const inlineIdPattern = /data-inline-id=["']([^"']+)["']/gi;
-        const foundIds = [];
-        let match;
-        while ((match = inlineIdPattern.exec(articleData.content)) !== null) {
-          foundIds.push(match[1]);
-        }
-        console.log('🔍 DEBUG: Found data-inline-id values in content:', foundIds);
-        console.log('🔍 DEBUG: Inline image IDs from metadata:', inlineImagesMeta.map(m => m?.id));
-      }
-      
-      // NEW: Process inline images FIRST (before processing content)
-      if (inlineImageFiles.length > 0) {
-        console.log('🔄 Processing inline images...');
-        const uploadedInlineImages = await this.processInlineImages(
-          inlineImageFiles,
-          inlineImagesMeta,
-          articleData.id || 'new',
-          articleData.publicationId
-        );
-        
-        // Replace inline image data URLs with server URLs in content
-        if (uploadedInlineImages.length > 0) {
-          console.log('🔄 Replacing inline image URLs in content...');
-          articleData.content = this.replaceInlineImageUrls(
-            articleData.content,
-            uploadedInlineImages
-          );
-          console.log('✅ Replaced URLs for', uploadedInlineImages.length, 'inline images');
-        }
-      }
-      
-      // Process featured image if provided
-      if (featuredImageFile) {
-        console.log('🖼️ Processing featured image upload');
-        const featuredImageResult = await this.processFeaturedImageUpload(featuredImageFile);
-        if (featuredImageResult) {
-          articleData.featuredImageId = featuredImageResult.id;
-          console.log('✅ Featured image uploaded with ID:', featuredImageResult.id);
-        }
-      } else if (articleData.featuredImage?.id) {
-        articleData.featuredImageId = articleData.featuredImage.id;
-        console.log('🆔 Using existing featured image ID:', articleData.featuredImageId);
-      }
-      
-      // Determine if this is create or update
-      const isUpdate = !!articleData.id;
-      
-      if (isUpdate) {
-        console.log('🔄 Updating existing article with ID:', articleData.id);
-        return await this.updateExistingArticle(ctx, articleData);
-      } else {
-        console.log('✨ Creating new article');
-        return await this.createNewArticle(ctx, articleData);
-      }
-
-    } catch (error) {
-      console.error('❌ Error in saveArticle:', error);
-      console.error('❌ Error stack:', error.stack);
-      strapi.log.error('Error in saveArticle:', error);
-      return ctx.internalServerError('An error occurred while saving the article');
+    } else {
+      // Handle regular JSON request
+      console.log('📄 Handling JSON request');
+      articleData = ctx.request.body;
     }
-  },
+    
+    // Validate required fields
+    if (!articleData.title || articleData.title.trim() === '') {
+      console.error('❌ Title validation failed');
+      return ctx.badRequest('Article title is required');
+    }
+
+    if (!articleData.content || articleData.content.trim() === '') {
+      return ctx.badRequest('Article content is required');
+    }
+    
+    if (!articleData.publicationId) {
+      console.error('❌ PublicationId validation failed');
+      return ctx.badRequest('Publication is required');
+    }
+    
+    // NEW: Check for duplicate article for same publication on same day
+    const isUpdate = !!articleData.id;
+    const isDuplicate = await this.checkForDuplicateArticle(
+      articleData.title,
+      articleData.publicationId,
+      articleData.id
+    );
+
+    if (isDuplicate && !isUpdate) {
+      console.error('❌ Duplicate article found');
+      return ctx.badRequest('An article with this title already exists for this publication today. Please use a different title.');
+    }
+
+    console.log('✅ All validations passed');
+    console.log('📰 Publication ID:', articleData.publicationId);
+    console.log('📄 Title:', articleData.title);
+    console.log('📏 Content length:', articleData.content?.length || 0);
+    console.log('📷 Inline images to process:', inlineImageFiles.length);
+    
+    // NEW: Debug - check what's in the content
+    if (inlineImageFiles.length > 0) {
+      console.log('🔍 DEBUG: Checking content for data-inline-id patterns...');
+      // Look for all data-inline-id patterns in the content
+      const inlineIdPattern = /data-inline-id=["']([^"']+)["']/gi;
+      const foundIds = [];
+      let match;
+      while ((match = inlineIdPattern.exec(articleData.content)) !== null) {
+        foundIds.push(match[1]);
+      }
+      console.log('🔍 DEBUG: Found data-inline-id values in content:', foundIds);
+      console.log('🔍 DEBUG: Inline image IDs from metadata:', inlineImagesMeta.map(m => m?.id));
+    }
+    
+    // NEW: Process inline images FIRST (before processing content)
+    if (inlineImageFiles.length > 0) {
+      console.log('🔄 Processing inline images...');
+      const uploadedInlineImages = await this.processInlineImages(
+        inlineImageFiles,
+        inlineImagesMeta,
+        articleData.id || 'new',
+        articleData.publicationId
+      );
+      
+      // Replace inline image data URLs with server URLs in content
+      if (uploadedInlineImages.length > 0) {
+        console.log('🔄 Replacing inline image URLs in content...');
+        articleData.content = this.replaceInlineImageUrls(
+          articleData.content,
+          uploadedInlineImages
+        );
+        console.log('✅ Replaced URLs for', uploadedInlineImages.length, 'inline images');
+      }
+    }
+    
+    // Process featured image if provided
+    if (featuredImageFile) {
+      console.log('🖼️ Processing featured image upload');
+      const featuredImageResult = await this.processFeaturedImageUpload(featuredImageFile);
+      if (featuredImageResult) {
+        articleData.featuredImageId = featuredImageResult.id;
+        console.log('✅ Featured image uploaded with ID:', featuredImageResult.id);
+      }
+    } else if (articleData.featuredImage?.id) {
+      articleData.featuredImageId = articleData.featuredImage.id;
+      console.log('🆔 Using existing featured image ID:', articleData.featuredImageId);
+    }
+    
+    console.log('🔄 Determining if create or update...');
+    
+    if (isUpdate) {
+      console.log('🔄 Updating existing article with ID:', articleData.id);
+      return await this.updateExistingArticle(ctx, articleData);
+    } else {
+      console.log('✨ Creating new article');
+      return await this.createNewArticle(ctx, articleData);
+    }
+
+  } catch (error) {
+    console.error('❌ Error in saveArticle:', error);
+    console.error('❌ Error stack:', error.stack);
+    strapi.log.error('Error in saveArticle:', error);
+    return ctx.internalServerError('An error occurred while saving the article');
+  }
+},
+
+/**
+ * Check if article with similar title/slug exists for same publication on same day
+ */
+async checkForDuplicateArticle(title, publicationId, articleId = null) {
+  try {
+    console.log('🔍 Checking for duplicate article:', {
+      title,
+      publicationId,
+      articleId
+    });
+    
+    // Generate slug from title
+    const slug = this.slugify(title);
+    console.log('🔗 Generated slug for checking:', slug);
+    
+    // Get today's date range (start and end of day)
+    const today = new Date();
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    console.log('📅 Checking date range:', {
+      startOfDay: startOfDay.toISOString(),
+      endOfDay: endOfDay.toISOString()
+    });
+    
+    // Build filters
+    const filters = {
+      slug,
+      publication: publicationId,
+      createdAt: {
+        $gte: startOfDay.toISOString(),
+        $lte: endOfDay.toISOString()
+      }
+    };
+    
+    // If updating, exclude the current article
+    if (articleId) {
+      filters.id = { $ne: articleId };
+    }
+    
+    console.log('🔍 Querying with filters:', filters);
+    
+    // Check for existing articles
+    const existingArticles = await strapi.entityService.findMany('api::post.post', {
+      filters,
+      limit: 1
+    });
+    
+    const hasDuplicate = existingArticles && existingArticles.length > 0;
+    
+    console.log('📊 Duplicate check result:', {
+      found: existingArticles ? existingArticles.length : 0,
+      hasDuplicate,
+      duplicateId: hasDuplicate ? existingArticles[0].id : null
+    });
+    
+    return hasDuplicate;
+    
+  } catch (error) {
+    console.error('❌ Error checking for duplicate article:', error);
+    // If there's an error, allow the save to proceed
+    return false;
+  }
+},
 
   /**
    * NEW: Process inline images from content
@@ -609,8 +689,8 @@ async processInlineImages(inlineImageFiles, inlineImagesMeta, articleId, publica
       const albumImageIds = await this.processAlbumForArticle(articleData.album || []);
       console.log('📸 Album image IDs:', albumImageIds);
 
-      const slug = await this.generateUniqueSlug(articleData.title);
-      console.log('🔗 Generated slug:', slug);
+      const slug = await this.generateUniqueSlug(articleData.title, articleData.publicationId);
+      console.log('🔗 Generated unique slug for publication:', slug);
 
       // NOTE: Content already has inline images processed with server URLs
       const processedContent = articleData.content;
@@ -941,39 +1021,59 @@ async processInlineImages(inlineImageFiles, inlineImagesMeta, articleId, publica
     }
   },
 
-  async generateUniqueSlug(title) {
-    try {
-      let baseSlug = this.slugify(title);
-      let slug = baseSlug;
-      let counter = 1;
+async generateUniqueSlug(title, publicationId = null) {
+  try {
+    let baseSlug = this.slugify(title);
+    let slug = baseSlug;
+    let counter = 1;
 
-      while (true) {
-        const existing = await strapi.entityService.findMany('api::post.post', {
-          filters: { slug: slug },
-          limit: 1
-        });
-
-        if (!existing || existing.length === 0) {
-          break;
-        }
-
-        slug = `${baseSlug}-${counter}`;
-        counter++;
+    while (true) {
+      const filters = { slug: slug };
+      
+      // If publicationId is provided, also check by publication
+      if (publicationId) {
+        filters.publication = publicationId;
         
-        if (counter > 100) {
-          slug = `${baseSlug}-${Date.now()}`;
-          break;
-        }
+        // Also check articles created today
+        const today = new Date();
+        const startOfDay = new Date(today);
+        startOfDay.setHours(0, 0, 0, 0);
+        
+        const endOfDay = new Date(today);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        filters.createdAt = {
+          $gte: startOfDay.toISOString(),
+          $lte: endOfDay.toISOString()
+        };
       }
 
-      return slug;
-    } catch (error) {
-      console.error('Error generating slug:', error);
-      return this.slugify(title);
-    }
-  },
+      const existing = await strapi.entityService.findMany('api::post.post', {
+        filters: filters,
+        limit: 1
+      });
 
-  slugify(text) {
+      if (!existing || existing.length === 0) {
+        break;
+      }
+
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+      
+      if (counter > 100) {
+        slug = `${baseSlug}-${Date.now()}`;
+        break;
+      }
+    }
+
+    return slug;
+  } catch (error) {
+    console.error('Error generating slug:', error);
+    return this.slugify(title);
+  }
+},
+
+slugify(text) {
     if (!text) return '';
     
     return text
