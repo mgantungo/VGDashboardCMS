@@ -1,3 +1,4 @@
+// api/client/content-types/client/schema.json
 {
   "kind": "collectionType",
   "collectionName": "clients",
@@ -7,12 +8,55 @@
     "displayName": "Client"
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
-  "pluginOptions": {},
   "attributes": {
-    "name": {
+    "company_name": {
+      "type": "string",
+      "required": true
+    },
+    "contact_person": {
       "type": "string"
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "phone": {
+      "type": "string",
+      "required": true
+    },
+    "address": {
+      "type": "text"
+    },
+    "credit_approved": {
+      "type": "boolean",
+      "default": false
+    },
+    "credit_limit": {
+      "type": "decimal",
+      "default": 0
+    },
+    "payment_terms": {
+      "type": "enumeration",
+      "enum": ["cash", "credit_7", "credit_15", "credit_30", "pdc"],
+      "default": "cash"
+    },
+    "adverts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::advert.advert",
+      "mappedBy": "client"
+    },
+    "invoices": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::invoice.invoice",
+      "mappedBy": "client"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
     }
   }
 }
