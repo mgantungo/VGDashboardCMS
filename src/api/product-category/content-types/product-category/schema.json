@@ -1,4 +1,3 @@
-// api/product-category/content-types/product-category/schema.json
 {
   "kind": "collectionType",
   "collectionName": "product_categories",
