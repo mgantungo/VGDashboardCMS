@@ -9,6 +9,42 @@
   "options": {
     "draftAndPublish": false
   },
-  "pluginOptions": {},
-  "attributes": {}
+  "attributes": {
+    "advert": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::advert.advert"
+    },
+    "file_name": {
+      "type": "string",
+      "required": true
+    },
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images", "files", "videos"],
+      "required": true
+    },
+    "file_type": {
+      "type": "enumeration",
+      "enum": ["design", "brief", "reference", "final"],
+      "required": true
+    },
+    "version": {
+      "type": "integer",
+      "default": 1
+    },
+    "uploaded_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "upload_date": {
+      "type": "datetime",
+      "required": true
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
 }
