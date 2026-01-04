@@ -381,23 +381,83 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
     singularName: 'advert';
   };
   options: {
-    draftAndPublish: false;
+    draftAndPublish: true;
   };
   attributes: {
+    ad_size: Schema.Attribute.String & Schema.Attribute.Required;
+    ad_type: Schema.Attribute.Enumeration<['full_color', 'black_white']> &
+      Schema.Attribute.DefaultTo<'full_color'>;
+    advert_title: Schema.Attribute.String & Schema.Attribute.Required;
+    approved_by_manager: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    attachments: Schema.Attribute.Media<'images' | 'files' | 'videos', true>;
+    base_price: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    comments: Schema.Attribute.Relation<'oneToMany', 'api::comment.comment'>;
+    created_by_clerk: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    discount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    end_date: Schema.Attribute.Date;
+    frequency: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    invoice: Schema.Attribute.Relation<'oneToOne', 'api::invoice.invoice'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::advert.advert'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String;
+    payment_method: Schema.Attribute.Enumeration<
+      ['cash', 'credit', 'pdc', 'bank_transfer', 'mobile_money']
+    > &
+      Schema.Attribute.Required;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
+    rate_card: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::rate-card.rate-card'
+    >;
+    reference_number: Schema.Attribute.UID<'advert_title'>;
+    reviewed_by_editor: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    special_instructions: Schema.Attribute.Text;
+    start_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    status: Schema.Attribute.Enumeration<
+      [
+        'draft',
+        'pending_review',
+        'editor_approved',
+        'editor_rejected',
+        'manager_approved',
+        'manager_rejected',
+        'published',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
+    surcharge: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    total_amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    workflow_history: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::workflow-log.workflow-log'
+    >;
   };
 }
 
@@ -706,19 +766,33 @@ export interface ApiClientClient extends Struct.CollectionTypeSchema {
     singularName: 'client';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
+    address: Schema.Attribute.Text;
+    adverts: Schema.Attribute.Relation<'oneToMany', 'api::advert.advert'>;
+    company_name: Schema.Attribute.String & Schema.Attribute.Required;
+    contact_person: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    credit_approved: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    credit_limit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    email: Schema.Attribute.Email & Schema.Attribute.Required;
+    invoices: Schema.Attribute.Relation<'oneToMany', 'api::invoice.invoice'>;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::client.client'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String;
+    payment_terms: Schema.Attribute.Enumeration<
+      ['cash', 'credit_7', 'credit_15', 'credit_30', 'pdc']
+    > &
+      Schema.Attribute.DefaultTo<'cash'>;
+    phone: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -737,6 +811,17 @@ export interface ApiCommentComment extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    advert: Schema.Attribute.Relation<'manyToOne', 'api::advert.advert'>;
+    author: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    comment_text: Schema.Attribute.Text & Schema.Attribute.Required;
+    comment_type: Schema.Attribute.Enumeration<
+      ['general', 'approval', 'rejection', 'revision_request']
+    > &
+      Schema.Attribute.DefaultTo<'general'>;
+    created_at: Schema.Attribute.DateTime;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -746,7 +831,6 @@ export interface ApiCommentComment extends Struct.CollectionTypeSchema {
       'api::comment.comment'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -765,19 +849,34 @@ export interface ApiDesignFileDesignFile extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    advert: Schema.Attribute.Relation<'manyToOne', 'api::advert.advert'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    file: Schema.Attribute.Media<'images' | 'files' | 'videos'> &
+      Schema.Attribute.Required;
+    file_name: Schema.Attribute.String & Schema.Attribute.Required;
+    file_type: Schema.Attribute.Enumeration<
+      ['design', 'brief', 'reference', 'final']
+    > &
+      Schema.Attribute.Required;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::design-file.design-file'
     > &
       Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    upload_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    uploaded_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    version: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
   };
 }
 
@@ -863,17 +962,30 @@ export interface ApiInvoiceInvoice extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    advert: Schema.Attribute.Relation<'oneToOne', 'api::advert.advert'>;
+    amount_paid: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    balance: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'UGX'>;
+    due_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    invoice_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    invoice_number: Schema.Attribute.UID<'client'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::invoice.invoice'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String;
+    payment_status: Schema.Attribute.Enumeration<
+      ['unpaid', 'partial', 'paid', 'overdue']
+    > &
+      Schema.Attribute.DefaultTo<'unpaid'>;
+    payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     publishedAt: Schema.Attribute.DateTime;
+    total_amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -964,16 +1076,30 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    invoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::payment.payment'
     > &
       Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    payment_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    payment_method: Schema.Attribute.Enumeration<
+      ['cash', 'bank_transfer', 'cheque', 'mobile_money']
+    > &
+      Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    receipt_file: Schema.Attribute.Media<'files' | 'images'>;
+    recorded_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    reference_number: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1088,16 +1214,28 @@ export interface ApiProductCategoryProductCategory
     draftAndPublish: false;
   };
   attributes: {
+    category_name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    category_type: Schema.Attribute.Enumeration<
+      ['print', 'tv', 'radio', 'digital', 'outdoor', 'publishing', 'commercial']
+    > &
+      Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::product-category.product-category'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String;
+    product_id: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    products: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1116,17 +1254,33 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    category: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::product-category.product-category'
+    >;
+    circulation: Schema.Attribute.Integer;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    description: Schema.Attribute.RichText;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::product.product'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String;
+    metadata: Schema.Attribute.JSON;
+    product_id: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    product_name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
+    rate_cards: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::rate-card.rate-card'
+    >;
+    readership: Schema.Attribute.Integer;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1180,17 +1334,28 @@ export interface ApiRateCardRateCard extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    ad_type: Schema.Attribute.String & Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'UGX'>;
+    duration: Schema.Attribute.String;
+    effective_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    expiry_date: Schema.Attribute.Date;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::rate-card.rate-card'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String;
+    metadata: Schema.Attribute.JSON;
+    price_bw: Schema.Attribute.Decimal;
+    price_fc: Schema.Attribute.Decimal;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
+    size_dimension: Schema.Attribute.String;
+    surcharge_percentage: Schema.Attribute.Decimal;
+    time_slot: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1338,6 +1503,19 @@ export interface ApiWorkflowLogWorkflowLog extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    action: Schema.Attribute.Enumeration<
+      [
+        'created',
+        'submitted',
+        'reviewed',
+        'approved',
+        'rejected',
+        'revised',
+        'published',
+      ]
+    > &
+      Schema.Attribute.Required;
+    advert: Schema.Attribute.Relation<'manyToOne', 'api::advert.advert'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1347,8 +1525,15 @@ export interface ApiWorkflowLogWorkflowLog extends Struct.CollectionTypeSchema {
       'api::workflow-log.workflow-log'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String;
+    new_status: Schema.Attribute.String & Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    performed_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    previous_status: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    timestamp: Schema.Attribute.DateTime & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
