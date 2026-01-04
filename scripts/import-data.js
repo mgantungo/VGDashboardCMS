@@ -1,29 +1,20 @@
-#!/usr/bin/env node
-/**
- * Vision Group Billing Data Import - Strapi 5 Compatible
- * 
- * Usage: node scripts/import-data.js
- */
-
 'use strict';
 
 async function main() {
-  const strapi = require('@strapi/strapi');
   const fs = require('fs');
   const path = require('path');
   
   console.log('🚀 Vision Group Data Import - Starting...\n');
   
   try {
-    // Compile and load Strapi (Strapi 5 method)
-    console.log('📦 Compiling Strapi...');
-    const appContext = await strapi.compile();
+    // Load Strapi configuration
+    console.log('📦 Loading Strapi...');
     
-    console.log('✅ Loading Strapi instance...');
-    const app = await strapi(appContext).load();
+    // Create a minimal Strapi instance
+    const strapiInstance = await createStrapiInstance();
     
     // Make strapi globally available for import functions
-    global.strapi = app;
+    global.strapi = strapiInstance;
     
     console.log('✅ Strapi loaded successfully\n');
     
@@ -64,7 +55,7 @@ async function main() {
     console.log('\n📊 View your data at: http://localhost:1337/admin\n');
     
     // Cleanup
-    await app.destroy();
+    await strapiInstance.destroy();
     process.exit(0);
     
   } catch (error) {
@@ -72,6 +63,22 @@ async function main() {
     console.error(error);
     process.exit(1);
   }
+}
+
+async function createStrapiInstance() {
+  // Import strapi directly
+  const strapi = require('@strapi/strapi');
+  
+  // Create a Strapi instance with minimal configuration
+  const app = strapi({
+    appDir: process.cwd(),
+    distDir: process.cwd(),
+  });
+  
+  // Load the app
+  await app.load();
+  
+  return app;
 }
 
 async function importAllData(billingData) {
