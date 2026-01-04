@@ -7,12 +7,119 @@
     "displayName": "Advert"
   },
   "options": {
-    "draftAndPublish": false
+    "draftAndPublish": true
   },
-  "pluginOptions": {},
   "attributes": {
-    "name": {
-      "type": "string"
+    "reference_number": {
+      "type": "uid",
+      "targetField": "advert_title"
+    },
+    "advert_title": {
+      "type": "string",
+      "required": true
+    },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client",
+      "inversedBy": "adverts"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "rate_card": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::rate-card.rate-card"
+    },
+    "ad_size": {
+      "type": "string",
+      "required": true
+    },
+    "ad_type": {
+      "type": "enumeration",
+      "enum": ["full_color", "black_white"],
+      "default": "full_color"
+    },
+    "frequency": {
+      "type": "integer",
+      "default": 1,
+      "min": 1
+    },
+    "start_date": {
+      "type": "date",
+      "required": true
+    },
+    "end_date": {
+      "type": "date"
+    },
+    "base_price": {
+      "type": "decimal",
+      "required": true
+    },
+    "surcharge": {
+      "type": "decimal",
+      "default": 0
+    },
+    "discount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "total_amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "payment_method": {
+      "type": "enumeration",
+      "enum": ["cash", "credit", "pdc", "bank_transfer", "mobile_money"],
+      "required": true
+    },
+    "special_instructions": {
+      "type": "text"
+    },
+    "attachments": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images", "files", "videos"]
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["draft", "pending_review", "editor_approved", "editor_rejected", "manager_approved", "manager_rejected", "published"],
+      "default": "draft"
+    },
+    "workflow_history": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::workflow-log.workflow-log",
+      "mappedBy": "advert"
+    },
+    "comments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::comment.comment",
+      "mappedBy": "advert"
+    },
+    "created_by_clerk": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "reviewed_by_editor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "approved_by_manager": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "invoice": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::invoice.invoice"
     }
   }
 }
