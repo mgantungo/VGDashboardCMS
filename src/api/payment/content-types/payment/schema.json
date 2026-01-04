@@ -9,6 +9,41 @@
   "options": {
     "draftAndPublish": false
   },
-  "pluginOptions": {},
-  "attributes": {}
+  "attributes": {
+    "invoice": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::invoice.invoice",
+      "inversedBy": "payments"
+    },
+    "payment_date": {
+      "type": "date",
+      "required": true
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "payment_method": {
+      "type": "enumeration",
+      "enum": ["cash", "bank_transfer", "cheque", "mobile_money"],
+      "required": true
+    },
+    "reference_number": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "recorded_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "receipt_file": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["files", "images"]
+    }
+  }
 }
