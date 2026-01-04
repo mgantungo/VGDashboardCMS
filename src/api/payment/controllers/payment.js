@@ -4,11 +4,6 @@
  * payment controller
  */
 
-//const { createCoreController } = require('@strapi/strapi').factories;
-
-//module.exports = createCoreController('api::payment.payment');
-
-//'use strict';
 
 module.exports = {
   async recordPayment(ctx) {
