@@ -9,10 +9,29 @@
   "options": {
     "draftAndPublish": false
   },
-  "pluginOptions": {},
   "attributes": {
-    "name": {
-      "type": "string"
+    "advert": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::advert.advert",
+      "inversedBy": "comments"
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "comment_text": {
+      "type": "text",
+      "required": true
+    },
+    "comment_type": {
+      "type": "enumeration",
+      "enum": ["general", "approval", "rejection", "revision_request"],
+      "default": "general"
+    },
+    "created_at": {
+      "type": "datetime"
     }
   }
 }
