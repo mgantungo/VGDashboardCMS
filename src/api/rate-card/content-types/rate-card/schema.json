@@ -9,10 +9,48 @@
   "options": {
     "draftAndPublish": false
   },
-  "pluginOptions": {},
   "attributes": {
-    "name": {
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "rate_cards"
+    },
+    "ad_type": {
+      "type": "string",
+      "required": true
+    },
+    "size_dimension": {
       "type": "string"
+    },
+    "duration": {
+      "type": "string"
+    },
+    "price_fc": {
+      "type": "decimal"
+    },
+    "price_bw": {
+      "type": "decimal"
+    },
+    "time_slot": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string",
+      "default": "UGX"
+    },
+    "effective_date": {
+      "type": "date",
+      "required": true
+    },
+    "expiry_date": {
+      "type": "date"
+    },
+    "surcharge_percentage": {
+      "type": "decimal"
+    },
+    "metadata": {
+      "type": "json"
     }
   }
 }
