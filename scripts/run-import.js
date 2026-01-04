@@ -6,8 +6,7 @@
  * within the proper Strapi context so that entityService is available.
  */
 
-const Strapi = require('@strapi/strapi');
-const importBillingData = require('./import-billing-data');
+const importBillingData = require('./import-data');
 
 async function runImport() {
   console.log('🚀 Loading Strapi instance...\n');
@@ -15,8 +14,14 @@ async function runImport() {
   let strapiInstance;
   
   try {
-    // Load Strapi without starting the server
-    strapiInstance = await Strapi().load();
+    // Strapi 5 method - compile and load
+    const strapi = require('@strapi/strapi');
+    
+    // Compile the app (required in Strapi 5)
+    await strapi.compile();
+    
+    // Load Strapi without starting the HTTP server
+    strapiInstance = await strapi.load();
     
     // Make Strapi globally available for the import script
     global.strapi = strapiInstance;
