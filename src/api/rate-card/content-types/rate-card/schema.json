@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "rate_cards",
+  "info": {
+    "singularName": "rate-card",
+    "pluralName": "rate-cards",
+    "displayName": "Rate Card"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    }
+  }
+}

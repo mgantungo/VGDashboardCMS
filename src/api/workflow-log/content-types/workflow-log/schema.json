@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "workflow_logs",
+  "info": {
+    "singularName": "workflow-log",
+    "pluralName": "workflow-logs",
+    "displayName": "Workflow Log"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "kind": "collectionType",
+  "collectionName": "design_files",
+  "info": {
+    "singularName": "design-file",
+    "pluralName": "design-files",
+    "displayName": "Design File"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {}
+}
