@@ -1,3 +1,4 @@
+// api/product-category/content-types/product-category/schema.json
 {
   "kind": "collectionType",
   "collectionName": "product_categories",
@@ -9,10 +10,34 @@
   "options": {
     "draftAndPublish": false
   },
-  "pluginOptions": {},
   "attributes": {
-    "name": {
-      "type": "string"
+    "category_name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "product_id": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "category_type": {
+      "type": "enumeration",
+      "enum": ["print", "tv", "radio", "digital", "outdoor", "publishing", "commercial"],
+      "required": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "products": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::product.product",
+      "mappedBy": "category"
     }
   }
 }
