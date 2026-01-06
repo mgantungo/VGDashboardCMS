@@ -47,24 +47,6 @@ module.exports = {
       }
     },
     {
-      method: 'POST',
-      path: '/payments/record',
-      handler: 'payment.recordPayment',
-      config: {
-        policies: [],
-        middlewares: []
-      }
-    },
-    {
-      method: 'GET',
-      path: '/invoices/:invoiceId/payments',
-      handler: 'payment.getPaymentHistory',
-      config: {
-        policies: [],
-        middlewares: []
-      }
-    },
-    {
       method: 'GET',
       path: '/product-categories',
       handler: 'product-category.findCategories',
