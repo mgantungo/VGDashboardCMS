@@ -4,9 +4,10 @@
  * payment controller
  */
 
+const { createCoreController } = require('@strapi/strapi').factories;
 
-module.exports = {
-    async find(ctx) {
+module.exports = createCoreController('api::payment.payment', ({ strapi }) => ({
+  async find(ctx) {
     try {
       // Get the current user
       const user = ctx.state.user;
@@ -139,6 +140,7 @@ module.exports = {
     }
   },
 
+  // Your existing custom methods
   async recordPayment(ctx) {
     try {
       const { invoiceId, amount, paymentMethod, referenceNumber, notes } = ctx.request.body;
@@ -210,5 +212,39 @@ module.exports = {
     } catch (err) {
       ctx.throw(500, err);
     }
+  },
+
+  // Helper method to update invoice status
+  async updateInvoiceStatus(invoiceId) {
+    try {
+      const invoice = await strapi.entityService.findOne('api::invoice.invoice', invoiceId, {
+        populate: ['payments']
+      });
+
+      if (!invoice) return;
+
+      const totalPaid = invoice.payments?.reduce((sum, payment) => {
+        return sum + parseFloat(payment.amount || 0);
+      }, 0) || 0;
+
+      const balance = parseFloat(invoice.total_amount) - totalPaid;
+
+      let paymentStatus = 'unpaid';
+      if (balance <= 0) {
+        paymentStatus = 'paid';
+      } else if (totalPaid > 0) {
+        paymentStatus = 'partial';
+      }
+
+      await strapi.entityService.update('api::invoice.invoice', invoiceId, {
+        data: {
+          amount_paid: totalPaid,
+          balance: balance,
+          payment_status: paymentStatus
+        }
+      });
+    } catch (err) {
+      console.error('Error updating invoice status:', err);
+    }
   }
-};
+}));
