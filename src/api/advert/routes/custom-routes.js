@@ -63,6 +63,24 @@ module.exports = {
         policies: [],
         middlewares: []
       }
+    },
+    {
+      method: 'GET',
+      path: '/product-categories',
+      handler: 'product-category.findCategories',
+      config: {
+        policies: [],
+        middlewares: []
+      }
+    },
+    {
+      method: 'GET',
+      path: '/product-categories/:categoryType',
+      handler: 'product-category.findByType',
+      config: {
+        policies: [],
+        middlewares: []
+      }
     }
   ]
 };
