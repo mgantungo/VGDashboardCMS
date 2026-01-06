@@ -11,9 +11,11 @@ module.exports = {
       config: {
         policies: [],
         middlewares: [],
+        /*
         auth: {
           strategies: ['api-token']
         }
+        */
       }
     },
     {
