@@ -1,9 +1,32 @@
+// src/api/rate-card/routes/rate-card.js
 'use strict';
 
-/**
- * rate-card router
- */
+module.exports = {
+  routes: [
 
-const { createCoreRouter } = require('@strapi/strapi').factories;
-
-module.exports = createCoreRouter('api::rate-card.rate-card');
+    {
+      method: 'POST',
+      path: '/rate-cards/bulk-update-expiry',
+      handler: 'rate-card.bulkUpdateExpiryDates',
+      config: {
+        policies: [],
+        middlewares: [],
+        auth: {
+          strategies: ['api-token']
+        }
+      }
+    },
+    {
+      method: 'POST',
+      path: '/rate-cards/update-null-expiry',
+      handler: 'rate-card.updateNullExpiryDates',
+      config: {
+        policies: [],
+        middlewares: [],
+        auth: {
+          strategies: ['api-token']
+        }
+      }
+    }
+  ]
+};
