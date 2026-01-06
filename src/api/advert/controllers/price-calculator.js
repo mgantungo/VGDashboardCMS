@@ -44,30 +44,44 @@ module.exports = {
     }
   },
 
-  async getRateCards(ctx) {
-    try {
-      const { productId } = ctx.params;
+async getRateCards(ctx) {
+  try {
+    const { productId } = ctx.params;
 
-      const rateCards = await strapi.entityService.findMany(
-        'api::rate-card.rate-card',
-        {
-          filters: {
-            product: productId,
-            effective_date: {
-              $lte: new Date()
-            },
-            $or: [
-              { expiry_date: { $gte: new Date() } },
-              { expiry_date: null }
-            ]
-          },
-          populate: ['product']
-        }
-      );
+    // Get the product with populated rate cards
+    const product = await strapi.entityService.findOne(
+      'api::product.product',
+      productId,
+      {
+        populate: ['rate_cards']
+      }
+    );
 
-      return ctx.send(rateCards);
-    } catch (err) {
-      ctx.throw(500, err);
+    if (!product) {
+      return ctx.notFound('Product not found');
     }
+
+    // Return rate cards
+    const rateCards = product.rate_cards || [];
+
+    // Filter active rate cards (optional)
+    const activeRateCards = rateCards.filter(rateCard => {
+      const today = new Date();
+      const effectiveDate = rateCard.effective_date ? new Date(rateCard.effective_date) : null;
+      const expiryDate = rateCard.expiry_date ? new Date(rateCard.expiry_date) : null;
+
+      // Check if effective date has passed
+      if (effectiveDate && today < effectiveDate) return false;
+      
+      // Check if expiry date has passed
+      if (expiryDate && today > expiryDate) return false;
+
+      return true;
+    });
+
+    return ctx.send(activeRateCards);
+  } catch (err) {
+    ctx.throw(500, err);
   }
+}
 };
