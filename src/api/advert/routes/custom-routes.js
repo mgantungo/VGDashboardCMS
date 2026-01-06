@@ -10,6 +10,7 @@ module.exports = {
         middlewares: []
       }
     },
+    /*
     {
       method: 'GET',
       path: '/products/:productId/rate-cards',
@@ -19,6 +20,7 @@ module.exports = {
         middlewares: []
       }
     },
+    */
     {
       method: 'POST',
       path: '/adverts/:id/submit',
@@ -64,6 +66,7 @@ module.exports = {
         middlewares: []
       }
     },
+    /*
     {
       method: 'GET',
       path: '/products',
@@ -82,5 +85,6 @@ module.exports = {
         middlewares: []
       }
     }
+    */
   ]
 };
