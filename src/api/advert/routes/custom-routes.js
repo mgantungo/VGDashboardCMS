@@ -81,15 +81,6 @@ module.exports = {
         policies: [],
         middlewares: []
       }
-    },
-    {
-      method: 'GET',
-      path: '/products/category-type/:categoryType',
-      handler: 'products.findByCategoryType',
-      config: {
-        policies: [],
-        middlewares: []
-      }
     }
   ]
 };
