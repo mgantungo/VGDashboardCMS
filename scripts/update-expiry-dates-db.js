@@ -6,7 +6,7 @@ async function updateExpiryDates() {
     console.log('Starting Strapi...');
     const strapi = await createStrapi();
     
-    const expiryDate = '2026-06-31'; // Change this to your desired date
+    const expiryDate = '2026-06-30'; // Change this to your desired date
     console.log(`Setting expiry date to: ${expiryDate}`);
     
     // Get all rate cards
