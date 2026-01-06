@@ -13,7 +13,7 @@ module.exports = {
     {
       method: 'GET',
       path: '/products/:productId/rate-cards',
-      handler: 'price-calculator.getRateCards',
+      handler: 'product.getRateCards', // previously pointing at handler: 'price-calculator.getRateCards',
       config: {
         policies: [],
         middlewares: []
