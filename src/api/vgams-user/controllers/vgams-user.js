@@ -7,10 +7,19 @@ const bcrypt = require('bcryptjs');
 module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi }) => ({
   async initiateLogin(ctx) {
     try {
-      // Get email and password from params (for GET) or body (for POST)
-      const { email, password } = ctx.params || ctx.request.body;
+      // For GET requests: use ctx.params
+      // For POST requests: use ctx.request.body
+      let email, password;
       
-      if (!email || !password) {
+      if (ctx.params && ctx.params.email && ctx.params.password) {
+        // GET request with URL parameters
+        email = ctx.params.email;
+        password = ctx.params.password;
+      } else if (ctx.request.body && ctx.request.body.email && ctx.request.body.password) {
+        // POST request with JSON body
+        email = ctx.request.body.email;
+        password = ctx.request.body.password;
+      } else {
         return ctx.badRequest('Email and password are required');
       }
       
@@ -32,25 +41,33 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
 
       console.log('✅ VGAMS User found:', user.email);
       console.log('📋 User role:', user.role);
-      console.log('🔐 Stored password hash:', user.password ? '***' : 'missing');
+      console.log('🔐 Stored password hash present:', !!user.password);
+      
+      // Debug: Check password hash format
+      if (user.password) {
+        console.log('🔐 Password hash starts with:', user.password.substring(0, 10));
+        console.log('🔐 Password hash length:', user.password.length);
+      }
       
       // Verify password using bcrypt
       let validPassword = false;
       try {
         console.log('🔑 Comparing password with bcrypt hash...');
-        console.log('🔑 Password to check:', '***');
-        console.log('🔑 Hash to check against:', user.password ? '***' : 'missing');
         
-        validPassword = await bcrypt.compare(password, user.password);
-        console.log('🔑 Bcrypt comparison result:', validPassword);
-        
-        // If bcrypt compare fails, try direct comparison (for testing)
-        if (!validPassword) {
-          console.log('⚠️ Trying direct comparison for debugging...');
-          console.log('🔑 Provided password:', password);
-          console.log('🔑 Stored password:', user.password);
-          // Don't actually do direct comparison in production!
+        // IMPORTANT: Check if password looks like a bcrypt hash
+        // Bcrypt hashes start with $2a$, $2b$, or $2y$
+        if (user.password && user.password.startsWith('$2')) {
+          console.log('✅ Password appears to be a bcrypt hash');
+          validPassword = await bcrypt.compare(password, user.password);
+        } else {
+          console.log('⚠️ Password does not appear to be hashed with bcrypt');
+          console.log('⚠️ Stored password format:', user.password);
+          // Try comparing anyway (might be plain text for debugging)
+          validPassword = (password === user.password);
         }
+        
+        console.log('🔑 Password comparison result:', validPassword);
+        
       } catch (bcryptError) {
         console.error('❌ Bcrypt comparison error:', bcryptError);
         console.error('❌ Error details:', bcryptError.message);
@@ -59,10 +76,6 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
 
       if (!validPassword) {
         console.log('❌ Invalid password for:', email);
-        console.log('❌ Possible issues:');
-        console.log('❌ 1. Password not hashed properly during user creation');
-        console.log('❌ 2. Wrong password entered');
-        console.log('❌ 3. Password hash corrupted');
         return ctx.unauthorized('Invalid password');
       }
 
@@ -82,19 +95,22 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       
       console.log('🎯 Login successful for:', email, 'Role:', displayRole);
       
+      // Create user response without password
+      const userResponse = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role, // Raw enum value
+        displayRole: displayRole, // Human-readable role
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      };
+      
       // Return user data with proper role
       return {
         success: true,
         message: 'Login successful',
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role, // Raw enum value
-          displayRole: displayRole, // Human-readable role
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt
-        },
+        user: userResponse,
         redirectTo: '/dashboard'
       };
 
@@ -113,40 +129,19 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         return ctx.badRequest('Email and password are required');
       }
       
-      // Call the initiateLogin method with params
-      return await this.initiateLogin(ctx);
+      console.log('📧 POST Login attempt for:', email);
+      
+      // Create a mock ctx with params for the initiateLogin method
+      const mockCtx = {
+        ...ctx,
+        params: { email, password }
+      };
+      
+      return await this.initiateLogin(mockCtx);
       
     } catch (error) {
       console.error('💥 POST Login error:', error);
       return ctx.internalServerError('Authentication failed');
     }
-  },
-
-  // Override default find method to exclude password
-  async find(ctx) {
-    const { data, meta } = await super.find(ctx);
-    
-    // Remove password from response
-    if (data && Array.isArray(data)) {
-      data.forEach(item => {
-        if (item.attributes && item.attributes.password) {
-          delete item.attributes.password;
-        }
-      });
-    }
-    
-    return { data, meta };
-  },
-  
-  // Override default findOne method to exclude password
-  async findOne(ctx) {
-    const { data, meta } = await super.findOne(ctx);
-    
-    // Remove password from response
-    if (data && data.attributes && data.attributes.password) {
-      delete data.attributes.password;
-    }
-    
-    return { data, meta };
   }
 }));
