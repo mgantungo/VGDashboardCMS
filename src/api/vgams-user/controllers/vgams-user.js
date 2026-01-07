@@ -1,3 +1,4 @@
+// src/api/vgams-user/controllers/vgams-user.js
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
@@ -19,7 +20,9 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
 
       if (!user) {
         console.log('❌ VGAMS User not found:', email);
-        return ctx.notFound('User not found');
+        return ctx.send({ 
+          error: 'User not found' 
+        }, 404);
       }
 
       console.log('✅ VGAMS User found:', user.email);
@@ -33,12 +36,16 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         console.log('🔑 Bcrypt comparison result:', validPassword);
       } catch (bcryptError) {
         console.error('❌ Bcrypt comparison error:', bcryptError);
-        return ctx.unauthorized('Invalid password');
+        return ctx.send({ 
+          error: 'Invalid password' 
+        }, 401);
       }
 
       if (!validPassword) {
         console.log('❌ Invalid password for:', email);
-        return ctx.unauthorized('Invalid password');
+        return ctx.send({ 
+          error: 'Invalid password' 
+        }, 401);
       }
 
       console.log('✅ Password verified successfully');
@@ -58,7 +65,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       console.log('🎯 Login successful for:', email, 'Role:', displayRole);
       
       // Return user data with proper role
-      return {
+      return ctx.send({
         success: true,
         message: 'Login successful',
         user: {
@@ -70,34 +77,42 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
         },
-        redirectTo: '/dashboard' // Optional: suggest redirect path based on role
-      };
+        redirectTo: '/dashboard'
+      }, 200);
 
     } catch (error) {
       console.error('💥 VGAMS Login initiation error:', error);
-      return ctx.internalServerError('Authentication failed');
+      return ctx.send({ 
+        error: 'Authentication failed',
+        details: error.message
+      }, 500);
     }
   },
+
   async initiateLoginPost(ctx) {
-  try {
-    const { email, password } = ctx.request.body;
-    
-    if (!email || !password) {
-      return ctx.badRequest('Email and password are required');
+    try {
+      const { email, password } = ctx.request.body;
+      
+      if (!email || !password) {
+        return ctx.send({ 
+          error: 'Email and password are required' 
+        }, 400);
+      }
+      
+      // Reuse the same login logic but with body params
+      return await this.initiateLogin({
+        ...ctx,
+        params: { email, password }
+      });
+      
+    } catch (error) {
+      console.error('💥 POST Login error:', error);
+      return ctx.send({ 
+        error: 'Authentication failed',
+        details: error.message
+      }, 500);
     }
-    
-    // Reuse the same login logic but with body params
-    return await this.initiateLogin({
-      ...ctx,
-      params: { email, password }
-    });
-    
-  } catch (error) {
-    console.error('💥 POST Login error:', error);
-    return ctx.internalServerError('Authentication failed');
-  }
-  }
-  ,
+  },
 
   // Override default find method to exclude password
   async find(ctx) {
@@ -137,10 +152,13 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         select: ['id', 'name', 'email', 'role', 'createdAt']
       });
       
-      return users;
+      return ctx.send(users, 200);
     } catch (error) {
       console.error('Error fetching users by role:', error);
-      return ctx.internalServerError('Failed to fetch users');
+      return ctx.send({ 
+        error: 'Failed to fetch users',
+        details: error.message
+      }, 500);
     }
   }
 }));
