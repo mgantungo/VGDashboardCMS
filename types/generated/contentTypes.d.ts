@@ -1492,6 +1492,70 @@ export interface ApiTagTag extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiVgamsUserVgamsUser extends Struct.CollectionTypeSchema {
+  collectionName: 'vgams_users';
+  info: {
+    description: 'Vision Group Advertising Management System Users';
+    displayName: 'VGAMS Users';
+    pluralName: 'vgams-users';
+    singularName: 'vgams-user';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 150;
+        minLength: 3;
+      }>;
+    isActive: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::vgams-user.vgams-user'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+        minLength: 2;
+      }>;
+    password: Schema.Attribute.Password &
+      Schema.Attribute.Required &
+      Schema.Attribute.Private &
+      Schema.Attribute.SetMinMaxLength<{
+        minLength: 6;
+      }>;
+    publishedAt: Schema.Attribute.DateTime;
+    role: Schema.Attribute.Enumeration<
+      [
+        'booking_clerk',
+        'editor',
+        'advertising_manager',
+        'design_house',
+        'finance_team',
+        'administrator',
+        'sales_team',
+        'hr_team',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'booking_clerk'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiWorkflowLogWorkflowLog extends Struct.CollectionTypeSchema {
   collectionName: 'workflow_logs';
   info: {
@@ -2075,6 +2139,7 @@ declare module '@strapi/strapi' {
       'api::sub-county.sub-county': ApiSubCountySubCounty;
       'api::systemuser.systemuser': ApiSystemuserSystemuser;
       'api::tag.tag': ApiTagTag;
+      'api::vgams-user.vgams-user': ApiVgamsUserVgamsUser;
       'api::workflow-log.workflow-log': ApiWorkflowLogWorkflowLog;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

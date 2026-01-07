@@ -14,25 +14,27 @@
   "attributes": {
     "name": {
       "type": "string",
-      "required": true,
       "minLength": 2,
-      "maxLength": 100
+      "maxLength": 100,
+      "required": true
     },
     "email": {
       "type": "email",
       "required": true,
-      "unique": true,
       "minLength": 3,
-      "maxLength": 150
+      "maxLength": 150,
+      "unique": true
     },
     "password": {
       "type": "password",
+      "private": true,
       "required": true,
-      "minLength": 6,
-      "private": true
+      "minLength": 6
     },
     "role": {
       "type": "enumeration",
+      "required": true,
+      "default": "booking_clerk",
       "enum": [
         "booking_clerk",
         "editor",
@@ -42,9 +44,12 @@
         "administrator",
         "sales_team",
         "hr_team"
-      ],
+      ]
+    },
+    "isActive": {
+      "type": "boolean",
       "required": true,
-      "default": "booking_clerk"
+      "default": true
     }
   }
 }
