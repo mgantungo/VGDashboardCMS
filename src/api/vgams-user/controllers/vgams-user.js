@@ -78,6 +78,26 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       return ctx.internalServerError('Authentication failed');
     }
   },
+  async initiateLoginPost(ctx) {
+  try {
+    const { email, password } = ctx.request.body;
+    
+    if (!email || !password) {
+      return ctx.badRequest('Email and password are required');
+    }
+    
+    // Reuse the same login logic but with body params
+    return await this.initiateLogin({
+      ...ctx,
+      params: { email, password }
+    });
+    
+  } catch (error) {
+    console.error('💥 POST Login error:', error);
+    return ctx.internalServerError('Authentication failed');
+  }
+  }
+  ,
 
   // Override default find method to exclude password
   async find(ctx) {
