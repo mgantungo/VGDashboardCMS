@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "vgams_users",
+  "info": {
+    "singularName": "vgams-user",
+    "pluralName": "vgams-users",
+    "displayName": "VGAMS Users",
+    "description": "Vision Group Advertising Management System Users"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "minLength": 2,
+      "maxLength": 100
+    },
+    "email": {
+      "type": "email",
+      "required": true,
+      "unique": true,
+      "minLength": 3,
+      "maxLength": 150
+    },
+    "password": {
+      "type": "password",
+      "required": true,
+      "minLength": 6,
+      "private": true
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": [
+        "booking_clerk",
+        "editor",
+        "advertising_manager",
+        "design_house",
+        "finance_team",
+        "administrator",
+        "sales_team",
+        "hr_team"
+      ],
+      "required": true,
+      "default": "booking_clerk"
+    }
+  }
+}
