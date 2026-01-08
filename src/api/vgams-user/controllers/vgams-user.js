@@ -91,9 +91,21 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         'administrator': 'Administrator'
       };
       
+      // Define redirect URLs based on role
+      const roleRedirects = {
+        'booking_clerk': '/dashboard/booking',
+        'sub_editor': '/dashboard/review',
+        'design_house': '/dashboard/design',
+        'finance_team': '/dashboard/finance',
+        'advertising_manager': '/dashboard/approval',
+        'administrator': '/dashboard/admin' // Added default for administrator
+      };
+      
       const displayRole = roleDisplayNames[user.role] || user.role;
+      const redirectTo = roleRedirects[user.role] || '/dashboard'; // Fallback to generic dashboard
       
       console.log('🎯 Login successful for:', email, 'Role:', displayRole);
+      console.log('📍 Redirecting to:', redirectTo);
       
       // Create user response without password
       const userResponse = {
@@ -106,12 +118,12 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         updatedAt: user.updatedAt
       };
       
-      // Return user data with proper role
+      // Return user data with proper role and conditional redirect
       return {
         success: true,
         message: 'Login successful',
         user: userResponse,
-        redirectTo: '/dashboard'
+        redirectTo: redirectTo
       };
 
     } catch (error) {
