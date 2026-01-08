@@ -10,9 +10,11 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
 async create(ctx) {
   try {
     const { data } = ctx.request.body;
+    const files = ctx.request.files; // Get uploaded files
     
     console.log('🔍 Creating advert with VGAMS user');
     console.log('📦 Request body data:', data);
+    console.log('📎 Uploaded files:', files ? Object.keys(files) : 'No files');
     
     // Get VGAMS user ID from request body
     const vgamsUserId = data.vgamsUserId;
@@ -120,12 +122,43 @@ async create(ctx) {
     
     console.log('📊 Final advert data:', advertData);
     
-    // Create the advert - NO POPULATE
+    // Create the advert
     const advert = await strapi.entityService.create('api::advert.advert', {
       data: advertData
     });
     
     console.log('✅ Advert created successfully! ID:', advert.id);
+    
+    // Handle file uploads if any
+    if (files && Object.keys(files).length > 0) {
+      try {
+        console.log('📁 Processing file uploads...');
+        
+        // Upload files to Strapi Media Library
+        const uploadedFiles = await strapi.plugins['upload'].services.upload.upload({
+          data: {
+            refId: advert.id,
+            ref: 'api::advert.advert',
+            field: 'attachments'
+          },
+          files: Object.values(files)
+        });
+        
+        console.log('✅ Files uploaded successfully:', uploadedFiles.length, 'files');
+        
+        // Update advert with attachment IDs
+        if (uploadedFiles && uploadedFiles.length > 0) {
+          await strapi.entityService.update('api::advert.advert', advert.id, {
+            data: {
+              attachments: uploadedFiles.map(file => file.id)
+            }
+          });
+        }
+      } catch (uploadError) {
+        console.error('❌ File upload failed:', uploadError.message);
+        // Don't fail the whole advert creation if file upload fails
+      }
+    }
     
     // Fetch the created advert with relations
     const fullAdvert = await strapi.entityService.findOne('api::advert.advert', advert.id, {
@@ -133,7 +166,8 @@ async create(ctx) {
         vgams_user: true,
         client: true,
         product: true,
-        rate_card: true
+        rate_card: true,
+        attachments: true
       }
     });
     
@@ -143,7 +177,8 @@ async create(ctx) {
       title: fullAdvert.advert_title,
       client: fullAdvert.client?.company_name,
       createdBy: fullAdvert.vgams_user?.name,
-      status: fullAdvert.status
+      status: fullAdvert.status,
+      attachmentsCount: fullAdvert.attachments?.length || 0
     });
     
     return {
