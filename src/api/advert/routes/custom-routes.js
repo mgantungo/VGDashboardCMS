@@ -98,6 +98,14 @@ module.exports = {
         auth: false
       }
     },
+    {
+      method: 'GET',
+      path: '/adverts/my-adverts/:userId',
+      handler: 'advert.findMyAdverts',
+      config: {
+        auth: false
+      }
+    }
     /*
     {
       method: 'GET',
