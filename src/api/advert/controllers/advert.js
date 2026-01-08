@@ -347,70 +347,162 @@ async create(ctx) {
     }
   },
   
-  /**
-   * Get a single advert with full details
-   */
-  async findOne(ctx) {
-    try {
-      const { id } = ctx.params;
-      const vgamsUserId = ctx.headers['x-vgams-user-id'] || ctx.query.vgamsUserId;
-      
-      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
-        populate: {
-          product: {
-            fields: ['id', 'product_name', 'description', 'circulation']
-          },
-          rate_card: {
-            fields: ['id', 'name', 'price_fc', 'price_bw', 'surcharge_percentage']
-          },
-          client: {
-            fields: ['id', 'client_name', 'contact_person', 'email', 'phone', 'address']
-          },
-          vgams_user: {
-            fields: ['id', 'name', 'email', 'role']
-          },
-          attachments: {
-            fields: ['id', 'name', 'url', 'mime', 'size']
-          },
-          workflow_history: {
-            fields: ['id', 'action', 'previous_status', 'new_status', 'performed_by', 'timestamp', 'notes'],
-            sort: 'timestamp:desc'
-          },
-          comments: {
-            fields: ['id', 'comment_text', 'comment_type', 'author', 'created_at'],
-            sort: 'created_at:desc'
-          }
+/**
+ * Get a single advert by ID
+ */
+async findOne(ctx) {
+  try {
+    const { id } = ctx.params;
+    const vgamsUserId = ctx.headers['x-vgams-user-id'] || ctx.query.vgamsUserId;
+    
+    console.log('🔍 Fetching single advert:', id);
+    console.log('👤 VGAMS User ID:', vgamsUserId);
+    
+    // Get advert with full details
+    const advert = await strapi.entityService.findOne('api::advert.advert', id, {
+      populate: {
+        vgams_user: {
+          fields: ['id', 'name', 'email', 'role']
+        },
+        client: {
+          fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address']
+        },
+        product: {
+          fields: ['id', 'product_name', 'description', 'circulation', 'categoryType']
+        },
+        rate_card: {
+          fields: ['id', 'name', 'size_dimension', 'ad_type', 'price_fc', 'price_bw', 'surcharge_percentage']
+        },
+        attachments: {
+          fields: ['id', 'name', 'url', 'mime', 'size', 'createdAt']
+        },
+        workflow_history: {
+          fields: ['id', 'action', 'previous_status', 'new_status', 'performed_by', 'timestamp', 'notes'],
+          sort: 'timestamp:desc'
+        },
+        comments: {
+          fields: ['id', 'comment_text', 'comment_type', 'author', 'created_at'],
+          sort: 'created_at:desc'
         }
-      });
-      
-      if (!advert) {
-        return ctx.notFound('Advert not found');
       }
-      
-      // Check if user has permission to view this advert
-      // Allow if user created it or has admin/manager role
+    });
+    
+    if (!advert) {
+      console.error('❌ Advert not found:', id);
+      return ctx.notFound('Advert not found');
+    }
+    
+    // Check if user has permission to view this advert
+    // Allow if user created it or has admin/manager role
+    let canView = true;
+    
+    if (vgamsUserId) {
       const vgamsUser = await strapi.db.query('api::vgams-user.vgams-user').findOne({
         where: { id: vgamsUserId }
       });
       
-      const canView = advert.vgams_user?.id === parseInt(vgamsUserId) || 
-                     vgamsUser?.role === 'administrator' || 
-                     vgamsUser?.role === 'advertising_manager';
+      canView = advert.vgams_user?.id === parseInt(vgamsUserId) || 
+                vgamsUser?.role === 'administrator' || 
+                vgamsUser?.role === 'advertising_manager' ||
+                vgamsUser?.role === 'editor';
       
       if (!canView) {
+        console.error('❌ User has no permission to view advert:', {
+          advertUserId: advert.vgams_user?.id,
+          requestUserId: vgamsUserId,
+          userRole: vgamsUser?.role
+        });
         return ctx.forbidden('You do not have permission to view this advert');
       }
-      
-      return { 
-        success: true,
-        data: advert
-      };
-      
-    } catch (err) {
-      console.error('Error fetching advert:', err);
-      return ctx.internalServerError('Failed to fetch advert');
     }
-  },
+    
+    // Transform the advert data
+    const transformedAdvert = {
+      id: advert.id,
+      reference_number: advert.reference_number,
+      advert_title: advert.advert_title,
+      client: advert.client ? {
+        id: advert.client.id,
+        company_name: advert.client.company_name,
+        contact_person: advert.client.contact_person,
+        email: advert.client.email,
+        phone: advert.client.phone,
+        address: advert.client.address
+      } : null,
+      product: advert.product ? {
+        id: advert.product.id,
+        product_name: advert.product.product_name,
+        description: advert.product.description,
+        circulation: advert.product.circulation,
+        categoryType: advert.product.categoryType
+      } : null,
+      rate_card: advert.rate_card ? {
+        id: advert.rate_card.id,
+        name: advert.rate_card.name,
+        size_dimension: advert.rate_card.size_dimension,
+        ad_type: advert.rate_card.ad_type,
+        price_fc: advert.rate_card.price_fc,
+        price_bw: advert.rate_card.price_bw,
+        surcharge_percentage: advert.rate_card.surcharge_percentage
+      } : null,
+      ad_size: advert.ad_size,
+      ad_type: advert.ad_type,
+      frequency: advert.frequency,
+      start_date: advert.start_date,
+      end_date: advert.end_date,
+      base_price: advert.base_price,
+      surcharge: advert.surcharge,
+      discount: advert.discount || 0,
+      total_amount: advert.total_amount,
+      payment_method: advert.payment_method,
+      special_instructions: advert.special_instructions,
+      status: advert.status,
+      attachments: advert.attachments ? advert.attachments.map(file => ({
+        id: file.id,
+        name: file.name,
+        url: file.url,
+        mime: file.mime,
+        size: file.size,
+        uploadedAt: file.createdAt
+      })) : [],
+      workflow_history: advert.workflow_history || [],
+      comments: advert.comments ? advert.comments.map(comment => ({
+        id: comment.id,
+        text: comment.comment_text,
+        type: comment.comment_type,
+        author: comment.author,
+        createdAt: comment.created_at
+      })) : [],
+      createdAt: advert.createdAt,
+      updatedAt: advert.updatedAt,
+      publishedAt: advert.publishedAt,
+      vgams_user: advert.vgams_user ? {
+        id: advert.vgams_user.id,
+        name: advert.vgams_user.name,
+        email: advert.vgams_user.email,
+        role: advert.vgams_user.role
+      } : null
+    };
+    
+    console.log('✅ Advert fetched successfully:', {
+      id: transformedAdvert.id,
+      reference: transformedAdvert.reference_number,
+      title: transformedAdvert.advert_title,
+      status: transformedAdvert.status,
+      files: transformedAdvert.attachments.length
+    });
+    
+    return {
+      success: true,
+      data: transformedAdvert
+    };
+    
+  } catch (err) {
+    console.error('❌ Error fetching advert:', err.message);
+    console.error('❌ Error stack:', err.stack);
+    return ctx.internalServerError(`Failed to fetch advert: ${err.message}`);
+  }
+},
   
   /**
    * Update advert (only if draft and created by same user)
