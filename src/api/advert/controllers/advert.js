@@ -480,147 +480,49 @@ async create(ctx) {
   /**
    * Get adverts by date range for all users
    */
-  async getDateRangeAdverts(ctx) {
-    try {
-      const { query } = ctx;
-      
-      console.log('📅 Date range query received:', query);
-      
-      // Get date range from query parameters
-      const startDate = query.startDate ? new Date(query.startDate) : new Date();
-      const endDate = query.endDate ? new Date(query.endDate) : new Date();
-      
-      // Set time to start and end of day
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      
-      // Validate date range
-      if (startDate > endDate) {
-        return ctx.badRequest('Start date must be before end date');
-      }
-      
-      console.log('📅 Fetching adverts for date range:', {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString()
-      });
-      
-      // Build filter object
-      const filters = {
-        createdAt: {
-          $gte: startDate.toISOString(),
-          $lte: endDate.toISOString()
-        }
-      };
-      
-      // Add optional filters
-      if (query.userId) {
-        filters.vgams_user = parseInt(query.userId);
-      }
-      
-      if (query.status) {
-        filters.status = query.status;
-      }
-      
-      if (query.clientId) {
-        filters.client = parseInt(query.clientId);
-      }
-      
-      if (query.productId) {
-        filters.product = parseInt(query.productId);
-      }
-      
-      // Get adverts for date range
-      const dateRangeAdverts = await strapi.entityService.findMany('api::advert.advert', {
-        filters: filters,
-        populate: {
-          vgams_user: {
-            fields: ['id', 'name', 'email', 'role']
-          },
-          client: {
-            fields: ['id', 'company_name', 'contact_person', 'email', 'phone']
-          },
-          product: {
-            fields: ['id', 'product_name', 'description']
-          },
-          rate_card: {
-            fields: ['id', 'ad_type']
-          },
-          attachments: {
-            fields: ['id', 'name', 'url']
+ async getDateRangeAdverts(ctx) {
+  try {
+    const { query } = ctx;
+    
+    console.log('📅 Test endpoint called with query:', query);
+    
+    // Return a test response
+    return {
+      success: true,
+      message: 'Date range endpoint is working!',
+      query: query,
+      testData: [
+        {
+          id: 1,
+          reference_number: 'TEST-001',
+          advert_title: 'Test Advert',
+          status: 'draft',
+          total_amount: 1000,
+          createdAt: new Date().toISOString(),
+          createdByUser: {
+            id: 1,
+            name: 'Test User',
+            email: 'test@example.com',
+            role: 'user'
           }
-        },
-        sort: query.sort || 'createdAt:desc',
-        limit: query.limit || 1000,
-        start: query.start || 0
-      });
-      
-      // Transform data to include user info clearly
-      const transformedAdverts = dateRangeAdverts.map(advert => ({
-        id: advert.id,
-        reference_number: advert.reference_number,
-        advert_title: advert.advert_title,
-        client: advert.client,
-        product: advert.product,
-        rate_card: advert.rate_card,
-        ad_size: advert.ad_size,
-        ad_type: advert.ad_type,
-        frequency: advert.frequency,
-        start_date: advert.start_date,
-        end_date: advert.end_date,
-        base_price: advert.base_price,
-        surcharge: advert.surcharge,
-        discount: advert.discount,
-        total_amount: advert.total_amount,
-        payment_method: advert.payment_method,
-        special_instructions: advert.special_instructions,
-        status: advert.status,
-        attachments: advert.attachments,
-        createdAt: advert.createdAt,
-        createdByUser: advert.vgams_user ? {
-          id: advert.vgams_user.id,
-          name: advert.vgams_user.name,
-          email: advert.vgams_user.email,
-          role: advert.vgams_user.role
-        } : null
-      }));
-      
-      // Calculate statistics
-      const totalAmount = transformedAdverts.reduce((sum, advert) => sum + (parseFloat(advert.total_amount) || 0), 0);
-      const totalDiscount = transformedAdverts.reduce((sum, advert) => sum + (parseFloat(advert.discount) || 0), 0);
-      
-      // Get unique users
-      const uniqueUsers = new Set();
-      const users = [];
-      transformedAdverts.forEach(advert => {
-        if (advert.createdByUser && !uniqueUsers.has(advert.createdByUser.id)) {
-          uniqueUsers.add(advert.createdByUser.id);
-          users.push(advert.createdByUser);
         }
-      });
-      
-      console.log('✅ Found adverts:', transformedAdverts.length);
-      
-      return {
-        success: true,
-        data: transformedAdverts,
-        count: transformedAdverts.length,
-        statistics: {
-          totalAmount,
-          totalDiscount,
-          averageAmount: transformedAdverts.length > 0 ? totalAmount / transformedAdverts.length : 0,
-          uniqueUsers: users.length
-        },
-        dateRange: {
-          start: startDate,
-          end: endDate
-        },
-        users: users
-      };
-      
-    } catch (err) {
-      console.error('❌ Error fetching date range adverts:', err);
-      console.error('❌ Error stack:', err.stack);
-      return ctx.internalServerError('Failed to fetch adverts');
-    }
+      ],
+      count: 1,
+      statistics: {
+        totalAmount: 1000,
+        totalDiscount: 0,
+        averageAmount: 1000,
+        uniqueUsers: 1
+      },
+      dateRange: {
+        start: query.startDate || new Date().toISOString(),
+        end: query.endDate || new Date().toISOString()
+      }
+    };
+    
+  } catch (err) {
+    console.error('Test error:', err);
+    return ctx.internalServerError('Test failed');
   }
+}
 }));
