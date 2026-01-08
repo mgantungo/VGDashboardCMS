@@ -353,12 +353,10 @@ async create(ctx) {
 async findOne(ctx) {
   try {
     const { id } = ctx.params;
-    //const vgamsUserId = ctx.headers['x-vgams-user-id'] || ctx.query.vgamsUserId;
     
     console.log('🔍 Fetching single advert:', id);
-    //console.log('👤 VGAMS User ID:', vgamsUserId);
     
-    // Get advert with full details
+    // Get advert with full details - UPDATED to populate category through product
     const advert = await strapi.entityService.findOne('api::advert.advert', id, {
       populate: {
         vgams_user: {
@@ -368,7 +366,12 @@ async findOne(ctx) {
           fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address']
         },
         product: {
-          fields: ['id', 'product_name', 'description', 'circulation', 'category']
+          fields: ['id', 'product_name', 'description', 'circulation'],
+          populate: {
+            category: {
+              fields: ['id', 'category_name', 'category_type', 'description']
+            }
+          }
         },
         rate_card: {
           fields: ['id', 'name', 'size_dimension', 'ad_type', 'price_fc', 'price_bw', 'surcharge_percentage']
@@ -391,34 +394,8 @@ async findOne(ctx) {
       console.error('❌ Advert not found:', id);
       return ctx.notFound('Advert not found');
     }
-
-    /*
-    // Check if user has permission to view this advert
-    // Allow if user created it or has admin/manager role
-    let canView = true;
     
-    if (vgamsUserId) {
-      const vgamsUser = await strapi.db.query('api::vgams-user.vgams-user').findOne({
-        where: { id: vgamsUserId }
-      });
-      
-      canView = advert.vgams_user?.id === parseInt(vgamsUserId) || 
-                vgamsUser?.role === 'administrator' || 
-                vgamsUser?.role === 'advertising_manager' ||
-                vgamsUser?.role === 'editor';
-      
-      if (!canView) {
-        console.error('❌ User has no permission to view advert:', {
-          advertUserId: advert.vgams_user?.id,
-          requestUserId: vgamsUserId,
-          userRole: vgamsUser?.role
-        });
-        return ctx.forbidden('You do not have permission to view this advert');
-      }
-    }
-    */
-    
-    // Transform the advert data
+    // Transform the advert data - UPDATED to get category_type from category
     const transformedAdvert = {
       id: advert.id,
       reference_number: advert.reference_number,
@@ -436,7 +413,13 @@ async findOne(ctx) {
         product_name: advert.product.product_name,
         description: advert.product.description,
         circulation: advert.product.circulation,
-        categoryType: advert.product.categoryType
+        // Get category information from populated category relation
+        category: advert.product.category ? {
+          id: advert.product.category.id,
+          name: advert.product.category.category_name,
+          type: advert.product.category.category_type, // This is where category_type comes from
+          description: advert.product.category.description
+        } : null
       } : null,
       rate_card: advert.rate_card ? {
         id: advert.rate_card.id,
@@ -491,7 +474,8 @@ async findOne(ctx) {
       reference: transformedAdvert.reference_number,
       title: transformedAdvert.advert_title,
       status: transformedAdvert.status,
-      files: transformedAdvert.attachments.length
+      files: transformedAdvert.attachments.length,
+      productCategory: transformedAdvert.product?.category?.type || 'No category'
     });
     
     return {
@@ -504,7 +488,9 @@ async findOne(ctx) {
     console.error('❌ Error stack:', err.stack);
     return ctx.internalServerError(`Failed to fetch advert: ${err.message}`);
   }
-},
+}
+  
+  ,
   
   /**
    * Update advert (only if draft and created by same user)
