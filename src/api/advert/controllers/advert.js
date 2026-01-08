@@ -374,7 +374,7 @@ async findOne(ctx) {
           }
         },
         rate_card: {
-          fields: ['id', 'name', 'size_dimension', 'ad_type', 'price_fc', 'price_bw', 'surcharge_percentage']
+          fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw', 'surcharge_percentage']
         },
         attachments: {
           fields: ['id', 'name', 'url', 'mime', 'size', 'createdAt']
