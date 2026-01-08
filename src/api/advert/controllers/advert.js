@@ -537,13 +537,13 @@ async create(ctx) {
             fields: ['id', 'name', 'email', 'role']
           },
           client: {
-            fields: ['id', 'client_name', 'contact_person', 'email', 'phone']
+            fields: ['id', 'company_name', 'contact_person', 'email', 'phone']
           },
           product: {
             fields: ['id', 'product_name', 'description']
           },
           rate_card: {
-            fields: ['id', 'name']
+            fields: ['id', 'ad_type']
           },
           attachments: {
             fields: ['id', 'name', 'url']
