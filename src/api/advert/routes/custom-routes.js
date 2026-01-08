@@ -71,15 +71,31 @@ module.exports = {
       path: '/adverts',
       handler: 'advert.create',
       config: {
-        policies: []
+        auth: false // Using VGAMS auth
       }
     },
     {
       method: 'GET',
       path: '/adverts/my-adverts',
-      handler: 'advert.findByUser',
+      handler: 'advert.findByVgamsUser',
       config: {
-        policies: []
+        auth: false
+      }
+    },
+    {
+      method: 'GET',
+      path: '/adverts/:id',
+      handler: 'advert.findOne',
+      config: {
+        auth: false
+      }
+    },
+    {
+      method: 'PUT',
+      path: '/adverts/:id',
+      handler: 'advert.update',
+      config: {
+        auth: false
       }
     },
     /*
