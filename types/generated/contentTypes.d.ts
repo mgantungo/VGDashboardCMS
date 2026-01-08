@@ -381,7 +381,7 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
     singularName: 'advert';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     ad_size: Schema.Attribute.String & Schema.Attribute.Required;
