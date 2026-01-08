@@ -380,7 +380,7 @@ async findOne(ctx) {
           fields: ['id', 'name', 'url', 'mime', 'size', 'createdAt']
         },
         workflow_history: {
-          fields: ['id', 'action', 'previous_status', 'new_status', 'performed_by', 'timestamp', 'notes'],
+          fields: ['id', 'action', 'previous_status', 'new_status', 'timestamp', 'notes'],
           sort: 'timestamp:desc'
         },
         comments: {
