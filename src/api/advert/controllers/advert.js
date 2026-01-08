@@ -477,150 +477,172 @@ async create(ctx) {
       return ctx.internalServerError('Failed to update advert');
     }
   },
-  /**
-   * Get adverts by date range for all users
-   */
-  async getDateRangeAdverts(ctx) {
-    try {
-      const { query } = ctx;
-      
-      console.log('📅 Date range query received:', query);
-      
-      // Get date range from query parameters
-      const startDate = query.startDate ? new Date(query.startDate) : new Date();
-      const endDate = query.endDate ? new Date(query.endDate) : new Date();
-      
-      // Set time to start and end of day
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      
-      // Validate date range
-      if (startDate > endDate) {
-        return ctx.badRequest('Start date must be before end date');
-      }
-      
-      console.log('📅 Fetching adverts for date range:', {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString()
-      });
-      
-      // Build filter object
-      const filters = {
-        createdAt: {
-          $gte: startDate.toISOString(),
-          $lte: endDate.toISOString()
-        }
-      };
-      
-      // Add optional filters
-      if (query.userId) {
-        filters.vgams_user = parseInt(query.userId);
-      }
-      
-      if (query.status) {
-        filters.status = query.status;
-      }
-      
-      if (query.clientId) {
-        filters.client = parseInt(query.clientId);
-      }
-      
-      if (query.productId) {
-        filters.product = parseInt(query.productId);
-      }
-      
-      // Get adverts for date range
-      const dateRangeAdverts = await strapi.entityService.findMany('api::advert.advert', {
-        filters: filters,
-        populate: {
-          vgams_user: {
-            fields: ['id', 'name', 'email', 'role']
-          },
-          client: {
-            fields: ['id', 'company_name', 'contact_person', 'email', 'phone']
-          },
-          product: {
-            fields: ['id', 'product_name', 'description']
-          },
-          rate_card: {
-            fields: ['id', 'ad_type','product']
-          },
-          attachments: {
-            fields: ['id', 'name', 'url']
-          }
-        },
-        sort: query.sort || 'createdAt:desc',
-        limit: query.limit || 1000,
-        start: query.start || 0
-      });
-      
-      // Transform data to include user info clearly
-      const transformedAdverts = dateRangeAdverts.map(advert => ({
-        id: advert.id,
-        reference_number: advert.reference_number,
-        advert_title: advert.advert_title,
-        client: advert.client,
-        product: advert.product,
-        rate_card: advert.rate_card,
-        ad_size: advert.ad_size,
-        ad_type: advert.ad_type,
-        frequency: advert.frequency,
-        start_date: advert.start_date,
-        end_date: advert.end_date,
-        base_price: advert.base_price,
-        surcharge: advert.surcharge,
-        discount: advert.discount,
-        total_amount: advert.total_amount,
-        payment_method: advert.payment_method,
-        special_instructions: advert.special_instructions,
-        status: advert.status,
-        attachments: advert.attachments,
-        createdAt: advert.createdAt,
-        createdByUser: advert.vgams_user ? {
-          id: advert.vgams_user.id,
-          name: advert.vgams_user.name,
-          email: advert.vgams_user.email,
-          role: advert.vgams_user.role
-        } : null
-      }));
-      
-      // Calculate statistics
-      const totalAmount = transformedAdverts.reduce((sum, advert) => sum + (parseFloat(advert.total_amount) || 0), 0);
-      const totalDiscount = transformedAdverts.reduce((sum, advert) => sum + (parseFloat(advert.discount) || 0), 0);
-      
-      // Get unique users
-      const uniqueUsers = new Set();
-      const users = [];
-      transformedAdverts.forEach(advert => {
-        if (advert.createdByUser && !uniqueUsers.has(advert.createdByUser.id)) {
-          uniqueUsers.add(advert.createdByUser.id);
-          users.push(advert.createdByUser);
-        }
-      });
-      
-      console.log('✅ Found adverts:', transformedAdverts.length);
-      
-      return {
-        success: true,
-        data: transformedAdverts,
-        count: transformedAdverts.length,
-        statistics: {
-          totalAmount,
-          totalDiscount,
-          averageAmount: transformedAdverts.length > 0 ? totalAmount / transformedAdverts.length : 0,
-          uniqueUsers: users.length
-        },
-        dateRange: {
-          start: startDate,
-          end: endDate
-        },
-        users: users
-      };
-      
-    } catch (err) {
-      console.error('❌ Error fetching date range adverts:', err);
-      console.error('❌ Error stack:', err.stack);
-      return ctx.internalServerError('Failed to fetch adverts');
+async getDateRangeAdverts(ctx) {
+  try {
+    const { query } = ctx;
+    
+    console.log('📅 Date range query received:', query);
+    
+    // Get date range from query parameters
+    const startDate = query.startDate ? new Date(query.startDate) : new Date();
+    const endDate = query.endDate ? new Date(query.endDate) : new Date();
+    
+    // Set time to start and end of day
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+    
+    // Validate date range
+    if (startDate > endDate) {
+      return ctx.badRequest('Start date must be before end date');
     }
+    
+    console.log('📅 Fetching adverts for date range:', {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    });
+    
+    // Build filter object - CORRECTED SYNTAX
+    const filters = {
+      createdAt: {
+        $gte: startDate.toISOString(),
+        $lte: endDate.toISOString()
+      }
+    };
+    
+    // Add optional filters with correct syntax
+    if (query.userId) {
+      filters.vgams_user = {
+        id: parseInt(query.userId)
+      };
+    }
+    
+    if (query.status) {
+      filters.status = query.status;
+    }
+    
+    if (query.clientId) {
+      filters.client = {
+        id: parseInt(query.clientId)
+      };
+    }
+    
+    if (query.productId) {
+      filters.product = {
+        id: parseInt(query.productId)
+      };
+    }
+    
+    console.log('🔍 Filters applied:', JSON.stringify(filters, null, 2));
+    
+    // Get adverts for date range - USING CORRECT POPULATE SYNTAX
+    const dateRangeAdverts = await strapi.entityService.findMany('api::advert.advert', {
+      filters: filters,
+      populate: {
+        vgams_user: {
+          fields: ['id', 'name', 'email', 'role']
+        },
+        client: {
+          fields: ['id', 'company_name', 'contact_person', 'email', 'phone']
+        },
+        product: {
+          fields: ['id', 'product_name', 'description']
+        },
+        rate_card: {
+          fields: ['id', 'name', 'ad_type', 'price_fc', 'price_bw']
+        },
+        attachments: true
+      },
+      sort: query.sort || 'createdAt:desc',
+      limit: query.limit || 1000,
+      start: query.start || 0
+    });
+    
+    // Transform data to include user info clearly
+    const transformedAdverts = dateRangeAdverts.map(advert => ({
+      id: advert.id,
+      reference_number: advert.reference_number,
+      advert_title: advert.advert_title,
+      client: advert.client ? {
+        id: advert.client.id,
+        company_name: advert.client.company_name,
+        contact_person: advert.client.contact_person,
+        email: advert.client.email,
+        phone: advert.client.phone
+      } : null,
+      product: advert.product ? {
+        id: advert.product.id,
+        product_name: advert.product.product_name,
+        description: advert.product.description
+      } : null,
+      rate_card: advert.rate_card ? {
+        id: advert.rate_card.id,
+        name: advert.rate_card.name,
+        ad_type: advert.rate_card.ad_type,
+        price_fc: advert.rate_card.price_fc,
+        price_bw: advert.rate_card.price_bw
+      } : null,
+      ad_size: advert.ad_size,
+      ad_type: advert.ad_type,
+      frequency: advert.frequency,
+      start_date: advert.start_date,
+      end_date: advert.end_date,
+      base_price: advert.base_price,
+      surcharge: advert.surcharge,
+      discount: advert.discount,
+      total_amount: advert.total_amount,
+      payment_method: advert.payment_method,
+      special_instructions: advert.special_instructions,
+      status: advert.status,
+      attachments: advert.attachments,
+      createdAt: advert.createdAt,
+      updatedAt: advert.updatedAt,
+      createdByUser: advert.vgams_user ? {
+        id: advert.vgams_user.id,
+        name: advert.vgams_user.name,
+        email: advert.vgams_user.email,
+        role: advert.vgams_user.role
+      } : null
+    }));
+    
+    // Calculate statistics
+    const totalAmount = transformedAdverts.reduce((sum, advert) => sum + (parseFloat(advert.total_amount) || 0), 0);
+    const totalDiscount = transformedAdverts.reduce((sum, advert) => sum + (parseFloat(advert.discount) || 0), 0);
+    
+    // Get unique users
+    const uniqueUsers = new Map();
+    transformedAdverts.forEach(advert => {
+      if (advert.createdByUser) {
+        if (!uniqueUsers.has(advert.createdByUser.id)) {
+          uniqueUsers.set(advert.createdByUser.id, advert.createdByUser);
+        }
+      }
+    });
+    
+    const users = Array.from(uniqueUsers.values());
+    
+    console.log('✅ Found adverts:', transformedAdverts.length);
+    
+    return {
+      success: true,
+      data: transformedAdverts,
+      count: transformedAdverts.length,
+      statistics: {
+        totalAmount,
+        totalDiscount,
+        averageAmount: transformedAdverts.length > 0 ? totalAmount / transformedAdverts.length : 0,
+        uniqueUsers: users.length
+      },
+      dateRange: {
+        start: startDate,
+        end: endDate
+      },
+      users: users
+    };
+    
+  } catch (err) {
+    console.error('❌ Error fetching date range adverts:', err.message);
+    console.error('❌ Error details:', err.details);
+    return ctx.internalServerError(`Failed to fetch adverts: ${err.message}`);
   }
+}
 }));
