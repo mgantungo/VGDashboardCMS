@@ -66,6 +66,22 @@ module.exports = {
         middlewares: []
       }
     },
+    {
+      method: 'POST',
+      path: '/adverts',
+      handler: 'advert.create',
+      config: {
+        policies: ['is-authenticated']
+      }
+    },
+    {
+      method: 'GET',
+      path: '/adverts/my-adverts',
+      handler: 'advert.findByUser',
+      config: {
+        policies: ['is-authenticated']
+      }
+    },
     /*
     {
       method: 'GET',
