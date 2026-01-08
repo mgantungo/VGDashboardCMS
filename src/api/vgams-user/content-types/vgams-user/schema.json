@@ -50,6 +50,12 @@
       "type": "boolean",
       "required": true,
       "default": true
+    },
+    "adverts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::advert.advert",
+      "mappedBy": "vgams_user"
     }
   }
 }

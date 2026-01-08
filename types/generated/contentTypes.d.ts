@@ -454,6 +454,10 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    vgams_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-user.vgams-user'
+    >;
     workflow_history: Schema.Attribute.Relation<
       'oneToMany',
       'api::workflow-log.workflow-log'
@@ -1504,6 +1508,7 @@ export interface ApiVgamsUserVgamsUser extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    adverts: Schema.Attribute.Relation<'oneToMany', 'api::advert.advert'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

@@ -18,7 +18,15 @@
     },
     "action": {
       "type": "enumeration",
-      "enum": ["created", "submitted", "reviewed", "approved", "rejected", "revised", "published"],
+      "enum": [
+        "created",
+        "submitted",
+        "reviewed",
+        "approved",
+        "rejected",
+        "revised",
+        "published"
+      ],
       "required": true
     },
     "previous_status": {

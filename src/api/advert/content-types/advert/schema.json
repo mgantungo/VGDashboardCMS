@@ -9,6 +9,7 @@
   "options": {
     "draftAndPublish": true
   },
+  "pluginOptions": {},
   "attributes": {
     "reference_number": {
       "type": "uid",
@@ -40,8 +41,11 @@
     },
     "ad_type": {
       "type": "enumeration",
-      "enum": ["full_color", "black_white"],
-      "default": "full_color"
+      "default": "full_color",
+      "enum": [
+        "full_color",
+        "black_white"
+      ]
     },
     "frequency": {
       "type": "integer",
@@ -73,8 +77,14 @@
     },
     "payment_method": {
       "type": "enumeration",
-      "enum": ["cash", "credit", "pdc", "bank_transfer", "mobile_money"],
-      "required": true
+      "required": true,
+      "enum": [
+        "cash",
+        "credit",
+        "pdc",
+        "bank_transfer",
+        "mobile_money"
+      ]
     },
     "special_instructions": {
       "type": "text"
@@ -82,12 +92,24 @@
     "attachments": {
       "type": "media",
       "multiple": true,
-      "allowedTypes": ["images", "files", "videos"]
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ]
     },
     "status": {
       "type": "enumeration",
-      "enum": ["draft", "pending_review", "editor_approved", "editor_rejected", "manager_approved", "manager_rejected", "published"],
-      "default": "draft"
+      "default": "draft",
+      "enum": [
+        "draft",
+        "pending_review",
+        "editor_approved",
+        "editor_rejected",
+        "manager_approved",
+        "manager_rejected",
+        "published"
+      ]
     },
     "workflow_history": {
       "type": "relation",
@@ -120,6 +142,12 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::invoice.invoice"
+    },
+    "vgams_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-user.vgams-user",
+      "inversedBy": "adverts"
     }
   }
 }

@@ -38,7 +38,13 @@
     },
     "payment_terms": {
       "type": "enumeration",
-      "enum": ["cash", "credit_7", "credit_15", "credit_30", "pdc"],
+      "enum": [
+        "cash",
+        "credit_7",
+        "credit_15",
+        "credit_30",
+        "pdc"
+      ],
       "default": "cash"
     },
     "adverts": {

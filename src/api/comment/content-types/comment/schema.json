@@ -27,7 +27,12 @@
     },
     "comment_type": {
       "type": "enumeration",
-      "enum": ["general", "approval", "rejection", "revision_request"],
+      "enum": [
+        "general",
+        "approval",
+        "rejection",
+        "revision_request"
+      ],
       "default": "general"
     },
     "created_at": {
