@@ -356,7 +356,7 @@ async findOne(ctx) {
     
     console.log('🔍 Fetching single advert:', id);
     
-    // Get advert with full details - UPDATED to populate category through product
+    // Get advert with full details - REMOVED workflow_history and comments due to schema issues
     const advert = await strapi.entityService.findOne('api::advert.advert', id, {
       populate: {
         vgams_user: {
@@ -374,19 +374,20 @@ async findOne(ctx) {
           }
         },
         rate_card: {
-          fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw', 'surcharge_percentage']
+          fields: ['id', 'name', 'size_dimension', 'ad_type', 'price_fc', 'price_bw', 'surcharge_percentage']
         },
         attachments: {
           fields: ['id', 'name', 'url', 'mime', 'size', 'createdAt']
-        },
-        workflow_history: {
-          fields: ['id', 'action', 'previous_status', 'new_status', 'timestamp', 'notes'],
-          sort: 'timestamp:desc'
-        },
-        comments: {
-          fields: ['id', 'comment_text', 'comment_type', 'author', 'created_at'],
-          sort: 'created_at:desc'
         }
+        // Temporarily removed due to schema issues:
+        // workflow_history: {
+        //   fields: ['id', 'action', 'previous_status', 'new_status', 'performed_by', 'timestamp', 'notes'],
+        //   sort: 'timestamp:desc'
+        // },
+        // comments: {
+        //   fields: ['id', 'comment_text', 'comment_type', 'author', 'created_at'],
+        //   sort: 'created_at:desc'
+        // }
       }
     });
     
@@ -395,7 +396,7 @@ async findOne(ctx) {
       return ctx.notFound('Advert not found');
     }
     
-    // Transform the advert data - UPDATED to get category_type from category
+    // Transform the advert data - REMOVED workflow_history and comments
     const transformedAdvert = {
       id: advert.id,
       reference_number: advert.reference_number,
@@ -450,13 +451,15 @@ async findOne(ctx) {
         size: file.size,
         uploadedAt: file.createdAt
       })) : [],
-      workflow_history: advert.workflow_history || [],
-      comments: advert.comments ? advert.comments.map(comment => ({
-        id: comment.id,
-        text: comment.comment_text,
-        type: comment.comment_type,
-        createdAt: comment.created_at
-      })) : [],
+      // Temporarily removed:
+      // workflow_history: advert.workflow_history || [],
+      // comments: advert.comments ? advert.comments.map(comment => ({
+      //   id: comment.id,
+      //   text: comment.comment_text,
+      //   type: comment.comment_type,
+      //   author: comment.author,
+      //   createdAt: comment.created_at
+      // })) : [],
       createdAt: advert.createdAt,
       updatedAt: advert.updatedAt,
       publishedAt: advert.publishedAt,
