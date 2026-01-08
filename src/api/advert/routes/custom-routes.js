@@ -74,6 +74,7 @@ module.exports = {
         auth: false // Using VGAMS auth
       }
     },
+    /*
     {
       method: 'GET',
       path: '/adverts/my-adverts',
@@ -82,6 +83,7 @@ module.exports = {
         auth: false
       }
     },
+    */
     {
       method: 'GET',
       path: '/adverts/:id',
