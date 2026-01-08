@@ -71,7 +71,6 @@ async create(ctx) {
     }
     
     // Prepare advert data for creation
-    // Note: Do NOT include reference_number or publishedAt - they're managed by Strapi
     const advertData = {
       advert_title: data.advertTitle,
       client: clientId,
@@ -93,23 +92,10 @@ async create(ctx) {
     
     console.log('📊 Final advert data:', advertData);
     
-    // Create the advert with all relations
+    // Create the advert with minimal populate first
     const advert = await strapi.entityService.create('api::advert.advert', {
       data: advertData,
-      populate: {
-        vgams_user: {
-          fields: ['id', 'name', 'email', 'role']
-        },
-        client: {
-          fields: ['id', 'company_name', 'email']
-        },
-        product: {
-          fields: ['id', 'product_name']
-        },
-        rate_card: {
-          fields: ['id', 'name']
-        }
-      }
+      populate: ['vgams_user', 'client', 'product', 'rate_card']
     });
     
     console.log('✅ Advert created successfully!');
@@ -119,13 +105,30 @@ async create(ctx) {
       title: advert.advert_title,
       client: advert.client?.company_name,
       createdBy: advert.vgams_user?.name,
-      status: advert.status,
-      publishedAt: advert.publishedAt
+      status: advert.status
+    });
+    
+    // If you need specific fields, fetch the advert again with proper populate
+    const populatedAdvert = await strapi.entityService.findOne('api::advert.advert', advert.id, {
+      populate: {
+        vgams_user: {
+          select: ['id', 'name', 'email', 'role']
+        },
+        client: {
+          select: ['id', 'company_name', 'email']
+        },
+        product: {
+          select: ['id', 'product_name']
+        },
+        rate_card: {
+          select: ['id', 'name']
+        }
+      }
     });
     
     return {
       success: true,
-      data: advert,
+      data: populatedAdvert || advert,
       message: data.status === 'draft' ? 'Draft saved successfully' : 'Advert submitted for review'
     };
     
