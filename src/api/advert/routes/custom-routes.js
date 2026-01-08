@@ -71,7 +71,7 @@ module.exports = {
       path: '/adverts',
       handler: 'advert.create',
       config: {
-        policies: ['is-authenticated']
+        policies: []
       }
     },
     {
@@ -79,7 +79,7 @@ module.exports = {
       path: '/adverts/my-adverts',
       handler: 'advert.findByUser',
       config: {
-        policies: ['is-authenticated']
+        policies: []
       }
     },
     /*
