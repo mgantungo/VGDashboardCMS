@@ -368,7 +368,7 @@ async findOne(ctx) {
           fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address']
         },
         product: {
-          fields: ['id', 'product_name', 'description', 'circulation', 'categoryType']
+          fields: ['id', 'product_name', 'description', 'circulation', 'category']
         },
         rate_card: {
           fields: ['id', 'name', 'size_dimension', 'ad_type', 'price_fc', 'price_bw', 'surcharge_percentage']
