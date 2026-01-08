@@ -7,146 +7,146 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
   /**
    * Override default create to use VGAMS users relation
    */
-  async create(ctx) {
-    try {
-      const { data } = ctx.request.body;
-      
-      console.log('🔍 Creating advert with VGAMS user');
-      console.log('📦 Request body data:', data);
-      
-      // Get VGAMS user ID from request body
-      const vgamsUserId = data.vgamsUserId;
-      
-      if (!vgamsUserId) {
-        console.error('❌ No VGAMS user ID provided');
-        return ctx.badRequest('User identification required. Please log in.');
-      }
-      
-      console.log('👤 VGAMS User ID from body:', vgamsUserId);
-      
-      // Verify VGAMS user exists
-      const vgamsUser = await strapi.db.query('api::vgams-user.vgams-user').findOne({
-        where: { 
-          id: vgamsUserId,
-          isActive: true 
-        }
-      });
-      
-      if (!vgamsUser) {
-        console.error('❌ VGAMS user not found or inactive:', vgamsUserId);
-        return ctx.unauthorized('Invalid user or account is inactive.');
-      }
-      
-      console.log('✅ VGAMS user verified:', {
-        id: vgamsUser.id,
-        name: vgamsUser.name,
-        email: vgamsUser.email,
-        role: vgamsUser.role
-      });
-      
-      // Generate reference number
-      const year = new Date().getFullYear();
-      const lastAdvert = await strapi.entityService.findMany('api::advert.advert', {
-        sort: { id: 'desc' },
-        limit: 1
-      });
-      
-      const lastId = lastAdvert.length > 0 ? lastAdvert[0].id : 0;
-      const referenceNumber = `ADV-${year}-${lastId + 1}`;
-      
-      console.log('📝 Generated reference:', referenceNumber);
-      
-      // Handle client - find or create
-      let clientId = null;
-      
-      // Check if client exists by email
-      const existingClient = await strapi.db.query('api::client.client').findOne({
-        where: { email: data.email }
-      });
-      
-      if (existingClient) {
-        clientId = existingClient.id;
-        console.log('✅ Using existing client:', clientId);
-      } else {
-        // Create new client
-        const newClient = await strapi.entityService.create('api::client.client', {
-          data: {
-            client_name: data.clientName,
-            contact_person: data.contactPerson || '',
-            email: data.email,
-            phone: data.phone,
-            status: 'active'
-          }
-        });
-        clientId = newClient.id;
-        console.log('✅ Created new client:', clientId);
-      }
-      
-      // Prepare advert data for creation
-      const advertData = {
-        advert_title: data.advertTitle,
-        client: clientId,
-        product: data.product,
-        rate_card: data.rateCard,
-        ad_size: data.adSize || '',
-        ad_type: data.adType || 'full_color',
-        frequency: parseInt(data.frequency) || 1,
-        start_date: data.startDate,
-        end_date: data.endDate || null,
-        base_price: parseFloat(data.basePrice) || 0,
-        surcharge: parseFloat(data.surcharge) || 0,
-        total_amount: parseFloat(data.totalAmount) || 0,
-        payment_method: data.paymentMethod,
-        special_instructions: data.specialInstructions || '',
-        status: data.status || 'draft',
-        vgams_user: vgamsUserId, // This creates the relation
-        reference_number: referenceNumber,
-        publishedAt: data.status === 'draft' ? null : new Date()
-      };
-      
-      console.log('📊 Final advert data:', advertData);
-      
-      // Create the advert with all relations
-      const advert = await strapi.entityService.create('api::advert.advert', {
-        data: advertData,
-        populate: {
-          vgams_user: {
-            fields: ['id', 'name', 'email', 'role']
-          },
-          client: {
-            fields: ['id', 'client_name', 'email']
-          },
-          product: {
-            fields: ['id', 'product_name']
-          },
-          rate_card: {
-            fields: ['id', 'name']
-          }
-        }
-      });
-      
-      console.log('✅ Advert created successfully!');
-      console.log('📋 Created advert:', {
-        id: advert.id,
-        reference: advert.reference_number,
-        title: advert.advert_title,
-        client: advert.client?.client_name,
-        createdBy: advert.vgams_user?.name,
-        status: advert.status
-      });
-      
-      return {
-        success: true,
-        data: advert,
-        message: data.status === 'draft' ? 'Draft saved successfully' : 'Advert submitted for review'
-      };
-      
-    } catch (err) {
-      console.error('❌ Error creating advert:', err.message);
-      console.error('❌ Stack trace:', err.stack);
-      return ctx.internalServerError(`Failed to create advert: ${err.message}`);
+async create(ctx) {
+  try {
+    const { data } = ctx.request.body;
+    
+    console.log('🔍 Creating advert with VGAMS user');
+    console.log('📦 Request body data:', data);
+    
+    // Get VGAMS user ID from request body
+    const vgamsUserId = data.vgamsUserId;
+    
+    if (!vgamsUserId) {
+      console.error('❌ No VGAMS user ID provided');
+      return ctx.badRequest('User identification required. Please log in.');
     }
-  },
+    
+    console.log('👤 VGAMS User ID from body:', vgamsUserId);
+    
+    // Verify VGAMS user exists
+    const vgamsUser = await strapi.db.query('api::vgams-user.vgams-user').findOne({
+      where: { 
+        id: vgamsUserId,
+        isActive: true 
+      }
+    });
+    
+    if (!vgamsUser) {
+      console.error('❌ VGAMS user not found or inactive:', vgamsUserId);
+      return ctx.unauthorized('Invalid user or account is inactive.');
+    }
+    
+    console.log('✅ VGAMS user verified:', {
+      id: vgamsUser.id,
+      name: vgamsUser.name,
+      email: vgamsUser.email,
+      role: vgamsUser.role
+    });
+    
+    // Generate reference number
+    const year = new Date().getFullYear();
+    const lastAdvert = await strapi.entityService.findMany('api::advert.advert', {
+      sort: { id: 'desc' },
+      limit: 1
+    });
+    
+    const lastId = lastAdvert.length > 0 ? lastAdvert[0].id : 0;
+    const referenceNumber = `ADV-${year}-${lastId + 1}`;
+    
+    console.log('📝 Generated reference:', referenceNumber);
+    
+    // Handle client - find or create
+    let clientId = null;
+    
+    // Check if client exists by email
+    const existingClient = await strapi.db.query('api::client.client').findOne({
+      where: { email: data.email }
+    });
+    
+    if (existingClient) {
+      clientId = existingClient.id;
+      console.log('✅ Using existing client:', clientId);
+    } else {
+      // Create new client - use 'company_name' as per schema
+      const newClient = await strapi.entityService.create('api::client.client', {
+        data: {
+          company_name: data.clientName, // Changed from client_name to company_name
+          contact_person: data.contactPerson || '',
+          email: data.email,
+          phone: data.phone,
+          is_active: true // Changed from status to is_active
+        }
+      });
+      clientId = newClient.id;
+      console.log('✅ Created new client:', clientId, data.clientName);
+    }
+    
+    // Prepare advert data for creation
+    const advertData = {
+      advert_title: data.advertTitle,
+      client: clientId,
+      product: data.product,
+      rate_card: data.rateCard,
+      ad_size: data.adSize || '',
+      ad_type: data.adType || 'full_color',
+      frequency: parseInt(data.frequency) || 1,
+      start_date: data.startDate,
+      end_date: data.endDate || null,
+      base_price: parseFloat(data.basePrice) || 0,
+      surcharge: parseFloat(data.surcharge) || 0,
+      total_amount: parseFloat(data.totalAmount) || 0,
+      payment_method: data.paymentMethod,
+      special_instructions: data.specialInstructions || '',
+      status: data.status || 'draft',
+      vgams_user: vgamsUserId, // This creates the relation
+      reference_number: referenceNumber,
+      publishedAt: data.status === 'draft' ? null : new Date()
+    };
+    
+    console.log('📊 Final advert data:', advertData);
+    
+    // Create the advert with all relations
+    const advert = await strapi.entityService.create('api::advert.advert', {
+      data: advertData,
+      populate: {
+        vgams_user: {
+          fields: ['id', 'name', 'email', 'role']
+        },
+        client: {
+          fields: ['id', 'company_name', 'email'] // Updated field name
+        },
+        product: {
+          fields: ['id', 'product_name']
+        },
+        rate_card: {
+          fields: ['id', 'name']
+        }
+      }
+    });
+    
+    console.log('✅ Advert created successfully!');
+    console.log('📋 Created advert:', {
+      id: advert.id,
+      reference: advert.reference_number,
+      title: advert.advert_title,
+      client: advert.client?.company_name, // Updated field name
+      createdBy: advert.vgams_user?.name,
+      status: advert.status
+    });
+    
+    return {
+      success: true,
+      data: advert,
+      message: data.status === 'draft' ? 'Draft saved successfully' : 'Advert submitted for review'
+    };
+    
+  } catch (err) {
+    console.error('❌ Error creating advert:', err.message);
+    console.error('❌ Stack trace:', err.stack);
+    return ctx.internalServerError(`Failed to create advert: ${err.message}`);
+  }
+},
   async findMyAdverts(ctx) {
     try {
       const { data } = ctx.request.body || {};
