@@ -455,7 +455,6 @@ async findOne(ctx) {
         id: comment.id,
         text: comment.comment_text,
         type: comment.comment_type,
-        author: comment.author,
         createdAt: comment.created_at
       })) : [],
       createdAt: advert.createdAt,
