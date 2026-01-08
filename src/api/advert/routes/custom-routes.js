@@ -1,5 +1,5 @@
 // api/advert/routes/custom-routes.js
-'use strict';
+
 module.exports = {
   routes: [
     {
@@ -100,6 +100,14 @@ module.exports = {
     {
       method: 'GET',
       path: '/adverts/date-range',
+      handler: 'advert.getDateRangeAdverts',
+      config: {
+        auth: false
+      }
+    },
+    {
+      method: 'GET',
+      path: '/adverts-by-date-range',  
       handler: 'advert.getDateRangeAdverts',
       config: {
         auth: false
