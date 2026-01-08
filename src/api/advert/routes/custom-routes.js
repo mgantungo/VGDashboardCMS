@@ -107,6 +107,14 @@ module.exports = {
       config: {
         auth: false
       }
+    },
+    {
+      method: 'GET',
+      path: '/adverts/date-range',
+      handler: 'advert.getDateRangeAdverts',
+      config: {
+        auth: false
+      }
     }
     /*
     {
