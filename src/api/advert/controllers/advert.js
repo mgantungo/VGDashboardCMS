@@ -11,32 +11,30 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
     try {
       const { data } = ctx.request.body;
       
-      console.log('🔍 Creating advert for VGAMS user');
-      console.log('📦 Request data:', data);
-      console.log('📋 Headers:', ctx.headers);
+      console.log('🔍 Creating advert with VGAMS user');
+      console.log('📦 Request body data:', data);
       
-      // Get VGAMS user ID from request
-      const vgamsUserId = data.vgamsUserId || ctx.headers['x-vgams-user-id'];
+      // Get VGAMS user ID from request body
+      const vgamsUserId = data.vgamsUserId;
       
       if (!vgamsUserId) {
         console.error('❌ No VGAMS user ID provided');
         return ctx.badRequest('User identification required. Please log in.');
       }
       
-      console.log('👤 VGAMS User ID:', vgamsUserId);
+      console.log('👤 VGAMS User ID from body:', vgamsUserId);
       
-      // Verify VGAMS user exists and is active
+      // Verify VGAMS user exists
       const vgamsUser = await strapi.db.query('api::vgams-user.vgams-user').findOne({
         where: { 
           id: vgamsUserId,
           isActive: true 
-        },
-        select: ['id', 'name', 'email', 'role']
+        }
       });
       
       if (!vgamsUser) {
         console.error('❌ VGAMS user not found or inactive:', vgamsUserId);
-        return ctx.unauthorized('Invalid user or account is inactive. Please log in again.');
+        return ctx.unauthorized('Invalid user or account is inactive.');
       }
       
       console.log('✅ VGAMS user verified:', {
@@ -58,38 +56,36 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       
       console.log('📝 Generated reference:', referenceNumber);
       
-      // Transform camelCase to snake_case for Strapi and handle client creation
-      // First check if client exists or needs to be created
-      let clientId = data.clientId; // If client ID is provided directly
+      // Handle client - find or create
+      let clientId = null;
       
-      if (!clientId) {
-        // Try to find existing client by email
-        const existingClient = await strapi.db.query('api::client.client').findOne({
-          where: { email: data.email }
+      // Check if client exists by email
+      const existingClient = await strapi.db.query('api::client.client').findOne({
+        where: { email: data.email }
+      });
+      
+      if (existingClient) {
+        clientId = existingClient.id;
+        console.log('✅ Using existing client:', clientId);
+      } else {
+        // Create new client
+        const newClient = await strapi.entityService.create('api::client.client', {
+          data: {
+            client_name: data.clientName,
+            contact_person: data.contactPerson || '',
+            email: data.email,
+            phone: data.phone,
+            status: 'active'
+          }
         });
-        
-        if (existingClient) {
-          clientId = existingClient.id;
-          console.log('✅ Found existing client:', existingClient.id);
-        } else {
-          // Create new client
-          const newClient = await strapi.entityService.create('api::client.client', {
-            data: {
-              client_name: data.clientName,
-              contact_person: data.contactPerson || '',
-              email: data.email,
-              phone: data.phone,
-              status: 'active'
-            }
-          });
-          clientId = newClient.id;
-          console.log('✅ Created new client:', newClient.id);
-        }
+        clientId = newClient.id;
+        console.log('✅ Created new client:', clientId);
       }
       
-      const transformedData = {
+      // Prepare advert data for creation
+      const advertData = {
         advert_title: data.advertTitle,
-        client: clientId, // Use client relation
+        client: clientId,
         product: data.product,
         rate_card: data.rateCard,
         ad_size: data.adSize || '',
@@ -103,53 +99,111 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         payment_method: data.paymentMethod,
         special_instructions: data.specialInstructions || '',
         status: data.status || 'draft',
-        vgams_user: vgamsUserId, // Use vgams_user relation instead of separate fields
-        // Keep these for backward compatibility if needed, but relation is better
-        vgams_user_id: vgamsUserId
+        vgams_user: vgamsUserId, // This creates the relation
+        reference_number: referenceNumber,
+        publishedAt: data.status === 'draft' ? null : new Date()
       };
       
-      console.log('📊 Data to save:', transformedData);
+      console.log('📊 Final advert data:', advertData);
       
-      // Create advert with relations
+      // Create the advert with all relations
       const advert = await strapi.entityService.create('api::advert.advert', {
-        data: transformedData,
+        data: advertData,
         populate: {
-          product: {
-            fields: ['id', 'product_name', 'description']
-          },
-          rate_card: {
-            fields: ['id', 'name', 'price_fc', 'price_bw']
-          },
-          client: {
-            fields: ['id', 'client_name', 'contact_person', 'email', 'phone']
-          },
           vgams_user: {
             fields: ['id', 'name', 'email', 'role']
+          },
+          client: {
+            fields: ['id', 'client_name', 'email']
+          },
+          product: {
+            fields: ['id', 'product_name']
+          },
+          rate_card: {
+            fields: ['id', 'name']
           }
         }
       });
       
-      console.log('✅ Advert created successfully');
-      console.log('📋 Advert details:', {
+      console.log('✅ Advert created successfully!');
+      console.log('📋 Created advert:', {
         id: advert.id,
         reference: advert.reference_number,
         title: advert.advert_title,
         client: advert.client?.client_name,
-        vgams_user: advert.vgams_user?.name
+        createdBy: advert.vgams_user?.name,
+        status: advert.status
       });
       
-      return { 
+      return {
         success: true,
         data: advert,
-        message: 'Advert created successfully'
+        message: data.status === 'draft' ? 'Draft saved successfully' : 'Advert submitted for review'
       };
       
     } catch (err) {
       console.error('❌ Error creating advert:', err.message);
       console.error('❌ Stack trace:', err.stack);
-      return ctx.internalServerError('Failed to create advert: ' + err.message);
+      return ctx.internalServerError(`Failed to create advert: ${err.message}`);
     }
   },
+  async findMyAdverts(ctx) {
+    try {
+      const { data } = ctx.request.body || {};
+      const vgamsUserId = data?.vgamsUserId || ctx.query.vgamsUserId;
+      
+      if (!vgamsUserId) {
+        return ctx.badRequest('User ID required');
+      }
+      
+      console.log('🔍 Finding adverts for VGAMS user:', vgamsUserId);
+      
+      // Verify user exists
+      const vgamsUser = await strapi.db.query('api::vgams-user.vgams-user').findOne({
+        where: { id: vgamsUserId, isActive: true }
+      });
+      
+      if (!vgamsUser) {
+        return ctx.unauthorized('User not found or inactive');
+      }
+      
+      const { query } = ctx;
+      
+      const adverts = await strapi.entityService.findMany('api::advert.advert', {
+        filters: {
+          vgams_user: vgamsUserId
+        },
+        populate: {
+          vgams_user: {
+            fields: ['id', 'name', 'email']
+          },
+          client: {
+            fields: ['id', 'client_name', 'email']
+          },
+          product: {
+            fields: ['id', 'product_name']
+          },
+          rate_card: {
+            fields: ['id', 'name']
+          }
+        },
+        sort: query.sort || 'createdAt:desc',
+        limit: query.limit || 50,
+        start: query.start || 0
+      });
+      
+      return {
+        success: true,
+        data: adverts,
+        count: adverts.length
+      };
+      
+    } catch (err) {
+      console.error('Error fetching adverts:', err);
+      return ctx.internalServerError('Failed to fetch adverts');
+    }
+  }
+  ,
   
   /**
    * Get adverts by VGAMS user using relation
