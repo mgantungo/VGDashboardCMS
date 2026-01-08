@@ -1,4 +1,5 @@
 // api/advert/routes/custom-routes.js
+'use strict';
 module.exports = {
   routes: [
     {
@@ -10,17 +11,6 @@ module.exports = {
         middlewares: []
       }
     },
-    /*
-    {
-      method: 'GET',
-      path: '/products/:productId/rate-cards',
-      handler: 'price-calculator.getRateCards',
-      config: {
-        policies: [],
-        middlewares: []
-      }
-    },
-    */
     {
       method: 'POST',
       path: '/adverts/:id/submit',
@@ -71,10 +61,9 @@ module.exports = {
       path: '/adverts',
       handler: 'advert.create',
       config: {
-        auth: false // Using VGAMS auth
+        auth: false
       }
     },
-    
     {
       method: 'POST',
       path: '/adverts/my-adverts',
@@ -83,7 +72,6 @@ module.exports = {
         auth: false
       }
     },
-    
     {
       method: 'GET',
       path: '/adverts/:id',
@@ -108,6 +96,7 @@ module.exports = {
         auth: false
       }
     },
+    // ADD THIS ROUTE - DATE RANGE ADVERTS
     {
       method: 'GET',
       path: '/adverts/date-range',
@@ -116,25 +105,5 @@ module.exports = {
         auth: false
       }
     }
-    /*
-    {
-      method: 'GET',
-      path: '/products',
-      handler: 'products.findAll',
-      config: {
-        policies: [],
-        middlewares: []
-      }
-    },
-    {
-      method: 'GET',
-      path: '/products/category/:categoryId',
-      handler: 'products.findByCategory',
-      config: {
-        policies: [],
-        middlewares: []
-      }
-    }
-    */
   ]
 };
