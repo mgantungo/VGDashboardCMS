@@ -9,12 +9,35 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
    */
 async create(ctx) {
   try {
-    const { data } = ctx.request.body;
+    let data = ctx.request.body?.data;
     const files = ctx.request.files; // Get uploaded files
     
     console.log('🔍 Creating advert with VGAMS user');
-    console.log('📦 Request body data:', data);
+    console.log('📦 Request body:', ctx.request.body);
+    console.log('📦 Parsed data:', data);
     console.log('📎 Uploaded files:', files ? Object.keys(files) : 'No files');
+    
+    // If data is a string (from FormData), parse it
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+      } catch (parseError) {
+        console.error('❌ Failed to parse data:', parseError);
+        return ctx.badRequest('Invalid data format');
+      }
+    }
+    
+    // If data is undefined, check if body.data exists
+    if (!data && ctx.request.body?.data) {
+      data = ctx.request.body.data;
+    }
+    
+    // If still no data, use the whole body (for JSON requests)
+    if (!data) {
+      data = ctx.request.body;
+    }
+    
+    console.log('📦 Final parsed data:', data);
     
     // Get VGAMS user ID from request body
     const vgamsUserId = data.vgamsUserId;
@@ -122,7 +145,7 @@ async create(ctx) {
     
     console.log('📊 Final advert data:', advertData);
     
-    // Create the advert
+    // Create the advert first
     const advert = await strapi.entityService.create('api::advert.advert', {
       data: advertData
     });
@@ -134,8 +157,11 @@ async create(ctx) {
       try {
         console.log('📁 Processing file uploads...');
         
+        // Get the upload service
+        const uploadService = strapi.plugins['upload'].services.upload;
+        
         // Upload files to Strapi Media Library
-        const uploadedFiles = await strapi.plugins['upload'].services.upload.upload({
+        const uploadedFiles = await uploadService.upload({
           data: {
             refId: advert.id,
             ref: 'api::advert.advert',
@@ -148,14 +174,18 @@ async create(ctx) {
         
         // Update advert with attachment IDs
         if (uploadedFiles && uploadedFiles.length > 0) {
+          const attachmentIds = uploadedFiles.map(file => file.id);
           await strapi.entityService.update('api::advert.advert', advert.id, {
             data: {
-              attachments: uploadedFiles.map(file => file.id)
+              attachments: {
+                set: attachmentIds
+              }
             }
           });
         }
       } catch (uploadError) {
         console.error('❌ File upload failed:', uploadError.message);
+        console.error('❌ Upload error stack:', uploadError.stack);
         // Don't fail the whole advert creation if file upload fails
       }
     }
@@ -192,7 +222,7 @@ async create(ctx) {
     console.error('❌ Stack trace:', err.stack);
     return ctx.internalServerError(`Failed to create advert: ${err.message}`);
   }
-},
+},,
   async findMyAdverts(ctx) {
     try {
       const { data } = ctx.request.body || {};
