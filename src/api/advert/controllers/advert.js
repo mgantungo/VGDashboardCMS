@@ -44,18 +44,6 @@ async create(ctx) {
       role: vgamsUser.role
     });
     
-    // Generate reference number
-    const year = new Date().getFullYear();
-    const lastAdvert = await strapi.entityService.findMany('api::advert.advert', {
-      sort: { id: 'desc' },
-      limit: 1
-    });
-    
-    const lastId = lastAdvert.length > 0 ? lastAdvert[0].id : 0;
-    const referenceNumber = `ADV-${year}-${lastId + 1}`;
-    
-    console.log('📝 Generated reference:', referenceNumber);
-    
     // Handle client - find or create
     let clientId = null;
     
@@ -71,11 +59,11 @@ async create(ctx) {
       // Create new client - use 'company_name' as per schema
       const newClient = await strapi.entityService.create('api::client.client', {
         data: {
-          company_name: data.clientName, // Changed from client_name to company_name
+          company_name: data.clientName,
           contact_person: data.contactPerson || '',
           email: data.email,
           phone: data.phone,
-          is_active: true // Changed from status to is_active
+          is_active: true
         }
       });
       clientId = newClient.id;
@@ -83,12 +71,13 @@ async create(ctx) {
     }
     
     // Prepare advert data for creation
+    // Note: Do NOT include reference_number or publishedAt - they're managed by Strapi
     const advertData = {
       advert_title: data.advertTitle,
       client: clientId,
       product: data.product,
       rate_card: data.rateCard,
-      ad_size: data.adSize || '',
+      ad_size: data.adSize,
       ad_type: data.adType || 'full_color',
       frequency: parseInt(data.frequency) || 1,
       start_date: data.startDate,
@@ -99,9 +88,7 @@ async create(ctx) {
       payment_method: data.paymentMethod,
       special_instructions: data.specialInstructions || '',
       status: data.status || 'draft',
-      vgams_user: vgamsUserId, // This creates the relation
-      reference_number: referenceNumber,
-      publishedAt: data.status === 'draft' ? null : new Date()
+      vgams_user: vgamsUserId
     };
     
     console.log('📊 Final advert data:', advertData);
@@ -114,7 +101,7 @@ async create(ctx) {
           fields: ['id', 'name', 'email', 'role']
         },
         client: {
-          fields: ['id', 'company_name', 'email'] // Updated field name
+          fields: ['id', 'company_name', 'email']
         },
         product: {
           fields: ['id', 'product_name']
@@ -130,9 +117,10 @@ async create(ctx) {
       id: advert.id,
       reference: advert.reference_number,
       title: advert.advert_title,
-      client: advert.client?.company_name, // Updated field name
+      client: advert.client?.company_name,
       createdBy: advert.vgams_user?.name,
-      status: advert.status
+      status: advert.status,
+      publishedAt: advert.publishedAt
     });
     
     return {
