@@ -76,7 +76,7 @@ module.exports = {
     },
     
     {
-      method: 'GET',
+      method: 'POST',
       path: '/adverts/my-adverts',
       handler: 'advert.findByVgamsUser',
       config: {
