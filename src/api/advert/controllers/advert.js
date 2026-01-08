@@ -222,7 +222,7 @@ async create(ctx) {
     console.error('❌ Stack trace:', err.stack);
     return ctx.internalServerError(`Failed to create advert: ${err.message}`);
   }
-},,
+},
   async findMyAdverts(ctx) {
     try {
       const { data } = ctx.request.body || {};
