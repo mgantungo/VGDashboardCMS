@@ -44,6 +44,33 @@ async create(ctx) {
       role: vgamsUser.role
     });
     
+    // Generate reference number in format YYYYMMDD[hourminuteseconds] with counter
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    // Get count of adverts created today for counter
+    const todayStart = new Date(year, now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayAdvertsCount = await strapi.entityService.count('api::advert.advert', {
+      filters: {
+        createdAt: {
+          $gte: todayStart.toISOString()
+        }
+      }
+    });
+    
+    // Add incremental counter (001, 002, etc.)
+    const counter = String(todayAdvertsCount + 1).padStart(3, '0');
+    const referenceNumber = `ADV-${year}${month}${day}${hours}${minutes}${seconds}${counter}`;
+    
+    console.log('📝 Generated reference:', referenceNumber);
+    console.log('📊 Today\'s advert count:', todayAdvertsCount);
+    console.log('🔢 Counter:', counter);
+    
     // Handle client - find or create
     let clientId = null;
     
@@ -56,7 +83,7 @@ async create(ctx) {
       clientId = existingClient.id;
       console.log('✅ Using existing client:', clientId);
     } else {
-      // Create new client - use 'company_name' as per schema
+      // Create new client
       const newClient = await strapi.entityService.create('api::client.client', {
         data: {
           company_name: data.clientName,
@@ -73,6 +100,7 @@ async create(ctx) {
     // Prepare advert data for creation
     const advertData = {
       advert_title: data.advertTitle,
+      reference_number: referenceNumber, // Set the generated reference
       client: clientId,
       product: data.product,
       rate_card: data.rateCard,
@@ -92,43 +120,35 @@ async create(ctx) {
     
     console.log('📊 Final advert data:', advertData);
     
-    // Create the advert with minimal populate first
+    // Create the advert - NO POPULATE
     const advert = await strapi.entityService.create('api::advert.advert', {
-      data: advertData,
-      populate: ['vgams_user', 'client', 'product', 'rate_card']
+      data: advertData
     });
     
-    console.log('✅ Advert created successfully!');
-    console.log('📋 Created advert:', {
-      id: advert.id,
-      reference: advert.reference_number,
-      title: advert.advert_title,
-      client: advert.client?.company_name,
-      createdBy: advert.vgams_user?.name,
-      status: advert.status
-    });
+    console.log('✅ Advert created successfully! ID:', advert.id);
     
-    // If you need specific fields, fetch the advert again with proper populate
-    const populatedAdvert = await strapi.entityService.findOne('api::advert.advert', advert.id, {
+    // Fetch the created advert with relations
+    const fullAdvert = await strapi.entityService.findOne('api::advert.advert', advert.id, {
       populate: {
-        vgams_user: {
-          select: ['id', 'name', 'email', 'role']
-        },
-        client: {
-          select: ['id', 'company_name', 'email']
-        },
-        product: {
-          select: ['id', 'product_name']
-        },
-        rate_card: {
-          select: ['id', 'name']
-        }
+        vgams_user: true,
+        client: true,
+        product: true,
+        rate_card: true
       }
+    });
+    
+    console.log('📋 Created advert:', {
+      id: fullAdvert.id,
+      reference: fullAdvert.reference_number,
+      title: fullAdvert.advert_title,
+      client: fullAdvert.client?.company_name,
+      createdBy: fullAdvert.vgams_user?.name,
+      status: fullAdvert.status
     });
     
     return {
       success: true,
-      data: populatedAdvert || advert,
+      data: fullAdvert,
       message: data.status === 'draft' ? 'Draft saved successfully' : 'Advert submitted for review'
     };
     
