@@ -353,10 +353,10 @@ async create(ctx) {
 async findOne(ctx) {
   try {
     const { id } = ctx.params;
-    const vgamsUserId = ctx.headers['x-vgams-user-id'] || ctx.query.vgamsUserId;
+    //const vgamsUserId = ctx.headers['x-vgams-user-id'] || ctx.query.vgamsUserId;
     
     console.log('🔍 Fetching single advert:', id);
-    console.log('👤 VGAMS User ID:', vgamsUserId);
+    //console.log('👤 VGAMS User ID:', vgamsUserId);
     
     // Get advert with full details
     const advert = await strapi.entityService.findOne('api::advert.advert', id, {
@@ -391,7 +391,8 @@ async findOne(ctx) {
       console.error('❌ Advert not found:', id);
       return ctx.notFound('Advert not found');
     }
-    
+
+    /*
     // Check if user has permission to view this advert
     // Allow if user created it or has admin/manager role
     let canView = true;
@@ -415,6 +416,7 @@ async findOne(ctx) {
         return ctx.forbidden('You do not have permission to view this advert');
       }
     }
+    */
     
     // Transform the advert data
     const transformedAdvert = {
