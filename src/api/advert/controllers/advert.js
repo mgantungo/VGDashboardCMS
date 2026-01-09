@@ -727,16 +727,8 @@ async getDateRangeAdverts(ctx) {
     return ctx.internalServerError(`Failed to fetch adverts: ${err.message}`);
   }
 },
-'use strict';
 
-/**
- * advert controller
- */
-
-const { createCoreController } = require('@strapi/strapi').factories;
-
-module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
-  async getTransactions(ctx) {
+async getTransactions(ctx) {
     try {
       const { query } = ctx;
       const { startDate, endDate } = query;
@@ -931,5 +923,4 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       return ctx.internalServerError(`Failed to fetch transactions: ${err.message}`);
     }
   }
-}));
 }));
