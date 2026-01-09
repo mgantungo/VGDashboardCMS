@@ -729,11 +729,15 @@ async getDateRangeAdverts(ctx) {
 },
 async getTransactions(ctx) {
     try {
-      let { startDate, endDate, debug = false } = ctx.query;
+      let { startDate, endDate } = ctx.query;
       
-      // Log for debugging
-      if (debug) {
-        strapi.log.info('getTransactions called with params:', { startDate, endDate });
+      // Validate date format if provided
+      if (startDate && isNaN(Date.parse(startDate))) {
+        return ctx.badRequest('Invalid startDate format. Use YYYY-MM-DD');
+      }
+      
+      if (endDate && isNaN(Date.parse(endDate))) {
+        return ctx.badRequest('Invalid endDate format. Use YYYY-MM-DD');
       }
 
       // Set default to today if no dates provided
@@ -755,11 +759,11 @@ async getTransactions(ctx) {
         endDateObj.setHours(23, 59, 59, 999);
       }
 
-      // Create filters
+      // Create filters - using createdAt instead of start_date
       const filters = {
         $and: [
           {
-            start_date: {
+            createdAt: {
               $gte: startDateObj.toISOString(),
               $lte: endDateObj.toISOString()
             }
@@ -770,36 +774,7 @@ async getTransactions(ctx) {
         ]
       };
 
-      // For debugging: Check if we're filtering correctly
-      if (debug) {
-        strapi.log.info('Date range:', {
-          startDate: startDateObj.toISOString(),
-          endDate: endDateObj.toISOString()
-        });
-        strapi.log.info('Filters:', JSON.stringify(filters, null, 2));
-      }
-
-      // First, let's check what data exists in the database
-      // Fetch ALL records first to debug
-      const allAdverts = await strapi.entityService.findMany('api::advert.advert', {
-        limit: 5, // Just get a few for debugging
-        populate: {
-          client: true
-        }
-      });
-
-      if (debug) {
-        strapi.log.info('Sample adverts in database:', allAdverts.map(ad => ({
-          id: ad.id,
-          reference_number: ad.reference_number,
-          start_date: ad.start_date,
-          isCanceled: ad.isCanceled,
-          isPaid: ad.isPaid,
-          isActive: ad.isActive
-        })));
-      }
-
-      // Now fetch with our filters
+      // Fetch transactions
       const transactions = await strapi.entityService.findMany('api::advert.advert', {
         filters,
         populate: {
@@ -823,156 +798,90 @@ async getTransactions(ctx) {
           approved_by_manager: true,
           attachments: true
         },
-        sort: { start_date: 'asc' },
+        sort: { createdAt: 'asc' },
         limit: -1 // Get all records
       });
 
-      if (debug) {
-        strapi.log.info('Found transactions with filters:', transactions.length);
-        strapi.log.info('Transaction details:', transactions.map(t => ({
-          id: t.id,
-          start_date: t.start_date,
-          base_price: t.base_price,
-          status: t.status
-        })));
-      }
-
-      // Try alternative: Fetch without date filters to see if data exists
-      const testFilters = {
-        $and: [
-          { isCanceled: false },
-          { isPaid: false },
-          { isActive: false }
-        ]
+      // Calculate monetary summary
+      let monetarySummary = {
+        total_base_price: 0,
+        total_surcharge: 0,
+        total_discount: 0,
+        total_amount: 0,
+        payment_methods: {},
+        status_counts: {}
       };
 
-      const transactionsWithoutDate = await strapi.entityService.findMany('api::advert.advert', {
-        filters: testFilters,
-        limit: 10
-      });
-
-      if (debug) {
-        strapi.log.info('Transactions without date filter:', transactionsWithoutDate.length);
-        strapi.log.info('These transactions:', transactionsWithoutDate.map(t => ({
-          id: t.id,
-          start_date: t.start_date,
-          isCanceled: t.isCanceled,
-          isPaid: t.isPaid,
-          isActive: t.isActive
-        })));
-      }
-
-      // Also check what happens if we remove all boolean filters
-      const allTransactions = await strapi.entityService.findMany('api::advert.advert', {
-        filters: {
-          start_date: {
-            $gte: startDateObj.toISOString(),
-            $lte: endDateObj.toISOString()
-          }
-        },
-        limit: 10
-      });
-
-      if (debug) {
-        strapi.log.info('Transactions with only date filter:', allTransactions.length);
-      }
-
-      // Format the response with monetary fields
-      const formattedTransactions = transactions.map(transaction => ({
-        id: transaction.id,
-        reference_number: transaction.reference_number,
-        advert_title: transaction.advert_title,
-        client: transaction.client,
-        product: transaction.product,
-        rate_card: transaction.rate_card,
-        ad_size: transaction.ad_size,
-        ad_type: transaction.ad_type,
-        frequency: transaction.frequency,
-        start_date: transaction.start_date,
-        end_date: transaction.end_date,
-        // Monetary fields
-        base_price: transaction.base_price,
-        surcharge: transaction.surcharge,
-        discount: transaction.discount,
-        total_amount: transaction.total_amount,
-        // Payment info
-        payment_method: transaction.payment_method,
-        // Status fields
-        status: transaction.status,
-        isActive: transaction.isActive,
-        isPaid: transaction.isPaid,
-        isScheduled: transaction.isScheduled,
-        hasRun: transaction.hasRun,
-        isClosed: transaction.isClosed,
-        isApproved: transaction.isApproved,
-        isCanceled: transaction.isCanceled,
-        // Additional info
-        special_instructions: transaction.special_instructions,
-        // Relations
-        vgams_user: transaction.vgams_user,
-        invoice: transaction.invoice,
-        workflow_history: transaction.workflow_history,
-        comments: transaction.comments,
-        created_by_clerk: transaction.created_by_clerk,
-        reviewed_by_editor: transaction.reviewed_by_editor,
-        approved_by_manager: transaction.approved_by_manager,
-        attachments: transaction.attachments,
-        createdAt: transaction.createdAt,
-        updatedAt: transaction.updatedAt
-      }));
-
-      // Calculate monetary summary
-      const monetarySummary = transactions.reduce((summary, transaction) => {
+      // Process each transaction to calculate totals
+      transactions.forEach(transaction => {
         const basePrice = parseFloat(transaction.base_price) || 0;
         const surcharge = parseFloat(transaction.surcharge) || 0;
         const discount = parseFloat(transaction.discount) || 0;
         const totalAmount = parseFloat(transaction.total_amount) || 0;
 
-        summary.total_base_price = (summary.total_base_price || 0) + basePrice;
-        summary.total_surcharge = (summary.total_surcharge || 0) + surcharge;
-        summary.total_discount = (summary.total_discount || 0) + discount;
-        summary.total_amount = (summary.total_amount || 0) + totalAmount;
+        monetarySummary.total_base_price += basePrice;
+        monetarySummary.total_surcharge += surcharge;
+        monetarySummary.total_discount += discount;
+        monetarySummary.total_amount += totalAmount;
         
         // Count by payment method
         if (transaction.payment_method) {
-          summary.payment_methods = summary.payment_methods || {};
-          summary.payment_methods[transaction.payment_method] = 
-            (summary.payment_methods[transaction.payment_method] || 0) + 1;
+          monetarySummary.payment_methods[transaction.payment_method] = 
+            (monetarySummary.payment_methods[transaction.payment_method] || 0) + 1;
         }
         
         // Count by status
         if (transaction.status) {
-          summary.status_counts = summary.status_counts || {};
-          summary.status_counts[transaction.status] = 
-            (summary.status_counts[transaction.status] || 0) + 1;
+          monetarySummary.status_counts[transaction.status] = 
+            (monetarySummary.status_counts[transaction.status] || 0) + 1;
         }
+      });
 
-        return summary;
-      }, {});
-
-      // Add debugging info to response
-      const debugInfo = debug ? {
-        debug: {
-          applied_filters: filters,
-          date_range_iso: {
-            start: startDateObj.toISOString(),
-            end: endDateObj.toISOString()
-          },
-          sample_data_in_db: allAdverts.slice(0, 3).map(ad => ({
-            id: ad.id,
-            start_date: ad.start_date,
-            isCanceled: ad.isCanceled,
-            isPaid: ad.isPaid,
-            isActive: ad.isActive
-          })),
-          transactions_without_date_filter: transactionsWithoutDate.length,
-          transactions_with_date_only: allTransactions.length
-        }
-      } : {};
-
-      ctx.body = {
+      // Prepare response
+      const response = {
         success: true,
-        data: formattedTransactions,
+        data: transactions.map(transaction => ({
+          id: transaction.id,
+          reference_number: transaction.reference_number,
+          advert_title: transaction.advert_title,
+          client: transaction.client,
+          product: transaction.product,
+          rate_card: transaction.rate_card,
+          ad_size: transaction.ad_size,
+          ad_type: transaction.ad_type,
+          frequency: transaction.frequency,
+          start_date: transaction.start_date,
+          end_date: transaction.end_date,
+          // Monetary fields
+          base_price: transaction.base_price,
+          surcharge: transaction.surcharge,
+          discount: transaction.discount,
+          total_amount: transaction.total_amount,
+          // Payment info
+          payment_method: transaction.payment_method,
+          // Status fields
+          status: transaction.status,
+          isActive: transaction.isActive,
+          isPaid: transaction.isPaid,
+          isScheduled: transaction.isScheduled,
+          hasRun: transaction.hasRun,
+          isClosed: transaction.isClosed,
+          isApproved: transaction.isApproved,
+          isCanceled: transaction.isCanceled,
+          // Additional info
+          special_instructions: transaction.special_instructions,
+          // Relations
+          vgams_user: transaction.vgams_user,
+          invoice: transaction.invoice,
+          workflow_history: transaction.workflow_history,
+          comments: transaction.comments,
+          created_by_clerk: transaction.created_by_clerk,
+          reviewed_by_editor: transaction.reviewed_by_editor,
+          approved_by_manager: transaction.approved_by_manager,
+          attachments: transaction.attachments,
+          createdAt: transaction.createdAt,
+          updatedAt: transaction.updatedAt
+        })),
         meta: {
           date_range: {
             start: startDate || 'today',
@@ -991,19 +900,22 @@ async getTransactions(ctx) {
             ...monetarySummary.status_counts
           },
           monetary_summary: {
-            total_base_price: monetarySummary.total_base_price || 0,
-            total_surcharge: monetarySummary.total_surcharge || 0,
-            total_discount: monetarySummary.total_discount || 0,
-            total_amount: monetarySummary.total_amount || 0,
-            avg_base_price: transactions.length > 0 ? (monetarySummary.total_base_price / transactions.length).toFixed(2) : 0,
-            avg_total_amount: transactions.length > 0 ? (monetarySummary.total_amount / transactions.length).toFixed(2) : 0
+            total_base_price: monetarySummary.total_base_price,
+            total_surcharge: monetarySummary.total_surcharge,
+            total_discount: monetarySummary.total_discount,
+            total_amount: monetarySummary.total_amount,
+            avg_base_price: transactions.length > 0 ? 
+              (monetarySummary.total_base_price / transactions.length).toFixed(2) : 0,
+            avg_total_amount: transactions.length > 0 ? 
+              (monetarySummary.total_amount / transactions.length).toFixed(2) : 0
           },
           distribution: {
-            payment_methods: monetarySummary.payment_methods || {}
-          },
-          ...debugInfo
+            payment_methods: monetarySummary.payment_methods
+          }
         }
       };
+
+      ctx.body = response;
 
     } catch (error) {
       strapi.log.error('Error in getTransactions controller:', error);
