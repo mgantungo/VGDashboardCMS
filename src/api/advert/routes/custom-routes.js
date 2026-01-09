@@ -125,6 +125,15 @@ module.exports = {
         notes: 'Returns all transactions where isCanceled=false, isPaid=false, isActive=false. Includes base_price, surcharge, discount, and total_amount.',
         tags: ['Transactions', 'Reports'],
       }
-    }
+    },
+    {
+      method: 'GET',
+      path: '/adverts/transactions/debug',
+      handler: 'advert.debugTransactions',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ]
 };
