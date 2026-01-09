@@ -58,7 +58,7 @@ module.exports = {
             }
           },
           rate_card: {
-            fields: ['id', 'name', 'ad_type', 'price_fc', 'price_bw', 'description']
+            fields: ['id', 'ad_type', 'price_fc', 'price_bw', 'description']
           },
           vgams_user: {
             fields: ['id', 'name', 'email', 'role']
