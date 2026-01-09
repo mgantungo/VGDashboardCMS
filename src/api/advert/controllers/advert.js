@@ -727,14 +727,15 @@ async getDateRangeAdverts(ctx) {
     return ctx.internalServerError(`Failed to fetch adverts: ${err.message}`);
   }
 },
-  /**
-   * Custom method to get transactions within a date range
-   * Query params: 
-   *   - startDate: Start date (optional - defaults to today)
-   *   - endDate: End date (optional - defaults to today)
-   *   - dateField: Which date field to filter by - 'created', 'start', 'end', 'updated' (optional - defaults to 'created')
-   *   - debug: Enable debug mode - 'true' or '1' (optional - defaults to false)
-   */
+'use strict';
+
+/**
+ * advert controller
+ */
+
+const { createCoreController } = require('@strapi/strapi').factories;
+
+module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
   async getTransactions(ctx) {
     try {
       const { query } = ctx;
@@ -755,20 +756,21 @@ async getDateRangeAdverts(ctx) {
         end: endDateObj.toISOString()
       });
 
-      // Build filter object - CORRECT SYNTAX like your working method
+      // Build filter object - BASED ON YOUR SUCCESSFUL ENDPOINT
+      // Your successful endpoint doesn't filter by isActive, isPaid, isCanceled
       const filters = {
-        $and: [
-          {
-            createdAt: {
-              $gte: startDateObj.toISOString(),
-              $lte: endDateObj.toISOString()
-            }
-          },
-          { isCanceled: false },
-          { isPaid: false },
-          { isActive: false }
-        ]
+        createdAt: {
+          $gte: startDateObj.toISOString(),
+          $lte: endDateObj.toISOString()
+        }
+        // REMOVED the boolean filters since they're excluding your data
+        // If you want specific filters, adjust based on what you actually want
       };
+
+      // OPTIONAL: If you want to filter by specific statuses
+      if (query.status) {
+        filters.status = query.status;
+      }
 
       console.log('🔍 Filters being applied:', JSON.stringify(filters, null, 2));
 
@@ -780,10 +782,10 @@ async getDateRangeAdverts(ctx) {
             fields: ['id', 'company_name', 'contact_person', 'email', 'phone']
           },
           product: {
-            fields: ['id', 'product_name', 'description']
+            fields: ['id', 'name', 'description']
           },
           rate_card: {
-            fields: ['id', 'ad_type', 'price_fc', 'price_bw']
+            fields: ['id', 'name', 'price_fc', 'price_bw']
           },
           vgams_user: {
             fields: ['id', 'name', 'email', 'role']
@@ -812,13 +814,14 @@ async getDateRangeAdverts(ctx) {
           },
           attachments: true
         },
-        sort: 'createdAt:asc',
-        limit: -1
+        sort: 'createdAt:desc', // Changed to desc to match your working endpoint
+        limit: query.limit || 1000,
+        start: query.start || 0
       });
 
       console.log(`✅ Found ${transactions.length} transactions`);
 
-      // Transform data to include monetary fields clearly
+      // Transform data to match your working endpoint's structure
       const transformedTransactions = transactions.map(transaction => ({
         id: transaction.id,
         reference_number: transaction.reference_number,
@@ -831,17 +834,18 @@ async getDateRangeAdverts(ctx) {
           email: transaction.client.email,
           phone: transaction.client.phone
         } : null,
-        // Product info
+        // Product info - NOTE: Your working endpoint uses product_name, not name
         product: transaction.product ? {
           id: transaction.product.id,
-          name: transaction.product.name,
+          product_name: transaction.product.name, // Adjust based on your schema
           description: transaction.product.description
         } : null,
         // Rate card info
         rate_card: transaction.rate_card ? {
           id: transaction.rate_card.id,
-          name: transaction.rate_card.name,
-          price: transaction.rate_card.price
+          ad_type: transaction.rate_card.ad_type,
+          price_fc: transaction.rate_card.price_fc,
+          price_bw: transaction.rate_card.price_bw
         } : null,
         // Advert details
         ad_size: transaction.ad_size,
@@ -849,7 +853,7 @@ async getDateRangeAdverts(ctx) {
         frequency: transaction.frequency,
         start_date: transaction.start_date,
         end_date: transaction.end_date,
-        // MONETARY FIELDS - THE IMPORTANT ONES
+        // MONETARY FIELDS
         base_price: transaction.base_price,
         surcharge: transaction.surcharge,
         discount: transaction.discount,
@@ -884,59 +888,41 @@ async getDateRangeAdverts(ctx) {
         updatedAt: transaction.updatedAt
       }));
 
-      // Calculate monetary statistics - like your working method
-      const totalBasePrice = transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.base_price) || 0), 0);
-      const totalSurcharge = transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.surcharge) || 0), 0);
-      const totalDiscount = transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.discount) || 0), 0);
+      // Calculate statistics - matching your working endpoint
       const totalAmount = transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.total_amount) || 0), 0);
+      const totalDiscount = transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.discount) || 0), 0);
       
-      // Get payment method distribution
-      const paymentMethods = {};
-      transformedTransactions.forEach(t => {
-        if (t.payment_method) {
-          paymentMethods[t.payment_method] = (paymentMethods[t.payment_method] || 0) + 1;
+      // Get unique users
+      const uniqueUsers = new Map();
+      transformedTransactions.forEach(transaction => {
+        if (transaction.createdByUser) {
+          if (!uniqueUsers.has(transaction.createdByUser.id)) {
+            uniqueUsers.set(transaction.createdByUser.id, transaction.createdByUser);
+          }
         }
       });
+      
+      const users = Array.from(uniqueUsers.values());
 
-      // Get status distribution
-      const statusCounts = {};
-      transformedTransactions.forEach(t => {
-        if (t.status) {
-          statusCounts[t.status] = (statusCounts[t.status] || 0) + 1;
-        }
-      });
-
-      // Return the data directly (like your working method)
+      // Return the data in same format as your working endpoint
       return {
         success: true,
         data: transformedTransactions,
         count: transformedTransactions.length,
         statistics: {
-          monetary: {
-            total_base_price: totalBasePrice,
-            total_surcharge: totalSurcharge,
-            total_discount: totalDiscount,
-            total_amount: totalAmount,
-            average_base_price: transformedTransactions.length > 0 ? (totalBasePrice / transformedTransactions.length).toFixed(2) : 0,
-            average_total_amount: transformedTransactions.length > 0 ? (totalAmount / transformedTransactions.length).toFixed(2) : 0
-          },
-          distributions: {
-            payment_methods: paymentMethods,
-            status: statusCounts
-          }
+          totalAmount: totalAmount,
+          totalDiscount: totalDiscount,
+          averageAmount: transformedTransactions.length > 0 ? totalAmount / transformedTransactions.length : 0,
+          uniqueUsers: users.length,
+          // Additional monetary stats
+          totalBasePrice: transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.base_price) || 0), 0),
+          totalSurcharge: transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.surcharge) || 0), 0)
         },
         dateRange: {
-          start: startDateObj.toISOString(),
-          end: endDateObj.toISOString(),
-          startDate: startDate || 'today',
-          endDate: endDate || 'today'
+          start: startDateObj,
+          end: endDateObj
         },
-        filtersApplied: {
-          isCanceled: false,
-          isPaid: false,
-          isActive: false,
-          dateRange: true
-        }
+        users: users
       };
       
     } catch (err) {
@@ -945,4 +931,5 @@ async getDateRangeAdverts(ctx) {
       return ctx.internalServerError(`Failed to fetch transactions: ${err.message}`);
     }
   }
+}));
 }));
