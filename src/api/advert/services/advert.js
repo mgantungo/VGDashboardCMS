@@ -271,3 +271,4 @@ module.exports = createCoreService('api::advert.advert', ({ strapi }) => ({
       throw error;
     }
   },
+}));
