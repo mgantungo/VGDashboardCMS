@@ -114,16 +114,30 @@ module.exports = {
       }
     },
     {
-      method: 'GET',
-      path: '/adverts/transactions-payment-status',
-      handler: 'advert.getTransactions',
+      method: 'POST',
+      path: '/adverts/filtered-transactions',
+      handler: 'prepare-payment.getFilteredTransactions',
       config: {
         auth: false, // Set to true for production
         policies: [],
         middlewares: [],
-        description: 'Get transactions within date range with monetary details',
-        notes: 'Returns all transactions where isCanceled=false, isPaid=false, isActive=false. Includes base_price, surcharge, discount, and total_amount.',
-        tags: ['Transactions', 'Reports'],
+        description: 'Get filtered transactions by date range from request body',
+        notes: 'Returns transactions where isActive=false, isPaid=false, isCanceled=false. Accepts dates in request body (not query params).',
+        tags: ['Transactions', 'Filtered'],
+        body: {
+          startDate: {
+            type: 'string',
+            required: true,
+            description: 'Start date (YYYY-MM-DD)',
+            example: '2026-01-01'
+          },
+          endDate: {
+            type: 'string',
+            required: true,
+            description: 'End date (YYYY-MM-DD)',
+            example: '2026-01-31'
+          }
+        }
       }
     }
   ]
