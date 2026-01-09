@@ -783,7 +783,7 @@ async getDateRangeAdverts(ctx) {
             fields: ['id', 'product_name', 'description']
           },
           rate_card: {
-            fields: ['id', 'ad_type', 'price']
+            fields: ['id', 'ad_type', 'price_fc', 'price_bw']
           },
           vgams_user: {
             fields: ['id', 'name', 'email', 'role']
