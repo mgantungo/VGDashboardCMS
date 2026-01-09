@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "vgams-sales-person",
+  "info": {
+    "singularName": "vgams-sales-person",
+    "pluralName": "vgams-sales-persons",
+    "displayName": "VGAMS Sales Persons"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "required": true,
+      "unique": true,
+      "regex": "^[A-Za-z0-9._%+-]+@newvision\\.co\\.ug$"
+    },
+    "isActive": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    }
+  }
+}
