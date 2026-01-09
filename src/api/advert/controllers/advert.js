@@ -729,15 +729,11 @@ async getDateRangeAdverts(ctx) {
 },
 async getTransactions(ctx) {
     try {
-      let { startDate, endDate } = ctx.query;
+      let { startDate, endDate, debug = false } = ctx.query;
       
-      // Validate date format if provided
-      if (startDate && isNaN(Date.parse(startDate))) {
-        return ctx.badRequest('Invalid startDate format. Use YYYY-MM-DD');
-      }
-      
-      if (endDate && isNaN(Date.parse(endDate))) {
-        return ctx.badRequest('Invalid endDate format. Use YYYY-MM-DD');
+      // Log for debugging
+      if (debug) {
+        strapi.log.info('getTransactions called with params:', { startDate, endDate });
       }
 
       // Set default to today if no dates provided
@@ -745,8 +741,11 @@ async getTransactions(ctx) {
       
       if (!startDate || !endDate) {
         const today = new Date();
-        startDateObj = new Date(today.setHours(0, 0, 0, 0));
-        endDateObj = new Date(today.setHours(23, 59, 59, 999));
+        startDateObj = new Date(today);
+        startDateObj.setHours(0, 0, 0, 0);
+        
+        endDateObj = new Date(today);
+        endDateObj.setHours(23, 59, 59, 999);
       } else {
         // Convert string dates to Date objects with proper hours
         startDateObj = new Date(startDate);
@@ -756,17 +755,53 @@ async getTransactions(ctx) {
         endDateObj.setHours(23, 59, 59, 999);
       }
 
-      // Fetch transactions with all relations and monetary fields
-      const transactions = await strapi.entityService.findMany('api::advert.advert', {
-        filters: {
-          start_date: {
-            $gte: startDateObj.toISOString(),
-            $lte: endDateObj.toISOString()
+      // Create filters
+      const filters = {
+        $and: [
+          {
+            start_date: {
+              $gte: startDateObj.toISOString(),
+              $lte: endDateObj.toISOString()
+            }
           },
-          isCanceled: false,
-          isPaid: false,
-          isActive: false
-        },
+          { isCanceled: false },
+          { isPaid: false },
+          { isActive: false }
+        ]
+      };
+
+      // For debugging: Check if we're filtering correctly
+      if (debug) {
+        strapi.log.info('Date range:', {
+          startDate: startDateObj.toISOString(),
+          endDate: endDateObj.toISOString()
+        });
+        strapi.log.info('Filters:', JSON.stringify(filters, null, 2));
+      }
+
+      // First, let's check what data exists in the database
+      // Fetch ALL records first to debug
+      const allAdverts = await strapi.entityService.findMany('api::advert.advert', {
+        limit: 5, // Just get a few for debugging
+        populate: {
+          client: true
+        }
+      });
+
+      if (debug) {
+        strapi.log.info('Sample adverts in database:', allAdverts.map(ad => ({
+          id: ad.id,
+          reference_number: ad.reference_number,
+          start_date: ad.start_date,
+          isCanceled: ad.isCanceled,
+          isPaid: ad.isPaid,
+          isActive: ad.isActive
+        })));
+      }
+
+      // Now fetch with our filters
+      const transactions = await strapi.entityService.findMany('api::advert.advert', {
+        filters,
         populate: {
           client: true,
           product: true,
@@ -788,8 +823,59 @@ async getTransactions(ctx) {
           approved_by_manager: true,
           attachments: true
         },
-        sort: { start_date: 'asc' }
+        sort: { start_date: 'asc' },
+        limit: -1 // Get all records
       });
+
+      if (debug) {
+        strapi.log.info('Found transactions with filters:', transactions.length);
+        strapi.log.info('Transaction details:', transactions.map(t => ({
+          id: t.id,
+          start_date: t.start_date,
+          base_price: t.base_price,
+          status: t.status
+        })));
+      }
+
+      // Try alternative: Fetch without date filters to see if data exists
+      const testFilters = {
+        $and: [
+          { isCanceled: false },
+          { isPaid: false },
+          { isActive: false }
+        ]
+      };
+
+      const transactionsWithoutDate = await strapi.entityService.findMany('api::advert.advert', {
+        filters: testFilters,
+        limit: 10
+      });
+
+      if (debug) {
+        strapi.log.info('Transactions without date filter:', transactionsWithoutDate.length);
+        strapi.log.info('These transactions:', transactionsWithoutDate.map(t => ({
+          id: t.id,
+          start_date: t.start_date,
+          isCanceled: t.isCanceled,
+          isPaid: t.isPaid,
+          isActive: t.isActive
+        })));
+      }
+
+      // Also check what happens if we remove all boolean filters
+      const allTransactions = await strapi.entityService.findMany('api::advert.advert', {
+        filters: {
+          start_date: {
+            $gte: startDateObj.toISOString(),
+            $lte: endDateObj.toISOString()
+          }
+        },
+        limit: 10
+      });
+
+      if (debug) {
+        strapi.log.info('Transactions with only date filter:', allTransactions.length);
+      }
 
       // Format the response with monetary fields
       const formattedTransactions = transactions.map(transaction => ({
@@ -864,6 +950,26 @@ async getTransactions(ctx) {
         return summary;
       }, {});
 
+      // Add debugging info to response
+      const debugInfo = debug ? {
+        debug: {
+          applied_filters: filters,
+          date_range_iso: {
+            start: startDateObj.toISOString(),
+            end: endDateObj.toISOString()
+          },
+          sample_data_in_db: allAdverts.slice(0, 3).map(ad => ({
+            id: ad.id,
+            start_date: ad.start_date,
+            isCanceled: ad.isCanceled,
+            isPaid: ad.isPaid,
+            isActive: ad.isActive
+          })),
+          transactions_without_date_filter: transactionsWithoutDate.length,
+          transactions_with_date_only: allTransactions.length
+        }
+      } : {};
+
       ctx.body = {
         success: true,
         data: formattedTransactions,
@@ -894,7 +1000,8 @@ async getTransactions(ctx) {
           },
           distribution: {
             payment_methods: monetarySummary.payment_methods || {}
-          }
+          },
+          ...debugInfo
         }
       };
 
