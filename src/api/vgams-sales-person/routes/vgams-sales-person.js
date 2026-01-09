@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * sub-county router
+ * sales persons
  */
 
 const { createCoreRouter } = require('@strapi/strapi').factories;
