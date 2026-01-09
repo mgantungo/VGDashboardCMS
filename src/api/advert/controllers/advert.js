@@ -728,198 +728,90 @@ async getDateRangeAdverts(ctx) {
   }
 },
 async getTransactions(ctx) {
-    try {
-      let { startDate, endDate } = ctx.query;
-      
-      // Validate date format if provided
-      if (startDate && isNaN(Date.parse(startDate))) {
-        return ctx.badRequest('Invalid startDate format. Use YYYY-MM-DD');
-      }
-      
-      if (endDate && isNaN(Date.parse(endDate))) {
-        return ctx.badRequest('Invalid endDate format. Use YYYY-MM-DD');
-      }
-
-      // Set default to today if no dates provided
-      let startDateObj, endDateObj;
-      
-      if (!startDate || !endDate) {
-        const today = new Date();
-        startDateObj = new Date(today);
-        startDateObj.setHours(0, 0, 0, 0);
-        
-        endDateObj = new Date(today);
-        endDateObj.setHours(23, 59, 59, 999);
-      } else {
-        // Convert string dates to Date objects with proper hours
-        startDateObj = new Date(startDate);
-        startDateObj.setHours(0, 0, 0, 0);
-        
-        endDateObj = new Date(endDate);
-        endDateObj.setHours(23, 59, 59, 999);
-      }
-
-      // Create filters - using createdAt instead of start_date
-      const filters = {
-        $and: [
-          {
-            createdAt: {
-              $gte: startDateObj.toISOString(),
-              $lte: endDateObj.toISOString()
-            }
-          },
-          { isCanceled: false },
-          { isPaid: false },
-          { isActive: false }
-        ]
-      };
-
-      // Fetch transactions
-      const transactions = await strapi.entityService.findMany('api::advert.advert', {
-        filters,
-        populate: {
-          client: true,
-          product: true,
-          rate_card: true,
-          vgams_user: true,
-          invoice: {
-            populate: {
-              payments: true
-            }
-          },
-          workflow_history: {
-            populate: {
-              vgams_users: true
-            }
-          },
-          comments: true,
-          created_by_clerk: true,
-          reviewed_by_editor: true,
-          approved_by_manager: true,
-          attachments: true
-        },
-        sort: { createdAt: 'asc' },
-        limit: -1 // Get all records
-      });
-
-      // Calculate monetary summary
-      let monetarySummary = {
-        total_base_price: 0,
-        total_surcharge: 0,
-        total_discount: 0,
-        total_amount: 0,
-        payment_methods: {},
-        status_counts: {}
-      };
-
-      // Process each transaction to calculate totals
-      transactions.forEach(transaction => {
-        const basePrice = parseFloat(transaction.base_price) || 0;
-        const surcharge = parseFloat(transaction.surcharge) || 0;
-        const discount = parseFloat(transaction.discount) || 0;
-        const totalAmount = parseFloat(transaction.total_amount) || 0;
-
-        monetarySummary.total_base_price += basePrice;
-        monetarySummary.total_surcharge += surcharge;
-        monetarySummary.total_discount += discount;
-        monetarySummary.total_amount += totalAmount;
-        
-        // Count by payment method
-        if (transaction.payment_method) {
-          monetarySummary.payment_methods[transaction.payment_method] = 
-            (monetarySummary.payment_methods[transaction.payment_method] || 0) + 1;
-        }
-        
-        // Count by status
-        if (transaction.status) {
-          monetarySummary.status_counts[transaction.status] = 
-            (monetarySummary.status_counts[transaction.status] || 0) + 1;
-        }
-      });
-
-      // Prepare response
-      const response = {
-        success: true,
-        data: transactions.map(transaction => ({
-          id: transaction.id,
-          reference_number: transaction.reference_number,
-          advert_title: transaction.advert_title,
-          client: transaction.client,
-          product: transaction.product,
-          rate_card: transaction.rate_card,
-          ad_size: transaction.ad_size,
-          ad_type: transaction.ad_type,
-          frequency: transaction.frequency,
-          start_date: transaction.start_date,
-          end_date: transaction.end_date,
-          // Monetary fields
-          base_price: transaction.base_price,
-          surcharge: transaction.surcharge,
-          discount: transaction.discount,
-          total_amount: transaction.total_amount,
-          // Payment info
-          payment_method: transaction.payment_method,
-          // Status fields
-          status: transaction.status,
-          isActive: transaction.isActive,
-          isPaid: transaction.isPaid,
-          isScheduled: transaction.isScheduled,
-          hasRun: transaction.hasRun,
-          isClosed: transaction.isClosed,
-          isApproved: transaction.isApproved,
-          isCanceled: transaction.isCanceled,
-          // Additional info
-          special_instructions: transaction.special_instructions,
-          // Relations
-          vgams_user: transaction.vgams_user,
-          invoice: transaction.invoice,
-          workflow_history: transaction.workflow_history,
-          comments: transaction.comments,
-          created_by_clerk: transaction.created_by_clerk,
-          reviewed_by_editor: transaction.reviewed_by_editor,
-          approved_by_manager: transaction.approved_by_manager,
-          attachments: transaction.attachments,
-          createdAt: transaction.createdAt,
-          updatedAt: transaction.updatedAt
-        })),
-        meta: {
-          date_range: {
-            start: startDate || 'today',
-            end: endDate || 'today',
-            start_iso: startDateObj.toISOString(),
-            end_iso: endDateObj.toISOString()
-          },
-          filters_applied: {
-            date_range: true,
-            isCanceled: false,
-            isPaid: false,
-            isActive: false
-          },
-          counts: {
-            total_transactions: transactions.length,
-            ...monetarySummary.status_counts
-          },
-          monetary_summary: {
-            total_base_price: monetarySummary.total_base_price,
-            total_surcharge: monetarySummary.total_surcharge,
-            total_discount: monetarySummary.total_discount,
-            total_amount: monetarySummary.total_amount,
-            avg_base_price: transactions.length > 0 ? 
-              (monetarySummary.total_base_price / transactions.length).toFixed(2) : 0,
-            avg_total_amount: transactions.length > 0 ? 
-              (monetarySummary.total_amount / transactions.length).toFixed(2) : 0
-          },
-          distribution: {
-            payment_methods: monetarySummary.payment_methods
-          }
-        }
-      };
-
-      ctx.body = response;
-
-    } catch (error) {
-      strapi.log.error('Error in getTransactions controller:', error);
-      return ctx.throw(500, 'Internal server error while fetching transactions');
+  try {
+    let { startDate, endDate } = ctx.query;
+    
+    // Set default to today if no dates provided
+    let startDateObj, endDateObj;
+    
+    if (!startDate || !endDate) {
+      const today = new Date();
+      startDateObj = new Date(today.setHours(0, 0, 0, 0));
+      endDateObj = new Date(today.setHours(23, 59, 59, 999));
+    } else {
+      startDateObj = new Date(startDate);
+      startDateObj.setHours(0, 0, 0, 0);
+      endDateObj = new Date(endDate);
+      endDateObj.setHours(23, 59, 59, 999);
     }
+
+    // Build filters - using createdAt
+    const filters = {
+      createdAt: { $gte: startDateObj.toISOString(), $lte: endDateObj.toISOString() },
+      isCanceled: false,
+      isPaid: false,
+      isActive: false
+    };
+
+    // Fetch data
+    const transactions = await strapi.entityService.findMany('api::advert.advert', {
+      filters,
+      populate: '*',
+      sort: { createdAt: 'asc' }
+    });
+
+    // Calculate totals
+    const totals = transactions.reduce((acc, t) => {
+      acc.base_price += parseFloat(t.base_price || 0);
+      acc.surcharge += parseFloat(t.surcharge || 0);
+      acc.discount += parseFloat(t.discount || 0);
+      acc.total_amount += parseFloat(t.total_amount || 0);
+      
+      if (t.payment_method) {
+        acc.payment_methods[t.payment_method] = (acc.payment_methods[t.payment_method] || 0) + 1;
+      }
+      
+      if (t.status) {
+        acc.status_counts[t.status] = (acc.status_counts[t.status] || 0) + 1;
+      }
+      
+      return acc;
+    }, {
+      base_price: 0,
+      surcharge: 0,
+      discount: 0,
+      total_amount: 0,
+      payment_methods: {},
+      status_counts: {}
+    });
+
+    // Return response
+    ctx.body = {
+      success: true,
+      count: transactions.length,
+      data: transactions,
+      summary: {
+        date_range: `${startDate || 'today'} to ${endDate || 'today'}`,
+        totals: {
+          base_price: totals.base_price,
+          surcharge: totals.surcharge,
+          discount: totals.discount,
+          total_amount: totals.total_amount
+        },
+        averages: {
+          base_price: transactions.length ? (totals.base_price / transactions.length).toFixed(2) : 0,
+          total_amount: transactions.length ? (totals.total_amount / transactions.length).toFixed(2) : 0
+        },
+        distributions: {
+          payment_methods: totals.payment_methods,
+          status: totals.status_counts
+        }
+      }
+    };
+
+  } catch (error) {
+    strapi.log.error('Error in getTransactions:', error);
+    ctx.throw(500, 'Failed to fetch transactions');
   }
+}
 }));
