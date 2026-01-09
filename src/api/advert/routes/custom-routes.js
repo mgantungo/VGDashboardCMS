@@ -112,6 +112,54 @@ module.exports = {
       config: {
         auth: false
       }
+    },
+    {
+      method: 'GET',
+      path: '/adverts/transactions/date-range',
+      handler: 'advert.getTransactions',
+      config: {
+        auth: false, // Set to true for production
+        policies: [],
+        middlewares: [],
+        description: 'Get transactions within date range with monetary details',
+        notes: 'Returns all transactions where isCanceled=false, isPaid=false, isActive=false. Includes base_price, surcharge, discount, and total_amount.',
+        tags: ['Transactions', 'Reports'],
+        query: {
+          startDate: {
+            type: 'string',
+            description: 'Start date (YYYY-MM-DD) - defaults to today',
+            example: '2024-01-01'
+          },
+          endDate: {
+            type: 'string',
+            description: 'End date (YYYY-MM-DD) - defaults to today',
+            example: '2024-01-31'
+          }
+        },
+        responses: {
+          200: {
+            description: 'Successful response with transactions',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { type: 'array' },
+                    meta: { type: 'object' }
+                  }
+                }
+              }
+            }
+          },
+          400: {
+            description: 'Bad request - invalid date format'
+          },
+          500: {
+            description: 'Internal server error'
+          }
+        }
+      }
     }
   ]
 };
