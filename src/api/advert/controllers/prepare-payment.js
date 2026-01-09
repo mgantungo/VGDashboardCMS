@@ -50,15 +50,15 @@ module.exports = {
             fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'clientTin']
           },
           product: {
-            fields: ['id', 'product_name', 'description'],
+            fields: ['id', 'product_name'],
             populate: {
               category: {
-                fields: ['id', 'category_name', 'description']
+                fields: ['id', 'category_name']
               }
             }
           },
           rate_card: {
-            fields: ['id', 'ad_type', 'price_fc', 'price_bw', 'description']
+            fields: ['id', 'ad_type', 'price_fc', 'price_bw']
           },
           vgams_user: {
             fields: ['id', 'name', 'email', 'role']
