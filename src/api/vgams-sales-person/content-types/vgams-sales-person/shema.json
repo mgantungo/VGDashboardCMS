@@ -1,6 +1,6 @@
 {
   "kind": "collectionType",
-  "collectionName": "vgams-sales-person",
+  "collectionName": "vgams_sales_person",
   "info": {
     "singularName": "vgams-sales-person",
     "pluralName": "vgams-sales-persons",
