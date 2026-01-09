@@ -115,7 +115,7 @@ module.exports = {
     },
     {
       method: 'GET',
-      path: '/adverts/transactions/date-range',
+      path: '/adverts/transactions-payment-status',
       handler: 'advert.getTransactions',
       config: {
         auth: false, // Set to true for production
