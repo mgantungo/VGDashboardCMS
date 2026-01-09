@@ -729,25 +729,89 @@ async getDateRangeAdverts(ctx) {
 },
   /**
    * Custom method to get transactions within a date range
-   * Query params: startDate, endDate (optional - defaults to today)
+   * Query params: 
+   *   - startDate: Start date (optional - defaults to today)
+   *   - endDate: End date (optional - defaults to today)
+   *   - dateField: Which date field to filter by - 'created', 'start', 'end', 'updated' (optional - defaults to 'created')
+   *   - debug: Enable debug mode - 'true' or '1' (optional - defaults to false)
    */
   async getTransactions(ctx) {
     try {
-      const { startDate, endDate } = ctx.query;
+      const { startDate, endDate, dateField, debug } = ctx.query;
+      
+      // Parse debug flag
+      const debugMode = debug === 'true' || debug === '1';
 
       // Call the service method
-      const data = await strapi
+      const result = await strapi
         .service('api::advert.advert')
-        .getTransactions(startDate, endDate);
+        .getTransactions(startDate, endDate, dateField, debugMode);
 
       return ctx.send({
-        data,
+        data: result.transactions,
         meta: {
-          count: data.length,
+          count: result.transactions.length,
+          summary: result.summary,
+          filters: result.filters,
+          ...(debugMode && result.debug ? { debug: result.debug } : {}),
         },
       });
     } catch (err) {
-      ctx.throw(500, err);
+      console.error('Controller Error:', err);
+      return ctx.badRequest('Error fetching transactions', { 
+        error: err.message,
+        details: err.details || null 
+      });
+    }
+  },
+
+  /**
+   * Debug endpoint to see all transactions matching the base conditions
+   * (without date filtering)
+   */
+  async debugTransactions(ctx) {
+    try {
+      const adverts = await strapi
+        .service('api::advert.advert')
+        .getAllMatchingTransactions();
+
+      // Group by date
+      const byDate = {};
+      adverts.forEach(advert => {
+        const date = advert.createdAt ? advert.createdAt.split('T')[0] : 'unknown';
+        if (!byDate[date]) {
+          byDate[date] = [];
+        }
+        byDate[date].push({
+          id: advert.id,
+          reference: advert.reference_number,
+          title: advert.advert_title,
+          createdAt: advert.createdAt,
+          startDate: advert.start_date,
+          endDate: advert.end_date,
+          amount: advert.total_amount,
+          client: advert.client?.company_name,
+        });
+      });
+
+      return ctx.send({
+        data: {
+          total: adverts.length,
+          transactions: adverts,
+          byDate,
+          conditions: {
+            isCanceled: false,
+            isPaid: false,
+            isActive: false,
+          },
+          message: 'These are ALL transactions matching the conditions (isCanceled=false, isPaid=false, isActive=false) regardless of date',
+        },
+      });
+    } catch (err) {
+      console.error('Debug Controller Error:', err);
+      return ctx.badRequest('Error in debug endpoint', { 
+        error: err.message 
+      });
     }
   }
 }));
