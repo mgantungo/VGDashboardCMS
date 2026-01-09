@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * sub-county controller
+ * sales persons
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
