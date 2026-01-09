@@ -737,81 +737,212 @@ async getDateRangeAdverts(ctx) {
    */
   async getTransactions(ctx) {
     try {
-      const { startDate, endDate, dateField, debug } = ctx.query;
+      const { query } = ctx;
+      const { startDate, endDate } = query;
       
-      // Parse debug flag
-      const debugMode = debug === 'true' || debug === '1';
-
-      // Call the service method
-      const result = await strapi
-        .service('api::advert.advert')
-        .getTransactions(startDate, endDate, dateField, debugMode);
-
-      return ctx.send({
-        data: result.transactions,
-        meta: {
-          count: result.transactions.length,
-          summary: result.summary,
-          filters: result.filters,
-          ...(debugMode && result.debug ? { debug: result.debug } : {}),
-        },
-      });
-    } catch (err) {
-      console.error('Controller Error:', err);
-      return ctx.badRequest('Error fetching transactions', { 
-        error: err.message,
-        details: err.details || null 
-      });
-    }
-  },
-
-  /**
-   * Debug endpoint to see all transactions matching the base conditions
-   * (without date filtering)
-   */
-  async debugTransactions(ctx) {
-    try {
-      const adverts = await strapi
-        .service('api::advert.advert')
-        .getAllMatchingTransactions();
-
-      // Group by date
-      const byDate = {};
-      adverts.forEach(advert => {
-        const date = advert.createdAt ? advert.createdAt.split('T')[0] : 'unknown';
-        if (!byDate[date]) {
-          byDate[date] = [];
-        }
-        byDate[date].push({
-          id: advert.id,
-          reference: advert.reference_number,
-          title: advert.advert_title,
-          createdAt: advert.createdAt,
-          startDate: advert.start_date,
-          endDate: advert.end_date,
-          amount: advert.total_amount,
-          client: advert.client?.company_name,
-        });
+      console.log('📊 getTransactions called with query:', query);
+      
+      // Set date range (using createdAt)
+      const startDateObj = startDate ? new Date(startDate) : new Date();
+      const endDateObj = endDate ? new Date(endDate) : new Date();
+      
+      // Set time to start and end of day
+      startDateObj.setHours(0, 0, 0, 0);
+      endDateObj.setHours(23, 59, 59, 999);
+      
+      console.log('📅 Date range for query:', {
+        start: startDateObj.toISOString(),
+        end: endDateObj.toISOString()
       });
 
-      return ctx.send({
-        data: {
-          total: adverts.length,
-          transactions: adverts,
-          byDate,
-          conditions: {
-            isCanceled: false,
-            isPaid: false,
-            isActive: false,
+      // Build filter object - CORRECT SYNTAX like your working method
+      const filters = {
+        $and: [
+          {
+            createdAt: {
+              $gte: startDateObj.toISOString(),
+              $lte: endDateObj.toISOString()
+            }
           },
-          message: 'These are ALL transactions matching the conditions (isCanceled=false, isPaid=false, isActive=false) regardless of date',
+          { isCanceled: false },
+          { isPaid: false },
+          { isActive: false }
+        ]
+      };
+
+      console.log('🔍 Filters being applied:', JSON.stringify(filters, null, 2));
+
+      // Get transactions - USING SAME SYNTAX AS YOUR WORKING METHOD
+      const transactions = await strapi.entityService.findMany('api::advert.advert', {
+        filters: filters,
+        populate: {
+          client: {
+            fields: ['id', 'company_name', 'contact_person', 'email', 'phone']
+          },
+          product: {
+            fields: ['id', 'name', 'description']
+          },
+          rate_card: {
+            fields: ['id', 'name', 'price']
+          },
+          vgams_user: {
+            fields: ['id', 'name', 'email', 'role']
+          },
+          invoice: {
+            populate: {
+              payments: true
+            }
+          },
+          workflow_history: {
+            populate: {
+              vgams_users: {
+                fields: ['id', 'name', 'email', 'role']
+              }
+            }
+          },
+          comments: true,
+          created_by_clerk: {
+            fields: ['id', 'username', 'email']
+          },
+          reviewed_by_editor: {
+            fields: ['id', 'username', 'email']
+          },
+          approved_by_manager: {
+            fields: ['id', 'username', 'email']
+          },
+          attachments: true
         },
+        sort: 'createdAt:asc',
+        limit: -1
       });
+
+      console.log(`✅ Found ${transactions.length} transactions`);
+
+      // Transform data to include monetary fields clearly
+      const transformedTransactions = transactions.map(transaction => ({
+        id: transaction.id,
+        reference_number: transaction.reference_number,
+        advert_title: transaction.advert_title,
+        // Client info
+        client: transaction.client ? {
+          id: transaction.client.id,
+          company_name: transaction.client.company_name,
+          contact_person: transaction.client.contact_person,
+          email: transaction.client.email,
+          phone: transaction.client.phone
+        } : null,
+        // Product info
+        product: transaction.product ? {
+          id: transaction.product.id,
+          name: transaction.product.name,
+          description: transaction.product.description
+        } : null,
+        // Rate card info
+        rate_card: transaction.rate_card ? {
+          id: transaction.rate_card.id,
+          name: transaction.rate_card.name,
+          price: transaction.rate_card.price
+        } : null,
+        // Advert details
+        ad_size: transaction.ad_size,
+        ad_type: transaction.ad_type,
+        frequency: transaction.frequency,
+        start_date: transaction.start_date,
+        end_date: transaction.end_date,
+        // MONETARY FIELDS - THE IMPORTANT ONES
+        base_price: transaction.base_price,
+        surcharge: transaction.surcharge,
+        discount: transaction.discount,
+        total_amount: transaction.total_amount,
+        // Payment info
+        payment_method: transaction.payment_method,
+        special_instructions: transaction.special_instructions,
+        // Status fields
+        status: transaction.status,
+        isActive: transaction.isActive,
+        isPaid: transaction.isPaid,
+        isScheduled: transaction.isScheduled,
+        hasRun: transaction.hasRun,
+        isClosed: transaction.isClosed,
+        isApproved: transaction.isApproved,
+        isCanceled: transaction.isCanceled,
+        // User info
+        createdByUser: transaction.vgams_user ? {
+          id: transaction.vgams_user.id,
+          name: transaction.vgams_user.name,
+          email: transaction.vgams_user.email,
+          role: transaction.vgams_user.role
+        } : null,
+        // Invoice info
+        invoice: transaction.invoice,
+        // Other relations
+        workflow_history: transaction.workflow_history,
+        comments: transaction.comments,
+        attachments: transaction.attachments,
+        // Timestamps
+        createdAt: transaction.createdAt,
+        updatedAt: transaction.updatedAt
+      }));
+
+      // Calculate monetary statistics - like your working method
+      const totalBasePrice = transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.base_price) || 0), 0);
+      const totalSurcharge = transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.surcharge) || 0), 0);
+      const totalDiscount = transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.discount) || 0), 0);
+      const totalAmount = transformedTransactions.reduce((sum, t) => sum + (parseFloat(t.total_amount) || 0), 0);
+      
+      // Get payment method distribution
+      const paymentMethods = {};
+      transformedTransactions.forEach(t => {
+        if (t.payment_method) {
+          paymentMethods[t.payment_method] = (paymentMethods[t.payment_method] || 0) + 1;
+        }
+      });
+
+      // Get status distribution
+      const statusCounts = {};
+      transformedTransactions.forEach(t => {
+        if (t.status) {
+          statusCounts[t.status] = (statusCounts[t.status] || 0) + 1;
+        }
+      });
+
+      // Return the data directly (like your working method)
+      return {
+        success: true,
+        data: transformedTransactions,
+        count: transformedTransactions.length,
+        statistics: {
+          monetary: {
+            total_base_price: totalBasePrice,
+            total_surcharge: totalSurcharge,
+            total_discount: totalDiscount,
+            total_amount: totalAmount,
+            average_base_price: transformedTransactions.length > 0 ? (totalBasePrice / transformedTransactions.length).toFixed(2) : 0,
+            average_total_amount: transformedTransactions.length > 0 ? (totalAmount / transformedTransactions.length).toFixed(2) : 0
+          },
+          distributions: {
+            payment_methods: paymentMethods,
+            status: statusCounts
+          }
+        },
+        dateRange: {
+          start: startDateObj.toISOString(),
+          end: endDateObj.toISOString(),
+          startDate: startDate || 'today',
+          endDate: endDate || 'today'
+        },
+        filtersApplied: {
+          isCanceled: false,
+          isPaid: false,
+          isActive: false,
+          dateRange: true
+        }
+      };
+      
     } catch (err) {
-      console.error('Debug Controller Error:', err);
-      return ctx.badRequest('Error in debug endpoint', { 
-        error: err.message 
-      });
+      console.error('❌ Error in getTransactions:', err.message);
+      console.error('❌ Error details:', err);
+      return ctx.internalServerError(`Failed to fetch transactions: ${err.message}`);
     }
   }
 }));
