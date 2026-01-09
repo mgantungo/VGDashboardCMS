@@ -727,91 +727,27 @@ async getDateRangeAdverts(ctx) {
     return ctx.internalServerError(`Failed to fetch adverts: ${err.message}`);
   }
 },
-async getTransactions(ctx) {
-  try {
-    let { startDate, endDate } = ctx.query;
-    
-    // Set default to today if no dates provided
-    let startDateObj, endDateObj;
-    
-    if (!startDate || !endDate) {
-      const today = new Date();
-      startDateObj = new Date(today.setHours(0, 0, 0, 0));
-      endDateObj = new Date(today.setHours(23, 59, 59, 999));
-    } else {
-      startDateObj = new Date(startDate);
-      startDateObj.setHours(0, 0, 0, 0);
-      endDateObj = new Date(endDate);
-      endDateObj.setHours(23, 59, 59, 999);
+  /**
+   * Custom method to get transactions within a date range
+   * Query params: startDate, endDate (optional - defaults to today)
+   */
+  async getTransactions(ctx) {
+    try {
+      const { startDate, endDate } = ctx.query;
+
+      // Call the service method
+      const data = await strapi
+        .service('api::advert.advert')
+        .getTransactions(startDate, endDate);
+
+      return ctx.send({
+        data,
+        meta: {
+          count: data.length,
+        },
+      });
+    } catch (err) {
+      ctx.throw(500, err);
     }
-
-    // Build filters - using createdAt
-    const filters = {
-      createdAt: { $gte: startDateObj.toISOString(), $lte: endDateObj.toISOString() },
-      isCanceled: false,
-      isPaid: false,
-      isActive: false
-    };
-
-    // Fetch data
-    const transactions = await strapi.entityService.findMany('api::advert.advert', {
-      filters,
-      populate: '*',
-      sort: { createdAt: 'asc' }
-    });
-
-    // Calculate totals
-    const totals = transactions.reduce((acc, t) => {
-      acc.base_price += parseFloat(t.base_price || 0);
-      acc.surcharge += parseFloat(t.surcharge || 0);
-      acc.discount += parseFloat(t.discount || 0);
-      acc.total_amount += parseFloat(t.total_amount || 0);
-      
-      if (t.payment_method) {
-        acc.payment_methods[t.payment_method] = (acc.payment_methods[t.payment_method] || 0) + 1;
-      }
-      
-      if (t.status) {
-        acc.status_counts[t.status] = (acc.status_counts[t.status] || 0) + 1;
-      }
-      
-      return acc;
-    }, {
-      base_price: 0,
-      surcharge: 0,
-      discount: 0,
-      total_amount: 0,
-      payment_methods: {},
-      status_counts: {}
-    });
-
-    // Return response
-    ctx.body = {
-      success: true,
-      count: transactions.length,
-      data: transactions,
-      summary: {
-        date_range: `${startDate || 'today'} to ${endDate || 'today'}`,
-        totals: {
-          base_price: totals.base_price,
-          surcharge: totals.surcharge,
-          discount: totals.discount,
-          total_amount: totals.total_amount
-        },
-        averages: {
-          base_price: transactions.length ? (totals.base_price / transactions.length).toFixed(2) : 0,
-          total_amount: transactions.length ? (totals.total_amount / transactions.length).toFixed(2) : 0
-        },
-        distributions: {
-          payment_methods: totals.payment_methods,
-          status: totals.status_counts
-        }
-      }
-    };
-
-  } catch (error) {
-    strapi.log.error('Error in getTransactions:', error);
-    ctx.throw(500, 'Failed to fetch transactions');
   }
-}
 }));
