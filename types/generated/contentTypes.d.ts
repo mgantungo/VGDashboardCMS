@@ -413,7 +413,14 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
         number
       > &
       Schema.Attribute.DefaultTo<1>;
+    hasRun: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     invoice: Schema.Attribute.Relation<'oneToOne', 'api::invoice.invoice'>;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isApproved: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isCanceled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isClosed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isPaid: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isScheduled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -430,7 +437,7 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::rate-card.rate-card'
     >;
-    reference_number: Schema.Attribute.UID<'advert_title'>;
+    reference_number: Schema.Attribute.UID<''>;
     reviewed_by_editor: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.user'
@@ -1099,14 +1106,14 @@ export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
     receipt_file: Schema.Attribute.Media<'files' | 'images'>;
-    recorded_by: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
     reference_number: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    vgams_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-user.vgams-user'
+    >;
   };
 }
 
@@ -1508,6 +1515,7 @@ export interface ApiVgamsUserVgamsUser extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    adpayments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     adverts: Schema.Attribute.Relation<'oneToMany', 'api::advert.advert'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1558,6 +1566,10 @@ export interface ApiVgamsUserVgamsUser extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    workflow_logs: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::workflow-log.workflow-log'
+    >;
   };
 }
 
@@ -1596,16 +1608,16 @@ export interface ApiWorkflowLogWorkflowLog extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     new_status: Schema.Attribute.String & Schema.Attribute.Required;
     notes: Schema.Attribute.Text;
-    performed_by: Schema.Attribute.Relation<
-      'manyToOne',
-      'plugin::users-permissions.user'
-    >;
     previous_status: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     timestamp: Schema.Attribute.DateTime & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    vgams_users: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::vgams-user.vgams-user'
+    >;
   };
 }
 

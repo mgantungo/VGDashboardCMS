@@ -9,6 +9,7 @@
   "options": {
     "draftAndPublish": false
   },
+  "pluginOptions": {},
   "attributes": {
     "advert": {
       "type": "relation",
@@ -18,6 +19,7 @@
     },
     "action": {
       "type": "enumeration",
+      "required": true,
       "enum": [
         "created",
         "submitted",
@@ -26,8 +28,7 @@
         "rejected",
         "revised",
         "published"
-      ],
-      "required": true
+      ]
     },
     "previous_status": {
       "type": "string"
@@ -36,10 +37,11 @@
       "type": "string",
       "required": true
     },
-    "performed_by": {
+    "vgams_users": {
       "type": "relation",
-      "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "relation": "manyToMany",
+      "target": "api::vgams-user.vgams-user",
+      "mappedBy": "workflow_logs"
     },
     "notes": {
       "type": "text"

@@ -9,6 +9,7 @@
   "options": {
     "draftAndPublish": false
   },
+  "pluginOptions": {},
   "attributes": {
     "invoice": {
       "type": "relation",
@@ -26,8 +27,13 @@
     },
     "payment_method": {
       "type": "enumeration",
-      "enum": ["cash", "bank_transfer", "cheque", "mobile_money"],
-      "required": true
+      "required": true,
+      "enum": [
+        "cash",
+        "bank_transfer",
+        "cheque",
+        "mobile_money"
+      ]
     },
     "reference_number": {
       "type": "string"
@@ -35,15 +41,19 @@
     "notes": {
       "type": "text"
     },
-    "recorded_by": {
+    "vgams_user": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "plugin::users-permissions.user"
+      "target": "api::vgams-user.vgams-user",
+      "inversedBy": "adpayments"
     },
     "receipt_file": {
       "type": "media",
       "multiple": false,
-      "allowedTypes": ["files", "images"]
+      "allowedTypes": [
+        "files",
+        "images"
+      ]
     }
   }
 }

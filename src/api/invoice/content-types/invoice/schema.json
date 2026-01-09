@@ -47,7 +47,12 @@
     },
     "payment_status": {
       "type": "enumeration",
-      "enum": ["unpaid", "partial", "paid", "overdue"],
+      "enum": [
+        "unpaid",
+        "partial",
+        "paid",
+        "overdue"
+      ],
       "default": "unpaid"
     },
     "payments": {

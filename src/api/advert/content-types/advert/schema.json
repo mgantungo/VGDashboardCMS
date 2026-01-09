@@ -13,7 +13,7 @@
   "attributes": {
     "reference_number": {
       "type": "uid",
-      "targetField": "advert_title"
+      "targetField": ""
     },
     "advert_title": {
       "type": "string",
@@ -148,6 +148,35 @@
       "relation": "manyToOne",
       "target": "api::vgams-user.vgams-user",
       "inversedBy": "adverts"
+    },
+    "isActive": {
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    "isPaid": {
+      "type": "boolean",
+      "default": false
+    },
+    "isScheduled": {
+      "type": "boolean",
+      "default": false
+    },
+    "hasRun": {
+      "type": "boolean",
+      "default": false
+    },
+    "isClosed": {
+      "type": "boolean",
+      "default": false
+    },
+    "isApproved": {
+      "type": "boolean",
+      "default": false
+    },
+    "isCanceled": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

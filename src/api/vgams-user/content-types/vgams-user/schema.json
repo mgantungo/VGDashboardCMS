@@ -56,6 +56,18 @@
       "relation": "oneToMany",
       "target": "api::advert.advert",
       "mappedBy": "vgams_user"
+    },
+    "workflow_logs": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::workflow-log.workflow-log",
+      "inversedBy": "vgams_users"
+    },
+    "adpayments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment.payment",
+      "mappedBy": "vgams_user"
     }
   }
 }
