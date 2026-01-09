@@ -782,6 +782,7 @@ export interface ApiClientClient extends Struct.CollectionTypeSchema {
   attributes: {
     address: Schema.Attribute.Text;
     adverts: Schema.Attribute.Relation<'oneToMany', 'api::advert.advert'>;
+    clientTin: Schema.Attribute.String;
     company_name: Schema.Attribute.String & Schema.Attribute.Required;
     contact_person: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;

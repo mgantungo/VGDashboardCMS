@@ -9,6 +9,7 @@
   "options": {
     "draftAndPublish": false
   },
+  "pluginOptions": {},
   "attributes": {
     "company_name": {
       "type": "string",
@@ -38,14 +39,14 @@
     },
     "payment_terms": {
       "type": "enumeration",
+      "default": "cash",
       "enum": [
         "cash",
         "credit_7",
         "credit_15",
         "credit_30",
         "pdc"
-      ],
-      "default": "cash"
+      ]
     },
     "adverts": {
       "type": "relation",
@@ -62,6 +63,9 @@
     "is_active": {
       "type": "boolean",
       "default": true
+    },
+    "clientTin": {
+      "type": "string"
     }
   }
 }
