@@ -170,59 +170,91 @@ module.exports = {
         "description": "Get payment history for an advert by reference number"
       }
     },
-        {
-      method: 'GET',
+    {
+      method: 'POST',  // Changed from GET to POST to accept body parameters
       path: '/design-house/active-adverts',
       handler: 'design-house.getActiveAdverts',
       config: {
-        policies: [],
-        middlewares: [],
-      },
+        auth: false,  // Set to true if authentication required
+        description: 'Get active adverts for design work with optional date range',
+        tags: ['Design House'],
+        body: {
+          startDate: {
+            type: 'string',
+            description: 'Start date in YYYY-MM-DD format (optional, defaults to today)',
+            example: '2026-01-01'
+          },
+          endDate: {
+            type: 'string',
+            description: 'End date in YYYY-MM-DD format (optional, defaults to today)',
+            example: '2026-01-31'
+          }
+        }
+      }
     },
     {
       method: 'GET',
       path: '/design-house/adverts/:id',
       handler: 'design-house.getAdvertDetails',
       config: {
-        policies: [],
-        middlewares: [],
-      },
-    },
-    {
-      method: 'GET',
-      path: '/design-house/adverts/:id/files',
-      handler: 'design-house.getDesignFiles',
-      config: {
-        policies: [],
-        middlewares: [],
-      },
+        auth: false,
+        description: 'Get specific advert details for design work',
+        tags: ['Design House']
+      }
     },
     {
       method: 'POST',
       path: '/design-house/adverts/:id/upload',
       handler: 'design-house.uploadDesignFiles',
       config: {
-        policies: [],
-        middlewares: [],
-      },
+        auth: false,
+        description: 'Upload design files for an advert',
+        tags: ['Design House']
+      }
     },
     {
       method: 'POST',
       path: '/design-house/adverts/:id/complete',
       handler: 'design-house.markDesignComplete',
       config: {
-        policies: [],
-        middlewares: [],
-      },
+        auth: false,
+        description: 'Mark design work as complete',
+        tags: ['Design House'],
+        body: {
+          notes: {
+            type: 'string',
+            description: 'Notes about the design completion',
+            required: false
+          },
+          designerEmail: {
+            type: 'string',
+            description: 'Email of the designer who completed the work',
+            required: false
+          }
+        }
+      }
     },
     {
-      method: 'GET',
+      method: 'POST',  // Changed from GET to POST to accept body parameters
       path: '/design-house/stats',
       handler: 'design-house.getDesignStats',
       config: {
-        policies: [],
-        middlewares: [],
-      },
-    },
+        auth: false,
+        description: 'Get design statistics with optional date range',
+        tags: ['Design House'],
+        body: {
+          startDate: {
+            type: 'string',
+            description: 'Start date in YYYY-MM-DD format (optional, defaults to today)',
+            example: '2026-01-01'
+          },
+          endDate: {
+            type: 'string',
+            description: 'End date in YYYY-MM-DD format (optional, defaults to today)',
+            example: '2026-01-31'
+          }
+        }
+      }
+    }
   ]
 };
