@@ -173,7 +173,7 @@ module.exports = {
         recordedBy 
       } = ctx.request.body;
       
-      console.log('💳 markAsPaid called with:', { referenceNumber, paymentMethod });
+      console.log('💳 markAsPaid called with:', { referenceNumber, paymentMethod , paymentDate, paymentNotes, recordedBy});
       
       // Validate
       if (!referenceNumber) {
