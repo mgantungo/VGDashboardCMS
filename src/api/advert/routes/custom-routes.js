@@ -169,6 +169,6 @@ module.exports = {
         "middlewares": [],
         "description": "Get payment history for an advert by reference number"
       }
-    }
+    },
   ]
 };
