@@ -151,11 +151,12 @@
     },
     "isActive": {
       "type": "boolean",
-      "required": false,
+      "required": true,
       "default": false
     },
     "isPaid": {
       "type": "boolean",
+      "required": true,
       "default": false
     },
     "isScheduled": {
@@ -176,6 +177,7 @@
     },
     "isCanceled": {
       "type": "boolean",
+      "required": true,
       "default": false
     }
   }

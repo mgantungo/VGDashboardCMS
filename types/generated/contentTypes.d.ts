@@ -415,11 +415,17 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<1>;
     hasRun: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     invoice: Schema.Attribute.Relation<'oneToOne', 'api::invoice.invoice'>;
-    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isActive: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
     isApproved: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
-    isCanceled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isCanceled: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
     isClosed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
-    isPaid: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    isPaid: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
     isScheduled: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -1504,6 +1510,41 @@ export interface ApiTagTag extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiVgamsSalesPersonVgamsSalesPerson
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'vgams_sales_persons';
+  info: {
+    displayName: 'VGAMS Sales Persons';
+    pluralName: 'vgams-sales-persons';
+    singularName: 'vgams-sales-person';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    isActive: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::vgams-sales-person.vgams-sales-person'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiVgamsUserVgamsUser extends Struct.CollectionTypeSchema {
   collectionName: 'vgams_users';
   info: {
@@ -2157,6 +2198,7 @@ declare module '@strapi/strapi' {
       'api::sub-county.sub-county': ApiSubCountySubCounty;
       'api::systemuser.systemuser': ApiSystemuserSystemuser;
       'api::tag.tag': ApiTagTag;
+      'api::vgams-sales-person.vgams-sales-person': ApiVgamsSalesPersonVgamsSalesPerson;
       'api::vgams-user.vgams-user': ApiVgamsUserVgamsUser;
       'api::workflow-log.workflow-log': ApiWorkflowLogWorkflowLog;
       'plugin::content-releases.release': PluginContentReleasesRelease;
