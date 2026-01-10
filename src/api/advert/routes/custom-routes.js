@@ -143,7 +143,7 @@ module.exports = {
     {
       "method": "POST",
       "path": "/adverts/mark-paid",
-      "handler": "advert.markAsPaid",
+      "handler": "prepare-payments.markAsPaid",
       "config": {
         "policies": [],
         "middlewares": [],
@@ -153,7 +153,7 @@ module.exports = {
     {
       "method": "POST",
       "path": "/adverts/record-payment",
-      "handler": "advert.recordPayment",
+      "handler": "prepare-payments.recordPayment",
       "config": {
         "policies": [],
         "middlewares": [],
@@ -163,7 +163,7 @@ module.exports = {
     {
       "method": "GET",
       "path": "/adverts/payment-history/:referenceNumber",
-      "handler": "advert.getPaymentHistory",
+      "handler": "prepare-payments.getPaymentHistory",
       "config": {
         "policies": [],
         "middlewares": [],
