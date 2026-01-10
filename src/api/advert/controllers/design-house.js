@@ -73,8 +73,6 @@ module.exports = {
           'id',
           'reference_number',
           'advert_title',
-          'ad_size',
-          'ad_type',
           'frequency',
           'start_date',
           'end_date',
