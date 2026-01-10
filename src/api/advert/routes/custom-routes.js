@@ -139,6 +139,36 @@ module.exports = {
           }
         }
       }
+    },
+    {
+      "method": "POST",
+      "path": "/adverts/mark-paid",
+      "handler": "advert.markAsPaid",
+      "config": {
+        "policies": [],
+        "middlewares": [],
+        "description": "Mark an advert as fully paid using reference number (for cash payments - NO invoice created). Sets isPaid=true and isActive=true"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/adverts/record-payment",
+      "handler": "advert.recordPayment",
+      "config": {
+        "policies": [],
+        "middlewares": [],
+        "description": "Record a partial or full payment for an advert. Automatically marks as paid when total payments >= total amount"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/adverts/payment-history/:referenceNumber",
+      "handler": "advert.getPaymentHistory",
+      "config": {
+        "policies": [],
+        "middlewares": [],
+        "description": "Get payment history for an advert by reference number"
+      }
     }
   ]
 };
