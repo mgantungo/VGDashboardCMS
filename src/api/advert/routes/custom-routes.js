@@ -170,5 +170,59 @@ module.exports = {
         "description": "Get payment history for an advert by reference number"
       }
     },
+        {
+      method: 'GET',
+      path: '/design-house/active-adverts',
+      handler: 'design-house.getActiveAdverts',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/design-house/adverts/:id',
+      handler: 'design-house.getAdvertDetails',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/design-house/adverts/:id/files',
+      handler: 'design-house.getDesignFiles',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/design-house/adverts/:id/upload',
+      handler: 'design-house.uploadDesignFiles',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/design-house/adverts/:id/complete',
+      handler: 'design-house.markDesignComplete',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/design-house/stats',
+      handler: 'design-house.getDesignStats',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ]
 };
