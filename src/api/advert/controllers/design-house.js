@@ -10,7 +10,7 @@
  * - isClosed: false (not completed)
  * - isActive: true (advert is active)
  * - isCanceled: false (not canceled)
- * - Today's date within start_date and end_date range (inclusive with time)
+ * - Date range: adverts active between startDate and endDate (inclusive)
  * 
  * Design Status:
  * - isApproved: false (pending design work)
@@ -21,46 +21,98 @@ module.exports = {
   
   /**
    * Get adverts ready for design work
-   * GET /api/design-house/active-adverts
+   * POST /api/design-house/active-adverts
+   * 
+   * Body Parameters:
+   * - startDate (optional): Start date in YYYY-MM-DD format (defaults to today)
+   * - endDate (optional): End date in YYYY-MM-DD format (defaults to today)
    * 
    * Returns adverts matching all criteria:
    * - isPaid = true
    * - isClosed = false
    * - isActive = true
    * - isCanceled = false
-   * - Today is between start_date and end_date (inclusive)
+   * - Adverts active between startDate and endDate (inclusive)
    */
   async getActiveAdverts(ctx) {
     try {
       console.log('🎨 Design House: Fetching active adverts for design work');
       
-      // Get current date/time
+      // Get date parameters from request body
+      const { startDate, endDate } = ctx.request.body || {};
+      
+      // Get current date
       const now = new Date();
+      const todayFormatted = now.toISOString().split('T')[0]; // "2026-01-10"
       
-      // Today at start (00:00:00.000)
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      // Use provided dates or default to today
+      let queryStartDate = startDate || todayFormatted;
+      let queryEndDate = endDate || todayFormatted;
       
-      // Today at end (23:59:59.999)
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      // Validate date formats (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       
-      console.log('📅 Date range check:', {
-        now: now.toISOString(),
-        todayStart: todayStart.toISOString(),
-        todayEnd: todayEnd.toISOString(),
-        todayFormatted: now.toISOString().split('T')[0]
+      if (!dateRegex.test(queryStartDate)) {
+        return ctx.badRequest({
+          success: false,
+          message: 'Invalid startDate format. Expected YYYY-MM-DD',
+          example: '2026-01-10'
+        });
+      }
+      
+      if (!dateRegex.test(queryEndDate)) {
+        return ctx.badRequest({
+          success: false,
+          message: 'Invalid endDate format. Expected YYYY-MM-DD',
+          example: '2026-01-10'
+        });
+      }
+      
+      // Validate date logic
+      const startDateObj = new Date(queryStartDate);
+      const endDateObj = new Date(queryEndDate);
+      
+      if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+        return ctx.badRequest({
+          success: false,
+          message: 'Invalid date values provided'
+        });
+      }
+      
+      if (startDateObj > endDateObj) {
+        return ctx.badRequest({
+          success: false,
+          message: 'startDate cannot be after endDate',
+          provided: {
+            startDate: queryStartDate,
+            endDate: queryEndDate
+          }
+        });
+      }
+      
+      console.log('📅 Date range parameters:', {
+        requestedStartDate: startDate || '(default: today)',
+        requestedEndDate: endDate || '(default: today)',
+        queryStartDate,
+        queryEndDate,
+        usingDefaults: !startDate && !endDate,
+        today: todayFormatted
       });
       
       // Build exact filters as specified
+      // Logic: Find adverts where the advert's run period overlaps with the query period
+      // - Advert starts on or before queryEndDate (start_date <= queryEndDate)
+      // - Advert ends on or after queryStartDate (end_date >= queryStartDate)
       const filters = {
         isPaid: true,           // Must be paid
         isClosed: false,        // Must not be completed/closed
         isActive: true,         // Must be active
         isCanceled: false,      // Must not be canceled
         start_date: {
-          $lte: todayEnd.toISOString()  // Start date is today or before
+          $lte: queryEndDate    // Advert starts on or before query end date
         },
         end_date: {
-          $gte: todayStart.toISOString()  // End date is today or after
+          $gte: queryStartDate  // Advert ends on or after query start date
         }
       };
       
@@ -148,14 +200,12 @@ module.exports = {
         total_value: 0,
         with_designs: 0,
         without_designs: 0,
-        urgent: 0,  // Adverts ending within 3 days
-        new_today: 0  // Adverts starting today
+        urgent: 0,  // Adverts ending within 3 days from query end date
+        new_in_range: 0  // Adverts starting within query range
       };
       
-      const threeDaysFromNow = new Date(now);
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-      
-      const todayDateOnly = now.toISOString().split('T')[0];
+      const threeDaysFromQueryEnd = new Date(endDateObj);
+      threeDaysFromQueryEnd.setDate(threeDaysFromQueryEnd.getDate() + 3);
       
       adverts.forEach(advert => {
         // Total value
@@ -181,16 +231,16 @@ module.exports = {
           stats.without_designs++;
         }
         
-        // Urgent (ending within 3 days)
+        // Urgent (ending within 3 days of query end date)
         const endDate = new Date(advert.end_date);
-        if (endDate <= threeDaysFromNow) {
+        if (endDate <= threeDaysFromQueryEnd) {
           stats.urgent++;
         }
         
-        // New today (starting today)
-        const startDateOnly = advert.start_date.split('T')[0];
-        if (startDateOnly === todayDateOnly) {
-          stats.new_today++;
+        // New in range (starting within query range)
+        const startDate = new Date(advert.start_date);
+        if (startDate >= startDateObj && startDate <= endDateObj) {
+          stats.new_in_range++;
         }
       });
       
@@ -201,15 +251,20 @@ module.exports = {
         count: adverts.length,
         data: adverts,
         statistics: stats,
+        query_parameters: {
+          startDate: queryStartDate,
+          endDate: queryEndDate,
+          date_range_days: Math.ceil((endDateObj - startDateObj) / (1000 * 60 * 60 * 24)) + 1
+        },
         filters_applied: {
           isPaid: true,
           isClosed: false,
           isActive: true,
           isCanceled: false,
           date_range: {
-            today: todayDateOnly,
-            start_date_must_be_lte: todayEnd.toISOString(),
-            end_date_must_be_gte: todayStart.toISOString()
+            query_start: queryStartDate,
+            query_end: queryEndDate,
+            logic: 'Adverts where start_date <= queryEndDate AND end_date >= queryStartDate'
           }
         },
         timestamp: now.toISOString()
@@ -263,14 +318,6 @@ module.exports = {
           },
           vgams_user: {
             fields: ['id', 'name', 'email', 'role']
-          },
-          comments: {
-            populate: {
-              user: {
-                fields: ['id', 'username', 'email']
-              }
-            },
-            sort: 'createdAt:desc'
           }
         }
       });
@@ -282,7 +329,7 @@ module.exports = {
         });
       }
       
-      console.log(`✅ Advert details retrieved: ${advert.reference_number}`);
+      console.log(`✅ Found advert: ${advert.reference_number}`);
       
       return ctx.send({
         success: true,
@@ -300,107 +347,8 @@ module.exports = {
   },
   
   /**
-   * Get all design files (attachments) for an advert
-   * GET /api/design-house/adverts/:id/files
-   */
-  async getDesignFiles(ctx) {
-    try {
-      const { id } = ctx.params;
-      
-      if (!id) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Advert ID is required'
-        });
-      }
-      
-      console.log(`📁 Fetching design files for advert ID: ${id}`);
-      
-      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
-        fields: ['id', 'reference_number', 'advert_title'],
-        populate: {
-          attachments: {
-            fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
-          }
-        }
-      });
-      
-      if (!advert) {
-        return ctx.notFound({
-          success: false,
-          message: `Advert with ID ${id} not found`
-        });
-      }
-      
-      const attachments = advert.attachments || [];
-      
-      console.log(`✅ Found ${attachments.length} files for ${advert.reference_number}`);
-      
-      // Organize files by type
-      const filesByType = {
-        images: [],
-        documents: [],
-        videos: [],
-        designs: [],
-        other: []
-      };
-      
-      let totalSize = 0;
-      
-      attachments.forEach(file => {
-        totalSize += file.size || 0;
-        
-        const ext = (file.ext || '').toLowerCase();
-        const mime = (file.mime || '').toLowerCase();
-        
-        if (mime.startsWith('image/')) {
-          filesByType.images.push(file);
-        } else if (ext === '.psd' || ext === '.ai' || ext === '.sketch' || ext === '.fig' || ext === '.xd') {
-          filesByType.designs.push(file);
-        } else if (mime.startsWith('video/')) {
-          filesByType.videos.push(file);
-        } else if (mime.startsWith('application/')) {
-          filesByType.documents.push(file);
-        } else {
-          filesByType.other.push(file);
-        }
-      });
-      
-      return ctx.send({
-        success: true,
-        advert: {
-          id: advert.id,
-          reference_number: advert.reference_number,
-          advert_title: advert.advert_title
-        },
-        files: attachments,
-        filesByType: filesByType,
-        statistics: {
-          total: attachments.length,
-          totalSize: totalSize,
-          totalSizeMB: (totalSize / (1024 * 1024)).toFixed(2),
-          images: filesByType.images.length,
-          documents: filesByType.documents.length,
-          videos: filesByType.videos.length,
-          designs: filesByType.designs.length,
-          other: filesByType.other.length
-        }
-      });
-      
-    } catch (error) {
-      console.error('❌ Error fetching design files:', error);
-      return ctx.internalServerError({
-        success: false,
-        message: 'Failed to fetch design files',
-        error: error.message
-      });
-    }
-  },
-  
-  /**
-   * Upload design files to an advert
+   * Upload design files for an advert
    * POST /api/design-house/adverts/:id/upload
-   * Content-Type: multipart/form-data
    */
   async uploadDesignFiles(ctx) {
     try {
@@ -413,9 +361,11 @@ module.exports = {
         });
       }
       
-      // Check if advert exists and meets criteria
+      console.log(`📤 Uploading design files for advert #${id}`);
+      
+      // Verify advert exists and is eligible for design work
       const advert = await strapi.entityService.findOne('api::advert.advert', id, {
-        fields: ['id', 'reference_number', 'advert_title', 'isPaid', 'isClosed', 'isCanceled', 'isActive']
+        fields: ['id', 'reference_number', 'isPaid', 'isClosed', 'isActive', 'isCanceled']
       });
       
       if (!advert) {
@@ -425,36 +375,33 @@ module.exports = {
         });
       }
       
-      // Verify advert meets design upload criteria
       if (!advert.isPaid) {
         return ctx.badRequest({
           success: false,
-          message: 'Cannot upload designs for unpaid adverts'
+          message: 'Advert must be paid before uploading design files'
         });
       }
       
       if (advert.isClosed) {
         return ctx.badRequest({
           success: false,
-          message: 'Cannot upload designs for closed/completed adverts'
-        });
-      }
-      
-      if (advert.isCanceled) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Cannot upload designs for canceled adverts'
+          message: 'Advert is closed and cannot accept new design files'
         });
       }
       
       if (!advert.isActive) {
         return ctx.badRequest({
           success: false,
-          message: 'Cannot upload designs for inactive adverts'
+          message: 'Advert is not active'
         });
       }
       
-      console.log(`📤 Uploading design files for advert #${id} - ${advert.reference_number}`);
+      if (advert.isCanceled) {
+        return ctx.badRequest({
+          success: false,
+          message: 'Advert is canceled and cannot accept design files'
+        });
+      }
       
       // Get files from request
       const files = ctx.request.files;
@@ -621,15 +568,30 @@ module.exports = {
   
   /**
    * Get design statistics
-   * GET /api/design-house/stats
+   * POST /api/design-house/stats
+   * 
+   * Body Parameters:
+   * - startDate (optional): Start date in YYYY-MM-DD format (defaults to today)
+   * - endDate (optional): End date in YYYY-MM-DD format (defaults to today)
    */
   async getDesignStats(ctx) {
     try {
       console.log('📊 Fetching design house statistics');
       
+      // Get date parameters from request body
+      const { startDate, endDate } = ctx.request.body || {};
+      
       const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const todayFormatted = now.toISOString().split('T')[0];
+      
+      // Use provided dates or default to today
+      const queryStartDate = startDate || todayFormatted;
+      const queryEndDate = endDate || todayFormatted;
+      
+      console.log('📅 Stats date range:', {
+        startDate: queryStartDate,
+        endDate: queryEndDate
+      });
       
       // Active projects (matching all criteria)
       const activeAdverts = await strapi.entityService.findMany('api::advert.advert', {
@@ -638,8 +600,8 @@ module.exports = {
           isClosed: false,
           isActive: true,
           isCanceled: false,
-          start_date: { $lte: todayEnd.toISOString() },
-          end_date: { $gte: todayStart.toISOString() }
+          start_date: { $lte: queryEndDate },
+          end_date: { $gte: queryStartDate }
         },
         fields: ['id']
       });
@@ -652,8 +614,8 @@ module.exports = {
           isActive: true,
           isCanceled: false,
           isApproved: false,
-          start_date: { $lte: todayEnd.toISOString() },
-          end_date: { $gte: todayStart.toISOString() }
+          start_date: { $lte: queryEndDate },
+          end_date: { $gte: queryStartDate }
         },
         fields: ['id']
       });
@@ -663,8 +625,8 @@ module.exports = {
         filters: {
           isPaid: true,
           isApproved: true,
-          start_date: { $lte: todayEnd.toISOString() },
-          end_date: { $gte: todayStart.toISOString() }
+          start_date: { $lte: queryEndDate },
+          end_date: { $gte: queryStartDate }
         },
         fields: ['id']
       });
@@ -675,7 +637,9 @@ module.exports = {
           isPaid: true,
           isClosed: false,
           isActive: true,
-          isCanceled: false
+          isCanceled: false,
+          start_date: { $lte: queryEndDate },
+          end_date: { $gte: queryStartDate }
         },
         populate: {
           attachments: {
@@ -695,6 +659,10 @@ module.exports = {
         readyToUpload: readyToUpload.length,
         completedDesigns: completedDesigns.length,
         totalFiles: totalFiles,
+        dateRange: {
+          startDate: queryStartDate,
+          endDate: queryEndDate
+        },
         lastUpdated: new Date().toISOString()
       };
       
