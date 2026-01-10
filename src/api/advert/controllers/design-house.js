@@ -100,7 +100,7 @@ module.exports = {
             fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address']
           },
           product: {
-            fields: ['id', 'product_name', 'description'],
+            fields: ['id', 'product_name'],
             populate: {
               category: {
                 fields: ['id', 'category_name', 'category_type', 'description']
@@ -108,7 +108,7 @@ module.exports = {
             }
           },
           rate_card: {
-            fields: ['id', 'ad_type', 'ad_size', 'price_fc', 'price_bw', 'description']
+            fields: ['id', 'ad_type', 'ad_size', 'price_fc', 'price_bw']
           },
           attachments: {
             fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
