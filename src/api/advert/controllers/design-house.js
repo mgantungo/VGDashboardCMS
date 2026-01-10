@@ -74,6 +74,8 @@ module.exports = {
           'reference_number',
           'advert_title',
           'frequency',
+          'ad_size',
+          'ad_type',
           'start_date',
           'end_date',
           'base_price',
@@ -106,7 +108,7 @@ module.exports = {
             }
           },
           rate_card: {
-            fields: ['id', 'ad_type', 'ad_size', 'price_fc', 'price_bw']
+            fields: ['id', 'price_fc', 'price_bw']
           },
           attachments: {
             fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
