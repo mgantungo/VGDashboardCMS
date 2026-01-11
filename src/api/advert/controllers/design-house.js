@@ -15,37 +15,46 @@ async getActiveAdverts(ctx) {
   try {
     console.log('🎨 Design House: Fetching active adverts for design work');
     
-    // Get parameters from either query (GET) or body (POST)
+    // Log the complete request for debugging
+    console.log('📡 Request method:', ctx.request.method);
+    console.log('📦 Request headers:', ctx.request.headers);
+    console.log('📤 Request body raw:', ctx.request.body);
+    
+    // Validate that request body exists
+    if (!ctx.request.body) {
+      console.error('❌ Request body is undefined');
+      return ctx.badRequest({
+        success: false,
+        message: 'Request body is required. Make sure Content-Type: application/json is set.'
+      });
+    }
+    
+    // Get parameters from request body
     const { startDate, endDate, debug } = ctx.request.body;
     
-    console.log('📝 Received parameters:', { startDate, endDate, debug });
+    // Validate required parameters
+    if (!startDate || !endDate) {
+      return ctx.badRequest({
+        success: false,
+        message: 'Both startDate and endDate are required in the request body',
+        example: {
+          startDate: "2026-01-01",
+          endDate: "2026-01-31",
+          debug: true
+        }
+      });
+    }
+    
+    console.log('✅ Received parameters:', { startDate, endDate, debug });
     
     // Parse dates or use today as default
     const now = new Date();
-    let dateRangeStart, dateRangeEnd;
-    let hasCustomDateRange = false;
+    let dateRangeStart = startDate;
+    let dateRangeEnd = endDate;
+    let hasCustomDateRange = true;
     
-    if (startDate) {
-      // For date fields, just use the date string directly
-      dateRangeStart = startDate; // e.g., "2026-01-01"
-      hasCustomDateRange = true;
-      console.log('✅ Using provided startDate:', startDate);
-    } else {
-      // Default to today in YYYY-MM-DD format
-      dateRangeStart = now.toISOString().split('T')[0];
-      console.log('ℹ️ Using default startDate (today):', dateRangeStart);
-    }
-    
-    if (endDate) {
-      // For date fields, just use the date string directly
-      dateRangeEnd = endDate; // e.g., "2026-01-31"
-      hasCustomDateRange = true;
-      console.log('✅ Using provided endDate:', endDate);
-    } else {
-      // Default to today in YYYY-MM-DD format
-      dateRangeEnd = now.toISOString().split('T')[0];
-      console.log('ℹ️ Using default endDate (today):', dateRangeEnd);
-    }
+    console.log('✅ Using provided startDate:', startDate);
+    console.log('✅ Using provided endDate:', endDate);
     
     console.log('📅 Query date range (as strings):', dateRangeStart, 'to', dateRangeEnd);
     console.log('📅 Custom date range?', hasCustomDateRange);
@@ -335,10 +344,12 @@ async getActiveAdverts(ctx) {
       error: error.message,
       requestMethod: ctx.request.method,
       requestBody: ctx.request.body,
-      requestQuery: ctx.query
+      requestQuery: ctx.query,
+      requestHeaders: ctx.request.headers
     });
   }
-},
+}
+  ,
   
   /**
    * Get adverts for a specific date range
