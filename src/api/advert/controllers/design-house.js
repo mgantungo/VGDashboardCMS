@@ -16,7 +16,7 @@ async getActiveAdverts(ctx) {
     console.log('🎨 Design House: Fetching active adverts for design work');
     
     // Get parameters from either query (GET) or body (POST)
-    const { startDate, endDate, debug } = ctx.request.body || ctx.query;
+    const { startDate, endDate, debug } = ctx.request.body;
     
     console.log('📝 Received parameters:', { startDate, endDate, debug });
     
