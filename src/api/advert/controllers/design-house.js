@@ -11,247 +11,334 @@ module.exports = {
    * Get adverts ready for design work
    * Accepts both POST (body) and GET (query) parameters
    */
-  async getActiveAdverts(ctx) {
-    try {
-      console.log('🎨 Design House: Fetching active adverts for design work');
-      
-      // Get parameters from either query (GET) or body (POST)
-      const { startDate, endDate, debug } = ctx.request.body || ctx.query;
-      
-      // Parse dates or use today as default
-      const now = new Date();
-      let dateRangeStart, dateRangeEnd;
-      
-      if (startDate) {
-        dateRangeStart = new Date(startDate);
-        dateRangeStart.setHours(0, 0, 0, 0);
-      } else {
-        dateRangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      }
-      
-      if (endDate) {
-        dateRangeEnd = new Date(endDate);
-        dateRangeEnd.setHours(23, 59, 59, 999);
-      } else {
-        dateRangeEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-      }
-      
-      const dateFormattedStart = dateRangeStart.toISOString().split('T')[0];
-      const dateFormattedEnd = dateRangeEnd.toISOString().split('T')[0];
-      
-      console.log('📅 Query date range:', dateFormattedStart, 'to', dateFormattedEnd);
-      
-      // Debug: Check what adverts exist
-      if (debug) {
-        console.log('🔍 DEBUG MODE: Checking database...');
-        const allAdverts = await strapi.entityService.findMany('api::advert.advert', {
-          fields: ['id', 'reference_number', 'advert_title', 'start_date', 'end_date', 'isPaid', 'isActive'],
-          limit: 5
-        });
-        console.log('📊 Sample adverts:', allAdverts);
-      }
-      
-      // Build filters using camelCase field names from schema
-      const filters = {
+async getActiveAdverts(ctx) {
+  try {
+    console.log('🎨 Design House: Fetching active adverts for design work');
+    
+    // Get parameters from either query (GET) or body (POST)
+    const { startDate, endDate, debug } = ctx.request.body || ctx.query;
+    
+    console.log('📝 Received parameters:', { startDate, endDate, debug });
+    
+    // Parse dates or use today as default
+    const now = new Date();
+    let dateRangeStart, dateRangeEnd;
+    let hasCustomDateRange = false;
+    
+    if (startDate) {
+      // For date fields, just use the date string directly
+      dateRangeStart = startDate; // e.g., "2026-01-01"
+      hasCustomDateRange = true;
+      console.log('✅ Using provided startDate:', startDate);
+    } else {
+      // Default to today in YYYY-MM-DD format
+      dateRangeStart = now.toISOString().split('T')[0];
+      console.log('ℹ️ Using default startDate (today):', dateRangeStart);
+    }
+    
+    if (endDate) {
+      // For date fields, just use the date string directly
+      dateRangeEnd = endDate; // e.g., "2026-01-31"
+      hasCustomDateRange = true;
+      console.log('✅ Using provided endDate:', endDate);
+    } else {
+      // Default to today in YYYY-MM-DD format
+      dateRangeEnd = now.toISOString().split('T')[0];
+      console.log('ℹ️ Using default endDate (today):', dateRangeEnd);
+    }
+    
+    console.log('📅 Query date range (as strings):', dateRangeStart, 'to', dateRangeEnd);
+    console.log('📅 Custom date range?', hasCustomDateRange);
+    
+    // Debug: Check what adverts exist
+    if (debug) {
+      console.log('🔍 DEBUG MODE: Checking database...');
+      const allAdverts = await strapi.entityService.findMany('api::advert.advert', {
+        fields: ['id', 'reference_number', 'advert_title', 'start_date', 'end_date', 'isPaid', 'isActive', 'isClosed', 'isCanceled'],
+        limit: 10
+      });
+      console.log('📊 Sample adverts:', allAdverts);
+    }
+    
+    // Build filters using camelCase field names from schema
+    // IMPORTANT: For date fields, compare as strings directly
+    const filters = {
+      isPaid: true,
+      isClosed: false,
+      isActive: true,
+      isCanceled: false,
+      $and: [
+        {
+          start_date: { 
+            $lte: dateRangeEnd  // advert's start_date <= our end date
+          }
+        },
+        {
+          end_date: { 
+            $gte: dateRangeStart  // advert's end_date >= our start date
+          }
+        }
+      ]
+    };
+    
+    console.log('🔍 Entity Service filters:', JSON.stringify(filters, null, 2));
+    
+    // First, test boolean filters alone
+    console.log('🧪 Testing boolean filters alone...');
+    const booleanFiltered = await strapi.entityService.findMany('api::advert.advert', {
+      filters: {
         isPaid: true,
         isClosed: false,
         isActive: true,
-        isCanceled: false,
+        isCanceled: false
+      },
+      fields: ['id', 'reference_number', 'advert_title', 'isPaid', 'isActive', 'isClosed', 'isCanceled'],
+      limit: 10
+    });
+    
+    console.log(`📊 Found ${booleanFiltered.length} adverts matching boolean criteria`);
+    
+    // Now test date range (Jan 1-31, 2026) to see what exists
+    console.log('🧪 Testing date range Jan 1-31, 2026...');
+    const januaryAdverts = await strapi.entityService.findMany('api::advert.advert', {
+      filters: {
         $and: [
-          {
-            start_date: { 
-              $lte: dateFormattedEnd
-            }
-          },
-          {
-            end_date: { 
-              $gte: dateFormattedStart 
+          { start_date: { $lte: '2026-01-31' } },
+          { end_date: { $gte: '2026-01-01' } }
+        ]
+      },
+      fields: ['id', 'reference_number', 'advert_title', 'start_date', 'end_date', 'isPaid', 'isActive'],
+      limit: 20
+    });
+    
+    console.log(`📊 Found ${januaryAdverts.length} adverts in January 2026`);
+    januaryAdverts.forEach(advert => {
+      console.log(`  - ${advert.reference_number}: ${advert.start_date} to ${advert.end_date} | Paid:${advert.isPaid} Active:${advert.isActive}`);
+    });
+    
+    // Now test with our specific date range
+    console.log('🧪 Testing with exact date filters...');
+    const dateFiltered = await strapi.entityService.findMany('api::advert.advert', {
+      filters: {
+        $and: [
+          { start_date: { $lte: dateRangeEnd } },
+          { end_date: { $gte: dateRangeStart } }
+        ]
+      },
+      fields: ['id', 'reference_number', 'advert_title', 'start_date', 'end_date', 'isPaid', 'isActive'],
+      limit: 20
+    });
+    
+    console.log(`📊 Found ${dateFiltered.length} adverts in date range ${dateRangeStart} to ${dateRangeEnd}`);
+    
+    // Query using Strapi Entity Service with all filters
+    const adverts = await strapi.entityService.findMany('api::advert.advert', {
+      filters,
+      fields: [
+        'id',
+        'reference_number',
+        'advert_title',
+        'frequency',
+        'ad_size',
+        'ad_type',
+        'start_date',
+        'end_date',
+        'base_price',
+        'surcharge',
+        'discount',
+        'total_amount',
+        'payment_method',
+        'special_instructions',
+        'status',
+        'isActive',
+        'isPaid',
+        'isClosed',
+        'isCanceled',
+        'isApproved',
+        'hasRun',
+        'isScheduled',
+        'createdAt',
+        'updatedAt'
+      ],
+      populate: {
+        client: {
+          fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address']
+        },
+        product: {
+          fields: ['id', 'product_name', 'description'],
+          populate: {
+            category: {
+              fields: ['id', 'category_name', 'category_type', 'description']
             }
           }
-        ]
-      };
+        },
+        rate_card: {
+          fields: ['id', 'price_fc', 'price_bw', 'ad_type', 'size_dimension', 'duration', 'time_slot', 'currency']
+        },
+        attachments: {
+          fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
+        },
+        vgams_user: {
+          fields: ['id', 'name', 'email', 'role']
+        },
+        comments: {
+          fields: ['id', 'comment_text', 'createdAt', 'updatedAt'],
+          sort: { createdAt: 'desc' }
+        }
+      },
+      sort: { start_date: 'asc' },
+      limit: -1
+    });
+    
+    console.log(`✅ Found ${adverts.length} adverts ready for design work`);
+    
+    // If no results found, let's do a manual check
+    if (adverts.length === 0) {
+      console.log('🔍 No results found. Doing manual analysis...');
       
-      console.log('🔍 Entity Service filters:', JSON.stringify(filters, null, 2));
-      
-      // Query using Strapi Entity Service
-      const adverts = await strapi.entityService.findMany('api::advert.advert', {
-        filters,
+      // Get all adverts that match boolean criteria
+      const allBooleanMatches = await strapi.entityService.findMany('api::advert.advert', {
+        filters: {
+          isPaid: true,
+          isClosed: false,
+          isActive: true,
+          isCanceled: false
+        },
         fields: [
           'id',
           'reference_number',
           'advert_title',
-          'frequency',
-          'ad_size',
-          'ad_type',
           'start_date',
           'end_date',
-          'base_price',
-          'surcharge',
-          'discount',
-          'total_amount',
-          'payment_method',
-          'special_instructions',
-          'status',
-          'isActive',
           'isPaid',
+          'isActive',
           'isClosed',
-          'isCanceled',
-          'isApproved',
-          'hasRun',
-          'isScheduled',
-          'createdAt',
-          'updatedAt'
+          'isCanceled'
         ],
-        populate: {
-          client: {
-            fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address']
-          },
-          product: {
-            fields: ['id', 'product_name', 'description'],
-            populate: {
-              category: {
-                fields: ['id', 'category_name', 'category_type', 'description']
-              }
-            }
-          },
-          rate_card: {
-            fields: ['id', 'price_fc', 'price_bw', 'ad_type', 'size_dimension', 'duration', 'time_slot', 'currency']
-          },
-          attachments: {
-            fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
-          },
-          vgams_user: {
-            fields: ['id', 'name', 'email', 'role']
-          },
-          // Fixed: Only include basic comment fields
-          comments: {
-            fields: ['id', 'comment_text', 'createdAt', 'updatedAt'],
-            sort: { createdAt: 'desc' }
-          }
-        },
-        sort: { start_date: 'asc' },
-        limit: -1
+        limit: 50
       });
       
-      console.log(`✅ Found ${adverts.length} adverts ready for design work`);
+      console.log(`📊 Found ${allBooleanMatches.length} adverts matching boolean criteria`);
       
-      // Log each advert for debugging
-      if (adverts.length > 0) {
-        adverts.forEach((advert, index) => {
-          console.log(`${index + 1}. ${advert.reference_number}:`, {
-            title: advert.advert_title,
-            client: advert.client?.company_name,
-            dates: `${advert.start_date} to ${advert.end_date}`,
-            isPaid: advert.isPaid,
-            isActive: advert.isActive,
-            isClosed: advert.isClosed,
-            isCanceled: advert.isCanceled,
-            isApproved: advert.isApproved,
-            attachments: (advert.attachments || []).length
-          });
-        });
-      } else {
-        console.log('⚠️ No adverts found. Checking if any adverts exist...');
-        const allCount = await strapi.entityService.findMany('api::advert.advert', {
-          fields: ['id'],
-          limit: 1
-        });
-        console.log(`📊 Total adverts in system: ${allCount.length}`);
-      }
-      
-      // Calculate statistics
-      const stats = {
-        total: adverts.length,
-        by_category: {},
-        by_product: {},
-        by_status: {},
-        total_value: 0,
-        with_designs: 0,
-        without_designs: 0,
-        urgent: 0,
-        new_today: 0,
-        within_date_range: 0
-      };
-      
-      const threeDaysFromNow = new Date(now);
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-      
-      const todayDateOnly = now.toISOString().split('T')[0];
-      
-      adverts.forEach(advert => {
-        stats.total_value += parseFloat(advert.total_amount) || 0;
+      // Manual date filtering
+      const manualMatches = allBooleanMatches.filter(advert => {
+        const advertStart = advert.start_date;
+        const advertEnd = advert.end_date;
         
-        // By category
-        const categoryName = advert.product?.category?.category_name || 'Uncategorized';
-        stats.by_category[categoryName] = (stats.by_category[categoryName] || 0) + 1;
+        if (!advertStart || !advertEnd) return false;
         
-        // By product
-        const productName = advert.product?.product_name || 'Unknown';
-        stats.by_product[productName] = (stats.by_product[productName] || 0) + 1;
+        // Check if date ranges overlap
+        // advert's date range overlaps with our query range if:
+        // advertStart <= dateRangeEnd AND advertEnd >= dateRangeStart
+        const overlaps = advertStart <= dateRangeEnd && advertEnd >= dateRangeStart;
         
-        // By design status
-        const designStatus = advert.isApproved ? 'completed' : 'pending';
-        stats.by_status[designStatus] = (stats.by_status[designStatus] || 0) + 1;
-        
-        // With/without design uploads
-        const hasAttachments = (advert.attachments || []).length > 0;
-        if (hasAttachments) {
-          stats.with_designs++;
-        } else {
-          stats.without_designs++;
-        }
-        
-        // Urgent (ending within 3 days)
-        const endDate = new Date(advert.end_date);
-        if (endDate <= threeDaysFromNow) {
-          stats.urgent++;
-        }
-        
-        // New today (starting today) - only if no custom date range was provided
-        if (!startDate && !endDate) {
-          const startDateOnly = advert.start_date ? advert.start_date.split('T')[0] : '';
-          if (startDateOnly === todayDateOnly) {
-            stats.new_today++;
-          }
-        }
-        
-        stats.within_date_range++;
+        return overlaps;
       });
       
-      return ctx.send({
-        success: true,
-        message: `Found ${adverts.length} adverts ready for design work`,
-        count: adverts.length,
-        data: adverts,
-        statistics: stats,
-        filters_applied: {
-          isPaid: true,
-          isClosed: false,
-          isActive: true,
-          isCanceled: false,
-          date_range: {
-            startDate: dateFormattedStart,
-            endDate: dateFormattedEnd,
-            startDateTime: dateRangeStart.toISOString(),
-            endDateTime: dateRangeEnd.toISOString()
-          },
-          custom_date_range: !!(startDate || endDate)
-        },
-        timestamp: now.toISOString()
-      });
-      
-    } catch (error) {
-      console.error('❌ Error fetching active adverts:', error);
-      return ctx.internalServerError({
-        success: false,
-        message: 'Failed to fetch active adverts',
-        error: error.message,
-        requestMethod: ctx.request.method,
-        requestBody: ctx.request.body,
-        requestQuery: ctx.query
+      console.log(`📊 Manual filtering shows ${manualMatches.length} should match:`);
+      manualMatches.forEach(advert => {
+        console.log(`  - ${advert.reference_number}: ${advert.start_date} to ${advert.end_date}`);
       });
     }
-  },
+    
+    // Calculate statistics
+    const stats = {
+      total: adverts.length,
+      by_category: {},
+      by_product: {},
+      by_status: {},
+      total_value: 0,
+      with_designs: 0,
+      without_designs: 0,
+      urgent: 0,
+      new_today: 0,
+      within_date_range: 0
+    };
+    
+    // Calculate 3 days from now as date string
+    const threeDaysFromNow = new Date(now);
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+    const threeDaysFromNowStr = threeDaysFromNow.toISOString().split('T')[0];
+    
+    const todayDateOnly = now.toISOString().split('T')[0];
+    
+    adverts.forEach(advert => {
+      stats.total_value += parseFloat(advert.total_amount) || 0;
+      
+      // By category
+      const categoryName = advert.product?.category?.category_name || 'Uncategorized';
+      stats.by_category[categoryName] = (stats.by_category[categoryName] || 0) + 1;
+      
+      // By product
+      const productName = advert.product?.product_name || 'Unknown';
+      stats.by_product[productName] = (stats.by_product[productName] || 0) + 1;
+      
+      // By design status
+      const designStatus = advert.isApproved ? 'completed' : 'pending';
+      stats.by_status[designStatus] = (stats.by_status[designStatus] || 0) + 1;
+      
+      // With/without design uploads
+      const hasAttachments = (advert.attachments || []).length > 0;
+      if (hasAttachments) {
+        stats.with_designs++;
+      } else {
+        stats.without_designs++;
+      }
+      
+      // Urgent (ending within 3 days) - compare as date strings
+      if (advert.end_date && advert.end_date <= threeDaysFromNowStr) {
+        stats.urgent++;
+      }
+      
+      // New today (starting today) - only if no custom date range was provided
+      if (!hasCustomDateRange) {
+        if (advert.start_date && advert.start_date === todayDateOnly) {
+          stats.new_today++;
+        }
+      }
+      
+      stats.within_date_range++;
+    });
+    
+    return ctx.send({
+      success: true,
+      message: `Found ${adverts.length} adverts ready for design work`,
+      count: adverts.length,
+      data: adverts,
+      statistics: stats,
+      filters_applied: {
+        isPaid: true,
+        isClosed: false,
+        isActive: true,
+        isCanceled: false,
+        date_range: {
+          startDate: dateRangeStart,
+          endDate: dateRangeEnd,
+          dateFieldType: 'date (YYYY-MM-DD)'
+        },
+        custom_date_range: hasCustomDateRange,
+        debug_info: {
+          booleanFilteredCount: booleanFiltered.length,
+          januaryAdvertsCount: januaryAdverts.length,
+          dateFilteredCount: dateFiltered.length,
+          receivedParams: { startDate, endDate, debug }
+        }
+      },
+      timestamp: now.toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching active adverts:', error);
+    return ctx.internalServerError({
+      success: false,
+      message: 'Failed to fetch active adverts',
+      error: error.message,
+      requestMethod: ctx.request.method,
+      requestBody: ctx.request.body,
+      requestQuery: ctx.query
+    });
+  }
+},
   
   /**
    * Get adverts for a specific date range
