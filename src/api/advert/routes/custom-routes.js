@@ -177,18 +177,7 @@ module.exports = {
       config: {
         auth: false,  // Set to true if authentication required
         description: 'Get active adverts for design work with optional date range',
-        tags: ['Design House'],
-        body: {
-          startDate: {
-            type: 'string',
-            description: 'Start date in YYYY-MM-DD format (optional, defaults to today)',
-            example: '2026-01-01'
-          },
-          endDate: {
-            type: 'string',
-            description: 'End date in YYYY-MM-DD format (optional, defaults to today)',
-            example: '2026-01-31'
-          }
+        tags: ['Design House']
         }
       }
     },
