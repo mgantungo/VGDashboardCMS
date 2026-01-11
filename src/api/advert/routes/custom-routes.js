@@ -179,7 +179,6 @@ module.exports = {
         description: 'Get active adverts for design work with optional date range',
         tags: ['Design House']
         }
-      }
     },
     {
       method: 'GET',
