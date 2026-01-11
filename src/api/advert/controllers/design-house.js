@@ -125,7 +125,7 @@ module.exports = {
           },
           // Fixed: Only include basic comment fields
           comments: {
-            fields: ['id', 'content', 'createdAt', 'updatedAt'],
+            fields: ['id', 'comment_text', 'createdAt', 'updatedAt'],
             sort: { createdAt: 'desc' }
           }
         },
