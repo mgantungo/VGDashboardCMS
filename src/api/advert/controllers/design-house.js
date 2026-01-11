@@ -1,22 +1,22 @@
 'use strict';
 
 /**
- * Design House Controller - Strapi 5 Entity Service Version
- * Using proper camelCase field names from schema
+ * Design House Controller - Complete Revised Version
+ * Handles all design house operations for adverts ready for design work
  */
 
 module.exports = {
   
   /**
    * Get adverts ready for design work
-   * GET /api/design-house/active-adverts
+   * Accepts both POST (body) and GET (query) parameters
    */
   async getActiveAdverts(ctx) {
     try {
       console.log('🎨 Design House: Fetching active adverts for design work');
       
-      // Get query parameters for date range
-      const { startDate, endDate, debug } = ctx.query;
+      // Get parameters from either query (GET) or body (POST)
+      const { startDate, endDate, debug } = ctx.request.body || ctx.query;
       
       // Parse dates or use today as default
       const now = new Date();
@@ -41,24 +41,14 @@ module.exports = {
       
       console.log('📅 Query date range:', dateFormattedStart, 'to', dateFormattedEnd);
       
-      // First, let's debug what adverts exist
+      // Debug: Check what adverts exist
       if (debug) {
-        console.log('🔍 DEBUG MODE: Checking all adverts...');
+        console.log('🔍 DEBUG MODE: Checking database...');
         const allAdverts = await strapi.entityService.findMany('api::advert.advert', {
-          fields: ['id', 'reference_number', 'advert_title', 'start_date', 'end_date'],
-          populate: {
-            client: { fields: ['company_name'] }
-          },
-          limit: 10
+          fields: ['id', 'reference_number', 'advert_title', 'start_date', 'end_date', 'isPaid', 'isActive'],
+          limit: 5
         });
-        
-        console.log('📊 First 10 adverts:', allAdverts);
-        
-        // Check specific fields
-        const testAdvert = await strapi.entityService.findOne('api::advert.advert', allAdverts[0]?.id || 1, {
-          fields: ['isActive', 'isPaid', 'isClosed', 'isCanceled', 'isApproved']
-        });
-        console.log('🔍 Field check for first advert:', testAdvert);
+        console.log('📊 Sample adverts:', allAdverts);
       }
       
       // Build filters using camelCase field names from schema
@@ -127,16 +117,16 @@ module.exports = {
           rate_card: {
             fields: ['id', 'price_fc', 'price_bw', 'ad_type', 'size_dimension', 'duration', 'time_slot', 'currency']
           },
-          attachments: true,
+          attachments: {
+            fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
+          },
           vgams_user: {
             fields: ['id', 'name', 'email', 'role']
           },
+          // Fixed: Only include basic comment fields
           comments: {
-            populate: {
-              user: {
-                fields: ['username', 'email']
-              }
-            }
+            fields: ['id', 'content', 'createdAt', 'updatedAt'],
+            sort: { createdAt: 'desc' }
           }
         },
         sort: { start_date: 'asc' },
@@ -256,7 +246,9 @@ module.exports = {
         success: false,
         message: 'Failed to fetch active adverts',
         error: error.message,
-        query: ctx.query
+        requestMethod: ctx.request.method,
+        requestBody: ctx.request.body,
+        requestQuery: ctx.query
       });
     }
   },
@@ -308,6 +300,9 @@ module.exports = {
         populate: {
           client: {
             fields: ['company_name']
+          },
+          attachments: {
+            fields: ['id']
           }
         },
         sort: { start_date: 'asc' },
@@ -404,16 +399,14 @@ module.exports = {
           rate_card: {
             fields: ['id', 'ad_type', 'size_dimension', 'price_fc', 'price_bw', 'duration', 'time_slot', 'currency']
           },
-          attachments: true,
+          attachments: {
+            fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
+          },
           vgams_user: {
             fields: ['id', 'name', 'email', 'role']
           },
           comments: {
-            populate: {
-              user: {
-                fields: ['username', 'email']
-              }
-            },
+            fields: ['id', 'content', 'createdAt', 'updatedAt'],
             sort: { createdAt: 'desc' }
           }
         }
@@ -463,7 +456,9 @@ module.exports = {
       const advert = await strapi.entityService.findOne('api::advert.advert', id, {
         fields: ['id', 'reference_number', 'advert_title'],
         populate: {
-          attachments: true
+          attachments: {
+            fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
+          }
         }
       });
       
@@ -709,8 +704,6 @@ module.exports = {
           if (users && users.length > 0) {
             designerUserId = users[0].id;
             console.log('✅ Found designer:', { id: designerUserId, email: users[0].email });
-          } else {
-            console.warn('⚠️ Designer not found with email:', designerEmail);
           }
         } catch (err) {
           console.error('❌ Error looking up designer:', err);
@@ -720,7 +713,7 @@ module.exports = {
       // Update advert - mark design work as completed/approved
       const updatedAdvert = await strapi.entityService.update('api::advert.advert', id, {
         data: {
-          isApproved: true  // Design work has been approved/completed
+          isApproved: true
         }
       });
       
@@ -770,11 +763,8 @@ module.exports = {
       console.log('📊 Fetching design house statistics');
       
       const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-      
-      const todayFormattedStart = todayStart.toISOString().split('T')[0];
-      const todayFormattedEnd = todayEnd.toISOString().split('T')[0];
+      const todayStart = now.toISOString().split('T')[0];
+      const todayEnd = now.toISOString().split('T')[0];
       
       // Active projects (matching all criteria)
       const activeAdverts = await strapi.entityService.findMany('api::advert.advert', {
@@ -784,8 +774,8 @@ module.exports = {
           isActive: true,
           isCanceled: false,
           $and: [
-            { start_date: { $lte: todayFormattedEnd } },
-            { end_date: { $gte: todayFormattedStart } }
+            { start_date: { $lte: todayEnd } },
+            { end_date: { $gte: todayStart } }
           ]
         },
         fields: ['id']
@@ -800,8 +790,8 @@ module.exports = {
           isCanceled: false,
           isApproved: false,
           $and: [
-            { start_date: { $lte: todayFormattedEnd } },
-            { end_date: { $gte: todayFormattedStart } }
+            { start_date: { $lte: todayEnd } },
+            { end_date: { $gte: todayStart } }
           ]
         },
         fields: ['id']
@@ -813,14 +803,14 @@ module.exports = {
           isPaid: true,
           isApproved: true,
           $and: [
-            { start_date: { $lte: todayFormattedEnd } },
-            { end_date: { $gte: todayFormattedStart } }
+            { start_date: { $lte: todayEnd } },
+            { end_date: { $gte: todayStart } }
           ]
         },
         fields: ['id']
       });
       
-      // Count total files - first get all adverts with attachments
+      // Count total files across all adverts
       const advertsWithFiles = await strapi.entityService.findMany('api::advert.advert', {
         filters: {
           isPaid: true,
@@ -867,63 +857,63 @@ module.exports = {
   },
   
   /**
-   * Debug endpoint to check field names and data
-   * GET /api/design-house/debug-fields
+   * Debug endpoint to check database and schema
+   * GET /api/design-house/debug
    */
-  async debugFields(ctx) {
+  async debug(ctx) {
     try {
-      console.log('🔍 Debugging advert fields and data');
+      console.log('🔍 Design House Debug Endpoint');
       
-      // Get a few adverts to inspect
+      // Check a few adverts
       const sampleAdverts = await strapi.entityService.findMany('api::advert.advert', {
         fields: [
           'id',
           'reference_number',
+          'advert_title',
+          'start_date',
+          'end_date',
           'isActive',
           'isPaid',
           'isClosed',
           'isCanceled',
-          'isApproved',
-          'start_date',
-          'end_date'
+          'isApproved'
         ],
         limit: 5
       });
       
-      // Get schema information
-      const contentTypeService = strapi.plugin('content-type-builder').service('content-types');
-      const advertSchema = await contentTypeService.findContentType('api::advert.advert');
-      
-      // Extract boolean fields from schema
-      const booleanFields = [];
-      if (advertSchema && advertSchema.attributes) {
-        Object.entries(advertSchema.attributes).forEach(([fieldName, fieldConfig]) => {
-          if (fieldConfig.type === 'boolean') {
-            booleanFields.push({
-              field: fieldName,
-              type: fieldConfig.type,
-              default: fieldConfig.default
-            });
-          }
-        });
+      // Check if any advert meets the criteria
+      const testAdvert = sampleAdverts[0];
+      let meetsCriteria = false;
+      if (testAdvert) {
+        meetsCriteria = 
+          testAdvert.isPaid === true &&
+          testAdvert.isActive === true &&
+          testAdvert.isClosed === false &&
+          testAdvert.isCanceled === false;
       }
+      
+      // Test date parsing
+      const testDate = new Date();
+      const todayFormatted = testDate.toISOString().split('T')[0];
       
       return ctx.send({
         success: true,
-        message: 'Debug information',
-        schema: {
-          booleanFields: booleanFields,
-          totalFields: Object.keys(advertSchema?.attributes || {}).length
-        },
-        sampleData: sampleAdverts,
-        rawDataCheck: sampleAdverts.map(ad => ({
-          id: ad.id,
-          ref: ad.reference_number,
-          isPaid: ad.isPaid,
-          isPaidType: typeof ad.isPaid,
-          isActive: ad.isActive,
-          isActiveType: typeof ad.isActive
-        }))
+        debug: {
+          timestamp: new Date().toISOString(),
+          todayFormatted: todayFormatted,
+          sampleAdverts: sampleAdverts,
+          testAdvertMeetsCriteria: meetsCriteria,
+          testAdvertDetails: testAdvert ? {
+            id: testAdvert.id,
+            ref: testAdvert.reference_number,
+            isPaid: testAdvert.isPaid,
+            isPaidType: typeof testAdvert.isPaid,
+            isActive: testAdvert.isActive,
+            isActiveType: typeof testAdvert.isActive,
+            isClosed: testAdvert.isClosed,
+            isCanceled: testAdvert.isCanceled
+          } : null
+        }
       });
       
     } catch (error) {
