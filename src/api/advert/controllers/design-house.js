@@ -1,10 +1,8 @@
 'use strict';
 
 /**
- * Design House Controller with Raw Database Queries
- * 
- * Handles all design house operations for adverts ready for design work
- * Using raw SQL queries to bypass Strapi ORM issues
+ * Design House Controller - Strapi 5 Entity Service Version
+ * Using proper camelCase field names from schema
  */
 
 module.exports = {
@@ -18,7 +16,7 @@ module.exports = {
       console.log('🎨 Design House: Fetching active adverts for design work');
       
       // Get query parameters for date range
-      const { startDate, endDate } = ctx.query;
+      const { startDate, endDate, debug } = ctx.query;
       
       // Parse dates or use today as default
       const now = new Date();
@@ -43,192 +41,137 @@ module.exports = {
       
       console.log('📅 Query date range:', dateFormattedStart, 'to', dateFormattedEnd);
       
-      // Use raw SQL query
-      const knex = strapi.db.connection;
+      // First, let's debug what adverts exist
+      if (debug) {
+        console.log('🔍 DEBUG MODE: Checking all adverts...');
+        const allAdverts = await strapi.entityService.findMany('api::advert.advert', {
+          fields: ['id', 'reference_number', 'advert_title', 'start_date', 'end_date'],
+          populate: {
+            client: { fields: ['company_name'] }
+          },
+          limit: 10
+        });
+        
+        console.log('📊 First 10 adverts:', allAdverts);
+        
+        // Check specific fields
+        const testAdvert = await strapi.entityService.findOne('api::advert.advert', allAdverts[0]?.id || 1, {
+          fields: ['isActive', 'isPaid', 'isClosed', 'isCanceled', 'isApproved']
+        });
+        console.log('🔍 Field check for first advert:', testAdvert);
+      }
       
-      // Build query with all criteria
-      const query = knex('adverts as a')
-        .select(
-          'a.id',
-          'a.reference_number',
-          'a.advert_title',
-          'a.frequency',
-          'a.ad_size',
-          'a.ad_type',
-          'a.start_date',
-          'a.end_date',
-          'a.base_price',
-          'a.surcharge',
-          'a.discount',
-          'a.total_amount',
-          'a.payment_method',
-          'a.special_instructions',
-          'a.status',
-          'a.is_active',
-          'a.is_paid',
-          'a.is_closed',
-          'a.is_canceled',
-          'a.is_approved',
-          'a.has_run',
-          'a.is_scheduled',
-          'a.created_at',
-          'a.updated_at',
-          // Client fields
-          'c.id as client_id',
-          'c.company_name',
-          'c.contact_person',
-          'c.email as client_email',
-          'c.phone as client_phone',
-          'c.address as client_address',
-          // Product fields
-          'p.id as product_id',
-          'p.product_name',
-          'p.description as product_description',
-          // Category fields
-          'pc.id as category_id',
-          'pc.category_name',
-          'pc.category_type',
-          'pc.description as category_description',
-          // Rate card fields
-          'rc.id as rate_card_id',
-          'rc.price_fc',
-          'rc.price_bw',
-          'rc.ad_type as rate_card_ad_type',
-          'rc.size_dimension',
-          'rc.duration',
-          'rc.time_slot',
-          'rc.currency',
-          'rc.effective_date',
-          'rc.expiry_date',
-          // VGAMS user fields
-          'vu.id as vgams_user_id',
-          'vu.name as vgams_user_name',
-          'vu.email as vgams_user_email',
-          'vu.role as vgams_user_role'
-        )
-        .leftJoin('clients as c', 'a.client', 'c.id')
-        .leftJoin('products as p', 'a.product', 'p.id')
-        .leftJoin('product_categories as pc', 'p.category', 'pc.id')
-        .leftJoin('rate_cards as rc', 'a.rate_card', 'rc.id')
-        .leftJoin('vgams_users as vu', 'a.vgams_user', 'vu.id')
-        .where({
-          'a.is_paid': 1,
-          'a.is_active': 1,
-          'a.is_closed': 0,
-          'a.is_canceled': 0
-        })
-        .where('a.end_date', '>=', dateFormattedStart)
-        .where('a.start_date', '<=', dateFormattedEnd)
-        .orderBy('a.start_date', 'asc');
+      // Build filters using camelCase field names from schema
+      const filters = {
+        isPaid: true,
+        isClosed: false,
+        isActive: true,
+        isCanceled: false,
+        $and: [
+          {
+            start_date: { 
+              $lte: dateFormattedEnd
+            }
+          },
+          {
+            end_date: { 
+              $gte: dateFormattedStart 
+            }
+          }
+        ]
+      };
       
-      const rawAdverts = await query;
+      console.log('🔍 Entity Service filters:', JSON.stringify(filters, null, 2));
       
-      console.log(`✅ Found ${rawAdverts.length} adverts ready for design work`);
+      // Query using Strapi Entity Service
+      const adverts = await strapi.entityService.findMany('api::advert.advert', {
+        filters,
+        fields: [
+          'id',
+          'reference_number',
+          'advert_title',
+          'frequency',
+          'ad_size',
+          'ad_type',
+          'start_date',
+          'end_date',
+          'base_price',
+          'surcharge',
+          'discount',
+          'total_amount',
+          'payment_method',
+          'special_instructions',
+          'status',
+          'isActive',
+          'isPaid',
+          'isClosed',
+          'isCanceled',
+          'isApproved',
+          'hasRun',
+          'isScheduled',
+          'createdAt',
+          'updatedAt'
+        ],
+        populate: {
+          client: {
+            fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address']
+          },
+          product: {
+            fields: ['id', 'product_name', 'description'],
+            populate: {
+              category: {
+                fields: ['id', 'category_name', 'category_type', 'description']
+              }
+            }
+          },
+          rate_card: {
+            fields: ['id', 'price_fc', 'price_bw', 'ad_type', 'size_dimension', 'duration', 'time_slot', 'currency']
+          },
+          attachments: true,
+          vgams_user: {
+            fields: ['id', 'name', 'email', 'role']
+          },
+          comments: {
+            populate: {
+              user: {
+                fields: ['username', 'email']
+              }
+            }
+          }
+        },
+        sort: { start_date: 'asc' },
+        limit: -1
+      });
       
-      // Get attachments for each advert
-      const advertsWithAttachments = await Promise.all(
-        rawAdverts.map(async (advert) => {
-          // Get attachments for this advert
-          const attachments = await knex('files_related_morphs as frm')
-            .select(
-              'f.id',
-              'f.name',
-              'f.hash',
-              'f.ext',
-              'f.mime',
-              'f.size',
-              'f.url',
-              'f.created_at',
-              'f.updated_at'
-            )
-            .leftJoin('files as f', 'frm.file_id', 'f.id')
-            .where({
-              'frm.related_id': advert.id,
-              'frm.related_type': 'api::advert.advert',
-              'frm.field': 'attachments'
-            })
-            .orderBy('f.created_at', 'asc');
-          
-          // Convert snake_case to camelCase for consistent response
-          return {
-            id: advert.id,
-            reference_number: advert.reference_number,
-            advert_title: advert.advert_title,
-            frequency: advert.frequency,
-            ad_size: advert.ad_size,
-            ad_type: advert.ad_type,
-            start_date: advert.start_date,
-            end_date: advert.end_date,
-            base_price: advert.base_price,
-            surcharge: advert.surcharge,
-            discount: advert.discount,
-            total_amount: advert.total_amount,
-            payment_method: advert.payment_method,
-            special_instructions: advert.special_instructions,
-            status: advert.status,
-            isActive: advert.is_active === 1,
-            isPaid: advert.is_paid === 1,
-            isClosed: advert.is_closed === 1,
-            isCanceled: advert.is_canceled === 1,
-            isApproved: advert.is_approved === 1,
-            hasRun: advert.has_run === 1,
-            isScheduled: advert.is_scheduled === 1,
-            createdAt: advert.created_at,
-            updatedAt: advert.updated_at,
-            client: advert.client_id ? {
-              id: advert.client_id,
-              company_name: advert.company_name,
-              contact_person: advert.contact_person,
-              email: advert.client_email,
-              phone: advert.client_phone,
-              address: advert.client_address
-            } : null,
-            product: advert.product_id ? {
-              id: advert.product_id,
-              product_name: advert.product_name,
-              description: advert.product_description,
-              category: advert.category_id ? {
-                id: advert.category_id,
-                category_name: advert.category_name,
-                category_type: advert.category_type,
-                description: advert.category_description
-              } : null
-            } : null,
-            rate_card: advert.rate_card_id ? {
-              id: advert.rate_card_id,
-              price_fc: advert.price_fc,
-              price_bw: advert.price_bw,
-              ad_type: advert.rate_card_ad_type,
-              size_dimension: advert.size_dimension,
-              duration: advert.duration,
-              time_slot: advert.time_slot,
-              currency: advert.currency,
-              effective_date: advert.effective_date,
-              expiry_date: advert.expiry_date
-            } : null,
-            vgams_user: advert.vgams_user_id ? {
-              id: advert.vgams_user_id,
-              name: advert.vgams_user_name,
-              email: advert.vgams_user_email,
-              role: advert.vgams_user_role
-            } : null,
-            attachments: attachments.map(file => ({
-              id: file.id,
-              name: file.name,
-              url: file.url,
-              size: file.size,
-              mime: file.mime,
-              ext: file.ext,
-              createdAt: file.created_at,
-              updatedAt: file.updated_at
-            }))
-          };
-        })
-      );
+      console.log(`✅ Found ${adverts.length} adverts ready for design work`);
+      
+      // Log each advert for debugging
+      if (adverts.length > 0) {
+        adverts.forEach((advert, index) => {
+          console.log(`${index + 1}. ${advert.reference_number}:`, {
+            title: advert.advert_title,
+            client: advert.client?.company_name,
+            dates: `${advert.start_date} to ${advert.end_date}`,
+            isPaid: advert.isPaid,
+            isActive: advert.isActive,
+            isClosed: advert.isClosed,
+            isCanceled: advert.isCanceled,
+            isApproved: advert.isApproved,
+            attachments: (advert.attachments || []).length
+          });
+        });
+      } else {
+        console.log('⚠️ No adverts found. Checking if any adverts exist...');
+        const allCount = await strapi.entityService.findMany('api::advert.advert', {
+          fields: ['id'],
+          limit: 1
+        });
+        console.log(`📊 Total adverts in system: ${allCount.length}`);
+      }
       
       // Calculate statistics
       const stats = {
-        total: advertsWithAttachments.length,
+        total: adverts.length,
         by_category: {},
         by_product: {},
         by_status: {},
@@ -245,7 +188,7 @@ module.exports = {
       
       const todayDateOnly = now.toISOString().split('T')[0];
       
-      advertsWithAttachments.forEach(advert => {
+      adverts.forEach(advert => {
         stats.total_value += parseFloat(advert.total_amount) || 0;
         
         // By category
@@ -287,9 +230,9 @@ module.exports = {
       
       return ctx.send({
         success: true,
-        message: `Found ${advertsWithAttachments.length} adverts ready for design work`,
-        count: advertsWithAttachments.length,
-        data: advertsWithAttachments,
+        message: `Found ${adverts.length} adverts ready for design work`,
+        count: adverts.length,
+        data: adverts,
         statistics: stats,
         filters_applied: {
           isPaid: true,
@@ -298,7 +241,9 @@ module.exports = {
           isCanceled: false,
           date_range: {
             startDate: dateFormattedStart,
-            endDate: dateFormattedEnd
+            endDate: dateFormattedEnd,
+            startDateTime: dateRangeStart.toISOString(),
+            endDateTime: dateRangeEnd.toISOString()
           },
           custom_date_range: !!(startDate || endDate)
         },
@@ -334,48 +279,40 @@ module.exports = {
         });
       }
       
-      const knex = strapi.db.connection;
+      const filters = {
+        isPaid: true,
+        isClosed: false,
+        isActive: true,
+        isCanceled: false,
+        $and: [
+          { start_date: { $lte: endDate } },
+          { end_date: { $gte: startDate } }
+        ]
+      };
       
-      const rawAdverts = await knex('adverts as a')
-        .select(
-          'a.id',
-          'a.reference_number',
-          'a.advert_title',
-          'a.start_date',
-          'a.end_date',
-          'a.total_amount',
-          'a.is_active',
-          'a.is_paid',
-          'a.is_closed',
-          'a.is_canceled',
-          'a.is_approved',
-          'c.company_name'
-        )
-        .leftJoin('clients as c', 'a.client', 'c.id')
-        .where({
-          'a.is_paid': 1,
-          'a.is_active': 1,
-          'a.is_closed': 0,
-          'a.is_canceled': 0
-        })
-        .where('a.end_date', '>=', startDate)
-        .where('a.start_date', '<=', endDate)
-        .orderBy('a.start_date', 'asc');
-      
-      const adverts = rawAdverts.map(advert => ({
-        id: advert.id,
-        reference_number: advert.reference_number,
-        advert_title: advert.advert_title,
-        start_date: advert.start_date,
-        end_date: advert.end_date,
-        total_amount: advert.total_amount,
-        isActive: advert.is_active === 1,
-        isPaid: advert.is_paid === 1,
-        isClosed: advert.is_closed === 1,
-        isCanceled: advert.is_canceled === 1,
-        isApproved: advert.is_approved === 1,
-        client: advert.company_name ? { company_name: advert.company_name } : null
-      }));
+      const adverts = await strapi.entityService.findMany('api::advert.advert', {
+        filters,
+        fields: [
+          'id',
+          'reference_number',
+          'advert_title',
+          'start_date',
+          'end_date',
+          'total_amount',
+          'isActive',
+          'isPaid',
+          'isClosed',
+          'isCanceled',
+          'isApproved'
+        ],
+        populate: {
+          client: {
+            fields: ['company_name']
+          }
+        },
+        sort: { start_date: 'asc' },
+        limit: -1
+      });
       
       let totalValue = 0;
       adverts.forEach(advert => {
@@ -392,7 +329,9 @@ module.exports = {
           total_adverts: adverts.length,
           total_value: totalValue,
           pending_designs: adverts.filter(a => !a.isApproved).length,
-          completed_designs: adverts.filter(a => a.isApproved).length
+          completed_designs: adverts.filter(a => a.isApproved).length,
+          with_attachments: adverts.filter(a => (a.attachments || []).length > 0).length,
+          without_attachments: adverts.filter(a => (a.attachments || []).length === 0).length
         }
       });
       
@@ -423,139 +362,69 @@ module.exports = {
       
       console.log(`🎨 Fetching advert details for ID: ${id}`);
       
-      const knex = strapi.db.connection;
+      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
+        fields: [
+          'id',
+          'reference_number',
+          'advert_title',
+          'frequency',
+          'ad_size',
+          'ad_type',
+          'start_date',
+          'end_date',
+          'base_price',
+          'surcharge',
+          'discount',
+          'total_amount',
+          'payment_method',
+          'special_instructions',
+          'status',
+          'isActive',
+          'isPaid',
+          'isClosed',
+          'isCanceled',
+          'isApproved',
+          'hasRun',
+          'isScheduled',
+          'createdAt',
+          'updatedAt'
+        ],
+        populate: {
+          client: {
+            fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address']
+          },
+          product: {
+            fields: ['id', 'product_name', 'description'],
+            populate: {
+              category: {
+                fields: ['id', 'category_name', 'category_type', 'description']
+              }
+            }
+          },
+          rate_card: {
+            fields: ['id', 'ad_type', 'size_dimension', 'price_fc', 'price_bw', 'duration', 'time_slot', 'currency']
+          },
+          attachments: true,
+          vgams_user: {
+            fields: ['id', 'name', 'email', 'role']
+          },
+          comments: {
+            populate: {
+              user: {
+                fields: ['username', 'email']
+              }
+            },
+            sort: { createdAt: 'desc' }
+          }
+        }
+      });
       
-      // Get advert basic info
-      const advertRaw = await knex('adverts as a')
-        .select(
-          'a.*',
-          'c.company_name',
-          'c.contact_person',
-          'c.email as client_email',
-          'c.phone as client_phone',
-          'c.address as client_address',
-          'p.product_name',
-          'p.description as product_description',
-          'pc.category_name',
-          'pc.category_type',
-          'pc.description as category_description',
-          'vu.name as vgams_user_name',
-          'vu.email as vgams_user_email',
-          'vu.role as vgams_user_role'
-        )
-        .leftJoin('clients as c', 'a.client', 'c.id')
-        .leftJoin('products as p', 'a.product', 'p.id')
-        .leftJoin('product_categories as pc', 'p.category', 'pc.id')
-        .leftJoin('vgams_users as vu', 'a.vgams_user', 'vu.id')
-        .where('a.id', id)
-        .first();
-      
-      if (!advertRaw) {
+      if (!advert) {
         return ctx.notFound({
           success: false,
           message: `Advert with ID ${id} not found`
         });
       }
-      
-      // Get attachments
-      const attachments = await knex('files_related_morphs as frm')
-        .select('f.*')
-        .leftJoin('files as f', 'frm.file_id', 'f.id')
-        .where({
-          'frm.related_id': id,
-          'frm.related_type': 'api::advert.advert',
-          'frm.field': 'attachments'
-        })
-        .orderBy('f.created_at', 'asc');
-      
-      // Get comments
-      const commentsRaw = await knex('comments as cm')
-        .select(
-          'cm.id',
-          'cm.content',
-          'cm.created_at',
-          'cm.updated_at',
-          'u.username',
-          'u.email'
-        )
-        .leftJoin('admin_users as u', 'cm.created_by_id', 'u.id')
-        .where('cm.advert', id)
-        .orderBy('cm.created_at', 'desc');
-      
-      const comments = commentsRaw.map(comment => ({
-        id: comment.id,
-        content: comment.content,
-        createdAt: comment.created_at,
-        updatedAt: comment.updated_at,
-        user: {
-          username: comment.username,
-          email: comment.email
-        }
-      }));
-      
-      // Format response
-      const advert = {
-        id: advertRaw.id,
-        reference_number: advertRaw.reference_number,
-        advert_title: advertRaw.advert_title,
-        frequency: advertRaw.frequency,
-        ad_size: advertRaw.ad_size,
-        ad_type: advertRaw.ad_type,
-        start_date: advertRaw.start_date,
-        end_date: advertRaw.end_date,
-        base_price: advertRaw.base_price,
-        surcharge: advertRaw.surcharge,
-        discount: advertRaw.discount,
-        total_amount: advertRaw.total_amount,
-        payment_method: advertRaw.payment_method,
-        special_instructions: advertRaw.special_instructions,
-        status: advertRaw.status,
-        isActive: advertRaw.is_active === 1,
-        isPaid: advertRaw.is_paid === 1,
-        isClosed: advertRaw.is_closed === 1,
-        isCanceled: advertRaw.is_canceled === 1,
-        isApproved: advertRaw.is_approved === 1,
-        hasRun: advertRaw.has_run === 1,
-        isScheduled: advertRaw.is_scheduled === 1,
-        createdAt: advertRaw.created_at,
-        updatedAt: advertRaw.updated_at,
-        client: advertRaw.company_name ? {
-          id: advertRaw.client,
-          company_name: advertRaw.company_name,
-          contact_person: advertRaw.contact_person,
-          email: advertRaw.client_email,
-          phone: advertRaw.client_phone,
-          address: advertRaw.client_address
-        } : null,
-        product: advertRaw.product ? {
-          id: advertRaw.product,
-          product_name: advertRaw.product_name,
-          description: advertRaw.product_description,
-          category: advertRaw.category_name ? {
-            id: advertRaw.category,
-            category_name: advertRaw.category_name,
-            category_type: advertRaw.category_type,
-            description: advertRaw.category_description
-          } : null
-        } : null,
-        vgams_user: advertRaw.vgams_user ? {
-          id: advertRaw.vgams_user,
-          name: advertRaw.vgams_user_name,
-          email: advertRaw.vgams_user_email,
-          role: advertRaw.vgams_user_role
-        } : null,
-        attachments: attachments.map(file => ({
-          id: file.id,
-          name: file.name,
-          url: file.url,
-          size: file.size,
-          mime: file.mime,
-          ext: file.ext,
-          createdAt: file.created_at,
-          updatedAt: file.updated_at
-        })),
-        comments
-      };
       
       console.log(`✅ Advert details retrieved: ${advert.reference_number}`);
       
@@ -591,41 +460,23 @@ module.exports = {
       
       console.log(`📁 Fetching design files for advert ID: ${id}`);
       
-      const knex = strapi.db.connection;
+      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
+        fields: ['id', 'reference_number', 'advert_title'],
+        populate: {
+          attachments: true
+        }
+      });
       
-      // Get advert basic info
-      const advertRaw = await knex('adverts')
-        .select('id', 'reference_number', 'advert_title')
-        .where('id', id)
-        .first();
-      
-      if (!advertRaw) {
+      if (!advert) {
         return ctx.notFound({
           success: false,
           message: `Advert with ID ${id} not found`
         });
       }
       
-      // Get attachments
-      const attachments = await knex('files_related_morphs as frm')
-        .select(
-          'f.id',
-          'f.name',
-          'f.hash',
-          'f.ext',
-          'f.mime',
-          'f.size',
-          'f.url',
-          'f.created_at',
-          'f.updated_at'
-        )
-        .leftJoin('files as f', 'frm.file_id', 'f.id')
-        .where({
-          'frm.related_id': id,
-          'frm.related_type': 'api::advert.advert',
-          'frm.field': 'attachments'
-        })
-        .orderBy('f.created_at', 'asc');
+      const attachments = advert.attachments || [];
+      
+      console.log(`✅ Found ${attachments.length} files for ${advert.reference_number}`);
       
       // Organize files by type
       const filesByType = {
@@ -657,25 +508,14 @@ module.exports = {
         }
       });
       
-      const formattedAttachments = attachments.map(file => ({
-        id: file.id,
-        name: file.name,
-        url: file.url,
-        size: file.size,
-        mime: file.mime,
-        ext: file.ext,
-        createdAt: file.created_at,
-        updatedAt: file.updated_at
-      }));
-      
       return ctx.send({
         success: true,
         advert: {
-          id: advertRaw.id,
-          reference_number: advertRaw.reference_number,
-          advert_title: advertRaw.advert_title
+          id: advert.id,
+          reference_number: advert.reference_number,
+          advert_title: advert.advert_title
         },
-        files: formattedAttachments,
+        files: attachments,
         filesByType: filesByType,
         statistics: {
           total: attachments.length,
@@ -703,9 +543,6 @@ module.exports = {
    * Upload design files to an advert
    * POST /api/design-house/adverts/:id/upload
    * Content-Type: multipart/form-data
-   * 
-   * Note: For file uploads, we'll use Strapi's upload service
-   * since raw SQL for file uploads is complex
    */
   async uploadDesignFiles(ctx) {
     try {
@@ -718,13 +555,10 @@ module.exports = {
         });
       }
       
-      const knex = strapi.db.connection;
-      
       // Check if advert exists and meets criteria
-      const advert = await knex('adverts')
-        .select('id', 'reference_number', 'is_paid', 'is_closed', 'is_canceled', 'is_active')
-        .where('id', id)
-        .first();
+      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
+        fields: ['id', 'reference_number', 'isPaid', 'isClosed', 'isCanceled', 'isActive']
+      });
       
       if (!advert) {
         return ctx.notFound({
@@ -734,28 +568,28 @@ module.exports = {
       }
       
       // Verify advert meets design upload criteria
-      if (advert.is_paid !== 1) {
+      if (!advert.isPaid) {
         return ctx.badRequest({
           success: false,
           message: 'Cannot upload designs for unpaid adverts'
         });
       }
       
-      if (advert.is_closed === 1) {
+      if (advert.isClosed) {
         return ctx.badRequest({
           success: false,
           message: 'Cannot upload designs for closed/completed adverts'
         });
       }
       
-      if (advert.is_canceled === 1) {
+      if (advert.isCanceled) {
         return ctx.badRequest({
           success: false,
           message: 'Cannot upload designs for canceled adverts'
         });
       }
       
-      if (advert.is_active !== 1) {
+      if (!advert.isActive) {
         return ctx.badRequest({
           success: false,
           message: 'Cannot upload designs for inactive adverts'
@@ -774,7 +608,7 @@ module.exports = {
         });
       }
       
-      // Use Strapi's upload service for file uploads
+      // Upload files using Strapi's upload service
       const uploadedFiles = [];
       const errors = [];
       
@@ -842,13 +676,10 @@ module.exports = {
       
       console.log(`✅ Marking design complete for advert #${id}`);
       
-      const knex = strapi.db.connection;
-      
       // Find the advert
-      const advert = await knex('adverts')
-        .select('id', 'reference_number', 'advert_title', 'is_paid', 'is_closed', 'is_approved')
-        .where('id', id)
-        .first();
+      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
+        fields: ['id', 'reference_number', 'advert_title', 'isPaid', 'isClosed', 'isApproved']
+      });
       
       if (!advert) {
         return ctx.notFound({
@@ -857,7 +688,7 @@ module.exports = {
         });
       }
       
-      if (advert.is_closed === 1) {
+      if (advert.isClosed) {
         return ctx.badRequest({
           success: false,
           message: 'Advert is already closed/completed'
@@ -869,14 +700,17 @@ module.exports = {
       if (designerEmail) {
         console.log('🔍 Looking up designer by email:', designerEmail);
         try {
-          const designer = await knex('vgams_users')
-            .select('id', 'name', 'email')
-            .where('email', designerEmail)
-            .first();
+          const users = await strapi.entityService.findMany('api::vgams-user.vgams-user', {
+            filters: { email: designerEmail },
+            fields: ['id', 'name', 'email'],
+            limit: 1
+          });
           
-          if (designer) {
-            designerUserId = designer.id;
-            console.log('✅ Found designer:', { id: designerUserId, email: designer.email });
+          if (users && users.length > 0) {
+            designerUserId = users[0].id;
+            console.log('✅ Found designer:', { id: designerUserId, email: users[0].email });
+          } else {
+            console.warn('⚠️ Designer not found with email:', designerEmail);
           }
         } catch (err) {
           console.error('❌ Error looking up designer:', err);
@@ -884,36 +718,22 @@ module.exports = {
       }
       
       // Update advert - mark design work as completed/approved
-      await knex('adverts')
-        .where('id', id)
-        .update({
-          is_approved: 1,
-          updated_at: new Date()
-        });
+      const updatedAdvert = await strapi.entityService.update('api::advert.advert', id, {
+        data: {
+          isApproved: true  // Design work has been approved/completed
+        }
+      });
       
       // Optionally create a comment/log entry
       if (notes) {
         try {
-          // First, get the current user ID if available
-          let userId = designerUserId;
-          if (!userId) {
-            // Try to get a default user (like admin)
-            const defaultUser = await knex('admin_users')
-              .select('id')
-              .where('username', 'admin')
-              .first();
-            userId = defaultUser ? defaultUser.id : null;
-          }
-          
-          await knex('comments').insert({
-            content: `Design work completed. ${notes}`,
-            advert: id,
-            created_by_id: userId,
-            updated_by_id: userId,
-            created_at: new Date(),
-            updated_at: new Date()
+          await strapi.entityService.create('api::comment.comment', {
+            data: {
+              content: `Design work completed. ${notes}`,
+              advert: id,
+              user: designerUserId
+            }
           });
-          
           console.log('✅ Comment created for design completion');
         } catch (commentError) {
           console.error('❌ Error creating comment:', commentError);
@@ -928,7 +748,7 @@ module.exports = {
         advert_id: id,
         reference_number: advert.reference_number,
         advert_title: advert.advert_title,
-        is_approved: true
+        isApproved: true
       });
       
     } catch (error) {
@@ -950,70 +770,82 @@ module.exports = {
       console.log('📊 Fetching design house statistics');
       
       const now = new Date();
-      const todayStart = now.toISOString().split('T')[0];
-      const todayEnd = now.toISOString().split('T')[0];
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       
-      const knex = strapi.db.connection;
+      const todayFormattedStart = todayStart.toISOString().split('T')[0];
+      const todayFormattedEnd = todayEnd.toISOString().split('T')[0];
       
       // Active projects (matching all criteria)
-      const activeAdverts = await knex('adverts')
-        .count('id as count')
-        .where({
-          is_paid: 1,
-          is_closed: 0,
-          is_active: 1,
-          is_canceled: 0
-        })
-        .where('end_date', '>=', todayStart)
-        .where('start_date', '<=', todayEnd)
-        .first();
+      const activeAdverts = await strapi.entityService.findMany('api::advert.advert', {
+        filters: {
+          isPaid: true,
+          isClosed: false,
+          isActive: true,
+          isCanceled: false,
+          $and: [
+            { start_date: { $lte: todayFormattedEnd } },
+            { end_date: { $gte: todayFormattedStart } }
+          ]
+        },
+        fields: ['id']
+      });
       
       // Ready to upload (not yet approved/started design work)
-      const readyToUpload = await knex('adverts')
-        .count('id as count')
-        .where({
-          is_paid: 1,
-          is_closed: 0,
-          is_active: 1,
-          is_canceled: 0,
-          is_approved: 0
-        })
-        .where('end_date', '>=', todayStart)
-        .where('start_date', '<=', todayEnd)
-        .first();
+      const readyToUpload = await strapi.entityService.findMany('api::advert.advert', {
+        filters: {
+          isPaid: true,
+          isClosed: false,
+          isActive: true,
+          isCanceled: false,
+          isApproved: false,
+          $and: [
+            { start_date: { $lte: todayFormattedEnd } },
+            { end_date: { $gte: todayFormattedStart } }
+          ]
+        },
+        fields: ['id']
+      });
       
-      // Completed designs (is_approved = true)
-      const completedDesigns = await knex('adverts')
-        .count('id as count')
-        .where({
-          is_paid: 1,
-          is_approved: 1
-        })
-        .where('end_date', '>=', todayStart)
-        .where('start_date', '<=', todayEnd)
-        .first();
+      // Completed designs (isApproved = true)
+      const completedDesigns = await strapi.entityService.findMany('api::advert.advert', {
+        filters: {
+          isPaid: true,
+          isApproved: true,
+          $and: [
+            { start_date: { $lte: todayFormattedEnd } },
+            { end_date: { $gte: todayFormattedStart } }
+          ]
+        },
+        fields: ['id']
+      });
       
-      // Count total files across all adverts
-      const filesCount = await knex('files_related_morphs as frm')
-        .count('frm.id as count')
-        .leftJoin('adverts as a', function() {
-          this.on('frm.related_id', '=', 'a.id')
-            .andOn('frm.related_type', '=', knex.raw('?', ['api::advert.advert']))
-            .andOn('frm.field', '=', knex.raw('?', ['attachments']))
-        })
-        .where({
-          'a.is_paid': 1,
-          'a.is_closed': 0,
-          'a.is_active': 1,
-          'a.is_canceled': 0
-        })
-        .first();
+      // Count total files - first get all adverts with attachments
+      const advertsWithFiles = await strapi.entityService.findMany('api::advert.advert', {
+        filters: {
+          isPaid: true,
+          isClosed: false,
+          isActive: true,
+          isCanceled: false
+        },
+        populate: {
+          attachments: {
+            fields: ['id']
+          }
+        },
+        limit: -1
+      });
+      
+      let totalFiles = 0;
+      advertsWithFiles.forEach(advert => {
+        totalFiles += (advert.attachments || []).length;
+      });
       
       const stats = {
-        activeProjects: parseInt(activeAdverts?.count || 0),
-        readyToUpload: parseInt(readyToUpload?.count || 0),
-        completedDesigns: parseInt(completedDesigns?.count || 0),
-        totalFiles: parseInt(filesCount?.count || 0),
+        activeProjects: activeAdverts.length,
+        readyToUpload: readyToUpload.length,
+        completedDesigns: completedDesigns.length,
+        totalFiles: totalFiles,
         lastUpdated: new Date().toISOString()
       };
       
@@ -1035,43 +867,70 @@ module.exports = {
   },
   
   /**
-   * Test endpoint - Get all adverts with raw SQL
-   * GET /api/design-house/test-raw
+   * Debug endpoint to check field names and data
+   * GET /api/design-house/debug-fields
    */
-  async testRawQuery(ctx) {
+  async debugFields(ctx) {
     try {
-      console.log('🔧 Testing raw SQL query');
+      console.log('🔍 Debugging advert fields and data');
       
-      const knex = strapi.db.connection;
-      
-      // Simple test query
-      const testResults = await knex('adverts')
-        .select(
+      // Get a few adverts to inspect
+      const sampleAdverts = await strapi.entityService.findMany('api::advert.advert', {
+        fields: [
           'id',
           'reference_number',
-          'advert_title',
+          'isActive',
+          'isPaid',
+          'isClosed',
+          'isCanceled',
+          'isApproved',
           'start_date',
-          'end_date',
-          'is_paid',
-          'is_active',
-          'is_closed',
-          'is_canceled'
-        )
-        .limit(10);
+          'end_date'
+        ],
+        limit: 5
+      });
       
-      console.log('📊 Test results:', testResults);
+      // Get schema information
+      const contentTypeService = strapi.plugin('content-type-builder').service('content-types');
+      const advertSchema = await contentTypeService.findContentType('api::advert.advert');
+      
+      // Extract boolean fields from schema
+      const booleanFields = [];
+      if (advertSchema && advertSchema.attributes) {
+        Object.entries(advertSchema.attributes).forEach(([fieldName, fieldConfig]) => {
+          if (fieldConfig.type === 'boolean') {
+            booleanFields.push({
+              field: fieldName,
+              type: fieldConfig.type,
+              default: fieldConfig.default
+            });
+          }
+        });
+      }
       
       return ctx.send({
         success: true,
-        message: `Found ${testResults.length} adverts in test query`,
-        data: testResults
+        message: 'Debug information',
+        schema: {
+          booleanFields: booleanFields,
+          totalFields: Object.keys(advertSchema?.attributes || {}).length
+        },
+        sampleData: sampleAdverts,
+        rawDataCheck: sampleAdverts.map(ad => ({
+          id: ad.id,
+          ref: ad.reference_number,
+          isPaid: ad.isPaid,
+          isPaidType: typeof ad.isPaid,
+          isActive: ad.isActive,
+          isActiveType: typeof ad.isActive
+        }))
       });
       
     } catch (error) {
-      console.error('❌ Error in test query:', error);
+      console.error('❌ Error in debug endpoint:', error);
       return ctx.internalServerError({
         success: false,
-        message: 'Failed to test raw query',
+        message: 'Debug failed',
         error: error.message
       });
     }
