@@ -133,64 +133,40 @@ async scheduleAdvert(ctx) {
     // Handle file uploads AFTER schedule creation
     let uploadedMediaIds = [];
     
-    if (mediaFiles) {
-      try {
-        // Convert to array
-        const filesArray = Array.isArray(mediaFiles) ? mediaFiles : [mediaFiles];
-        strapi.log.info(`Uploading ${filesArray.length} file(s) with schedule reference...`);
-        
-        const uploadService = strapi.plugins['upload'].services.upload;
-        
-        // Upload each file with proper schedule reference
-        for (let i = 0; i < filesArray.length; i++) {
-          const file = filesArray[i];
+      if (mediaFiles) {
+        try {
+          const filesArray = Array.isArray(mediaFiles) ? mediaFiles : [mediaFiles];
+          const uploadService = strapi.plugins['upload'].services.upload;
           
-          try {
-            // Upload file WITH schedule reference
-            const uploadedFile = await uploadService.upload({
-              data: {
-                // This is CRITICAL: Set ref information during upload
-                ref: 'api::advert-daily-schedule.advert-daily-schedule',
-                refId: schedule.id,
-                field: 'media',
-                fileInfo: {
-                  name: file.name || `schedule_${schedule.id}_${i}`,
-                  alternativeText: `Media for schedule ${schedule.id}`,
-                  caption: `Uploaded for schedule on ${formattedDate}`,
-                }
-              },
-              files: file,
-            });
-            
-            if (uploadedFile && uploadedFile.length > 0) {
-              const fileId = uploadedFile[0].id;
-              uploadedMediaIds.push(fileId);
-              strapi.log.info(`✅ File uploaded and connected to schedule: ${fileId}`);
-            }
-          } catch (fileError) {
-            strapi.log.error(`File upload error:`, fileError);
-          }
-        }
-        
-        // Update schedule with media connection
-        if (uploadedMediaIds.length > 0) {
-          strapi.log.info(`Updating schedule with ${uploadedMediaIds.length} media files...`);
-          
-          await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', schedule.id, {
+          // Upload all files at once with schedule reference
+          const uploadData = {
             data: {
-              media: {
-                connect: uploadedMediaIds.map(id => ({ id }))
-              }
-            }
-          });
+              ref: 'api::advert-daily-schedule.advert-daily-schedule',
+              refId: schedule.id,
+              field: 'media'
+            },
+            files: filesArray
+          };
           
-          strapi.log.info('Schedule updated with media connection');
+          strapi.log.info('Upload config:', uploadData);
+          
+          const uploadedFiles = await uploadService.upload(uploadData);
+          
+          if (uploadedFiles && uploadedFiles.length > 0) {
+            uploadedMediaIds = uploadedFiles.map(file => file.id);
+            strapi.log.info(`Uploaded ${uploadedFiles.length} files:`, uploadedMediaIds);
+            
+            // Update schedule with connected media
+            await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', schedule.id, {
+              data: {
+                media: uploadedMediaIds // Try simple array format
+              }
+            });
+          }
+        } catch (uploadError) {
+          strapi.log.error('Upload error:', uploadError);
         }
-        
-      } catch (uploadError) {
-        strapi.log.error('Upload process error:', uploadError);
       }
-    }
 
     // Update advert
     await strapi.entityService.update('api::advert.advert', advertIdNum, {
