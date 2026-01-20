@@ -11,87 +11,71 @@ async scheduleAdvert(ctx) {
   try {
     strapi.log.info('=== START SCHEDULE ADVERT REQUEST ===');
     
-    // Log request headers for debugging
-    strapi.log.info('Request Content-Type:', ctx.request.header['content-type']);
-    strapi.log.info('Request method:', ctx.request.method);
-    strapi.log.info('Request URL:', ctx.request.url);
+    // For multipart/form-data requests in Strapi, we need to use a different approach
+    // Strapi doesn't automatically parse multipart in custom controllers
     
-    // For multipart/form-data, we need to get data differently
-    let advertId, runDate, runTime, mediaFiles, isPublished = false;
+    let advertId, runDate, runTime, isPublished = false;
+    let mediaFiles = null;
     
-    // Check if this is a multipart request (for file uploads)
-    const isMultipart = ctx.is('multipart/form-data');
-    strapi.log.info('Is multipart/form-data request:', isMultipart);
+    // Check content type
+    const contentType = ctx.request.header['content-type'] || '';
+    const isMultipart = contentType.includes('multipart/form-data');
+    strapi.log.info('Content-Type:', contentType);
+    strapi.log.info('Is multipart:', isMultipart);
     
     if (isMultipart) {
-      const { body, files } = ctx.request;
-      strapi.log.info('Multipart body keys:', Object.keys(body || {}));
-      strapi.log.info('Multipart files keys:', Object.keys(files || {}));
-      
-      // Extract data from form body
-      advertId = body?.advertId;
-      runDate = body?.runDate;
-      runTime = body?.runTime;
-      isPublished = body?.isPublished === 'true' || body?.isPublished === true;
-      
-      // Log extracted data
-      strapi.log.info('Extracted from body - advertId:', advertId);
-      strapi.log.info('Extracted from body - runDate:', runDate);
-      strapi.log.info('Extracted from body - runTime:', runTime);
-      strapi.log.info('Extracted from body - isPublished:', isPublished);
-      
-      // Get files from the request
-      if (files) {
-        strapi.log.info('Available file fields:', Object.keys(files));
+      try {
+        // For multipart requests, we need to parse them manually
+        // Strapi provides a utility for this
+        const parsed = await strapi.utils.multipart.parseMultipartData(ctx);
+        strapi.log.info('Parsed multipart data successfully');
         
-        // Try different possible field names
-        if (files.mediaFiles) {
+        // Extract data from parsed object
+        const { data, files } = parsed;
+        strapi.log.info('Parsed data keys:', Object.keys(data || {}));
+        strapi.log.info('Parsed files keys:', Object.keys(files || {}));
+        
+        // Get form fields
+        advertId = data?.advertId;
+        runDate = data?.runDate;
+        runTime = data?.runTime;
+        isPublished = data?.isPublished === 'true' || data?.isPublished === true;
+        
+        // Get files
+        if (files && files.mediaFiles) {
           mediaFiles = files.mediaFiles;
-          strapi.log.info('Found files in "mediaFiles" field');
-        } else if (files.files) {
+          strapi.log.info('Found mediaFiles in parsed data');
+        } else if (files && files.files) {
           mediaFiles = files.files;
-          strapi.log.info('Found files in "files" field');
-        } else {
-          // Check for any file field
-          const fileKeys = Object.keys(files).filter(key => files[key]);
-          if (fileKeys.length > 0) {
-            mediaFiles = files[fileKeys[0]];
-            strapi.log.info(`Found files in "${fileKeys[0]}" field`);
-          }
+          strapi.log.info('Found files in parsed data');
         }
         
-        if (mediaFiles) {
-          strapi.log.info('mediaFiles type:', typeof mediaFiles);
-          strapi.log.info('mediaFiles is array:', Array.isArray(mediaFiles));
+      } catch (parseError) {
+        strapi.log.error('Error parsing multipart data:', parseError);
+        
+        // Fallback: try to get data from raw body if parse fails
+        try {
+          const rawBody = ctx.request.body;
+          strapi.log.info('Raw body type:', typeof rawBody);
+          strapi.log.info('Raw body keys:', Object.keys(rawBody || {}));
           
-          if (Array.isArray(mediaFiles)) {
-            strapi.log.info(`Number of media files: ${mediaFiles.length}`);
-            mediaFiles.forEach((file, index) => {
-              strapi.log.info(`File ${index}:`, {
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                originalFilename: file.originalFilename,
-                mimetype: file.mimetype
-              });
-            });
-          } else {
-            strapi.log.info('Single file object:', {
-              name: mediaFiles.name,
-              size: mediaFiles.size,
-              type: mediaFiles.type,
-              originalFilename: mediaFiles.originalFilename,
-              mimetype: mediaFiles.mimetype
-            });
+          if (rawBody && typeof rawBody === 'object') {
+            advertId = rawBody.advertId;
+            runDate = rawBody.runDate;
+            runTime = rawBody.runTime;
+            isPublished = rawBody.isPublished || false;
+            
+            // Check for files in request
+            if (ctx.request.files) {
+              mediaFiles = ctx.request.files;
+            }
           }
-        } else {
-          strapi.log.warn('No media files found in request');
+        } catch (fallbackError) {
+          strapi.log.error('Fallback parse also failed:', fallbackError);
         }
-      } else {
-        strapi.log.warn('No files object in request');
       }
     } else {
-      // For JSON requests
+      // For non-multipart requests (JSON)
       const body = ctx.request.body;
       strapi.log.info('Non-multipart request body:', JSON.stringify(body, null, 2));
       
@@ -101,15 +85,40 @@ async scheduleAdvert(ctx) {
       mediaFiles = body.mediaFiles;
       isPublished = body.isPublished || false;
     }
-
-    // Log all received data
-    strapi.log.info('=== FINAL EXTRACTED DATA ===');
+    
+    // Log extracted data
+    strapi.log.info('=== EXTRACTED DATA ===');
     strapi.log.info('advertId:', advertId);
     strapi.log.info('runDate:', runDate);
     strapi.log.info('runTime:', runTime);
     strapi.log.info('isPublished:', isPublished);
-    strapi.log.info('Has mediaFiles:', !!mediaFiles);
-
+    strapi.log.info('mediaFiles type:', typeof mediaFiles);
+    strapi.log.info('mediaFiles is array:', Array.isArray(mediaFiles));
+    
+    if (mediaFiles) {
+      if (Array.isArray(mediaFiles)) {
+        strapi.log.info(`Number of media files: ${mediaFiles.length}`);
+        mediaFiles.forEach((file, index) => {
+          if (file && typeof file === 'object') {
+            strapi.log.info(`File ${index} info:`, {
+              name: file.name || 'unnamed',
+              size: file.size || 'unknown',
+              type: file.type || 'unknown',
+              path: file.path || 'no path'
+            });
+          }
+        });
+      } else if (mediaFiles && typeof mediaFiles === 'object') {
+        strapi.log.info('Single file info:', {
+          name: mediaFiles.name || 'unnamed',
+          size: mediaFiles.size || 'unknown',
+          type: mediaFiles.type || 'unknown',
+          path: mediaFiles.path || 'no path'
+        });
+      }
+    }
+    
+    // Rest of the controller continues...
     // Validate required fields
     if (!advertId || !runDate) {
       strapi.log.error('Missing required fields:', { advertId, runDate });
@@ -157,49 +166,22 @@ async scheduleAdvert(ctx) {
     let runTimeData = null;
     if (runTime) {
       try {
-        strapi.log.info('Processing runTime:', runTime);
-        
-        // If runTime is already an array
-        if (Array.isArray(runTime)) {
-          const validTimes = runTime.filter(time => 
-            typeof time === 'string' && time.trim().length > 0
-          );
-          
-          if (validTimes.length > 0) {
-            runTimeData = validTimes;
-          }
-          strapi.log.info('Valid runTimes:', validTimes);
-        } 
-        // If runTime is a string, try to parse it as JSON or treat as single time
-        else if (typeof runTime === 'string') {
-          // Try to parse as JSON array
+        // If runTime is a string, try to parse it as JSON
+        if (typeof runTime === 'string') {
           try {
             const parsed = JSON.parse(runTime);
-            strapi.log.info('Parsed runTime JSON:', parsed);
-            
             if (Array.isArray(parsed)) {
-              const validTimes = parsed.filter(time => 
-                typeof time === 'string' && time.trim().length > 0
-              );
-              if (validTimes.length > 0) {
-                runTimeData = validTimes;
-              }
-            } else if (typeof parsed === 'string' && parsed.trim().length > 0) {
-              runTimeData = [parsed.trim()];
+              runTimeData = JSON.stringify(parsed);
+            } else {
+              runTimeData = JSON.stringify([runTime]);
             }
           } catch (e) {
-            strapi.log.info('runTime is not JSON, treating as string:', runTime);
-            if (runTime.trim().length > 0) {
-              runTimeData = [runTime.trim()];
-            }
+            runTimeData = JSON.stringify([runTime]);
           }
+        } else if (Array.isArray(runTime)) {
+          runTimeData = JSON.stringify(runTime);
         }
-        
-        // If we have runTime data, stringify it for Strapi JSON field
-        if (runTimeData) {
-          runTimeData = JSON.stringify(runTimeData);
-          strapi.log.info('Final runTimeData (stringified):', runTimeData);
-        }
+        strapi.log.info('Processed runTimeData:', runTimeData);
       } catch (error) {
         strapi.log.error('Error processing runTime:', error);
       }
@@ -208,72 +190,52 @@ async scheduleAdvert(ctx) {
     // Handle media files upload if provided
     let uploadedMediaIds = [];
     
-    strapi.log.info('=== STARTING FILE UPLOAD PROCESS ===');
-    strapi.log.info('Has mediaFiles to process:', !!mediaFiles);
-    
     if (mediaFiles) {
       try {
         // Convert to array if it's a single file
         const filesArray = Array.isArray(mediaFiles) ? mediaFiles : [mediaFiles];
+        strapi.log.info(`Processing ${filesArray.length} file(s)`);
         
-        strapi.log.info(`Will process ${filesArray.length} file(s)`);
-        
-        // Check upload plugin is available
-        if (!strapi.plugins['upload']) {
-          strapi.log.error('Upload plugin not found!');
-        } else if (!strapi.plugins['upload'].services.upload) {
-          strapi.log.error('Upload service not found!');
-        } else {
-          // For each media file, upload to Strapi
-          for (let i = 0; i < filesArray.length; i++) {
-            const file = filesArray[i];
+        for (let i = 0; i < filesArray.length; i++) {
+          const file = filesArray[i];
+          
+          if (!file || typeof file !== 'object') {
+            strapi.log.warn(`File ${i} is not a valid object, skipping`);
+            continue;
+          }
+          
+          try {
+            strapi.log.info(`[${i + 1}/${filesArray.length}] Uploading file: ${file.name || 'unnamed'}`);
             
-            try {
-              strapi.log.info(`[${i + 1}/${filesArray.length}] Uploading file: ${file.name || 'unnamed'} (${file.size} bytes, ${file.type || 'unknown type'})`);
-              
-              // Log file object structure for debugging
-              strapi.log.info('File object keys:', Object.keys(file));
-              
-              // Upload the file to Strapi media library
-              const uploadConfig = {
-                data: {
-                  fileInfo: {
-                    name: file.name,
-                    alternativeText: `Schedule media for advert ${advertId}`,
-                    caption: `Uploaded for schedule on ${formattedDate}`,
-                  }
-                },
-                files: file,
-              };
-              
-              strapi.log.info('Upload config:', JSON.stringify(uploadConfig.data, null, 2));
-              
-              const uploadedFile = await strapi.plugins['upload'].services.upload.upload(uploadConfig);
-              
-              if (uploadedFile && uploadedFile.length > 0) {
-                const fileId = uploadedFile[0].id;
-                uploadedMediaIds.push(fileId);
-                strapi.log.info(`✅ File uploaded successfully: ${file.name} (ID: ${fileId})`);
-              } else {
-                strapi.log.warn(`File upload returned empty result: ${file.name}`);
-              }
-            } catch (fileError) {
-              strapi.log.error(`❌ Error uploading file ${file.name || 'unnamed'}:`, fileError.message);
-              strapi.log.error('File error stack:', fileError.stack);
-              // Continue with other files if one fails
+            // Upload the file
+            const uploadedFile = await strapi.plugins['upload'].services.upload.upload({
+              data: {
+                fileInfo: {
+                  name: file.name || `schedule_media_${Date.now()}`,
+                  alternativeText: `Media for advert ${advertId} schedule`,
+                  caption: `Scheduled for ${formattedDate}`,
+                }
+              },
+              files: file,
+            });
+            
+            if (uploadedFile && uploadedFile.length > 0) {
+              const fileId = uploadedFile[0].id;
+              uploadedMediaIds.push(fileId);
+              strapi.log.info(`✅ File uploaded with ID: ${fileId}`);
             }
+          } catch (fileError) {
+            strapi.log.error(`Error uploading file:`, fileError);
           }
         }
       } catch (uploadError) {
-        strapi.log.error('❌ Media upload process error:', uploadError);
-        strapi.log.error('Upload error stack:', uploadError.stack);
+        strapi.log.error('Media upload process error:', uploadError);
       }
     }
-
+    
     strapi.log.info(`Total uploaded files: ${uploadedMediaIds.length}`);
-    strapi.log.info('Uploaded file IDs:', uploadedMediaIds);
 
-    // Check if schedule already exists for this date and advert
+    // Check for existing schedules
     const existingSchedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
       filters: {
         run_date: formattedDate,
@@ -285,8 +247,7 @@ async scheduleAdvert(ctx) {
     });
 
     if (existingSchedules.length > 0) {
-      strapi.log.error(`Advert already scheduled for ${formattedDate}`);
-      return ctx.badRequest(`Advert ${advert.reference_number || advert.id} is already scheduled for ${formattedDate}`);
+      return ctx.badRequest(`Advert is already scheduled for ${formattedDate}`);
     }
 
     // Prepare schedule data
@@ -306,14 +267,10 @@ async scheduleAdvert(ctx) {
       scheduleData.data.media = {
         connect: uploadedMediaIds
       };
-      strapi.log.info('Adding media to schedule:', uploadedMediaIds);
     }
-
-    strapi.log.info('Schedule data to create:', JSON.stringify(scheduleData, null, 2));
 
     // Create the schedule
     const schedule = await strapi.entityService.create('api::advert-daily-schedule.advert-daily-schedule', scheduleData);
-    strapi.log.info('Schedule created with ID:', schedule.id);
 
     // Update advert's isScheduled status
     await strapi.entityService.update('api::advert.advert', advertIdNum, {
@@ -321,30 +278,26 @@ async scheduleAdvert(ctx) {
         isScheduled: true,
       },
     });
-    strapi.log.info('Updated advert isScheduled to true');
 
-    // Create workflow log for scheduling
+    // Create workflow log (with error handling)
     try {
       await strapi.entityService.create('api::workflow-log.workflow-log', {
         data: {
           action: 'scheduled',
-          description: `Advert scheduled to run on ${formattedDate}${runTime ? ' at ' + (runTimeData ? JSON.parse(runTimeData).join(', ') : runTime) : ''}`,
+          description: `Advert scheduled for ${formattedDate}`,
           advert: advertIdNum,
-          user: ctx.state.user?.id || null,
           metadata: {
             scheduleId: schedule.id,
             runDate: formattedDate,
-            runTime: runTimeData ? JSON.parse(runTimeData) : null,
             uploadedFiles: uploadedMediaIds.length
           },
         },
       });
-      strapi.log.info('Workflow log created');
     } catch (logError) {
-      strapi.log.error('Failed to create workflow log:', logError);
+      strapi.log.error('Workflow log error (non-fatal):', logError);
     }
 
-    // Populate the response with related data
+    // Populate the response
     const populatedSchedule = await strapi.entityService.findOne('api::advert-daily-schedule.advert-daily-schedule', schedule.id, {
       populate: {
         adverts: {
@@ -354,36 +307,20 @@ async scheduleAdvert(ctx) {
       },
     });
 
-    strapi.log.info('=== SCHEDULE CREATION COMPLETE ===');
-    strapi.log.info('Response schedule ID:', populatedSchedule.id);
-    strapi.log.info('Response media count:', populatedSchedule.media?.length || 0);
-
     return ctx.send({
       success: true,
-      message: `Advert ${advert.reference_number || advert.id} scheduled successfully for ${formattedDate}`,
+      message: `Advert scheduled successfully for ${formattedDate}`,
       data: {
         schedule: populatedSchedule,
-        advert: {
-          id: advert.id,
-          reference_number: advert.reference_number,
-          advert_title: advert.advert_title,
-          client: advert.client,
-          isScheduled: true,
-        },
         uploadedFiles: uploadedMediaIds.length,
-        fileDetails: uploadedMediaIds.map(id => ({ id })),
       },
     });
 
   } catch (error) {
-    strapi.log.error('❌ Schedule advert error:', error.message);
-    strapi.log.error('Error stack:', error.stack);
-    return ctx.internalServerError('Failed to schedule advert', { 
-      error: error.message,
-      details: error.stack 
-    });
+    strapi.log.error('Schedule advert error:', error);
+    return ctx.internalServerError('Failed to schedule advert');
   } finally {
-    strapi.log.info('=== END SCHEDULE ADVERT REQUEST ===\n');
+    strapi.log.info('=== END SCHEDULE ADVERT REQUEST ===');
   }
 },
 
