@@ -243,6 +243,56 @@ module.exports = {
           }
         }
       }
-    }
+    },
+    {
+      method: 'POST',
+      path: '/advert-daily-schedules/schedule',
+      handler: 'daily-advert-schedule.scheduleAdvert',
+      config: {
+        auth: false, // Set to true if you want authentication
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/advert-daily-schedules/advert/:advertId',
+      handler: 'daily-advert-schedule.getAdvertSchedules',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/advert-daily-schedules/date-range',
+      handler: 'daily-advert-schedule.getSchedulesByDateRange',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'DELETE',
+      path: '/advert-daily-schedules/unschedule/:scheduleId',
+      handler: 'daily-advert-schedule.unscheduleAdvert',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'PUT',
+      path: '/advert-daily-schedules/publish/:scheduleId',
+      handler: 'daily-advert-schedule.togglePublishStatus',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
   ]
 };
