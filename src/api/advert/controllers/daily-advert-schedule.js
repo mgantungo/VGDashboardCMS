@@ -16,9 +16,15 @@ module.exports = {
         return ctx.badRequest('advertId and runDate are required');
       }
 
+      // Validate advertId is a number
+      const advertIdNum = parseInt(advertId);
+      if (isNaN(advertIdNum)) {
+        return ctx.badRequest('advertId must be a valid number');
+      }
+
       // Check if advert exists
-      const advert = await strapi.entityService.findOne('api::advert.advert', advertId, {
-        populate: ['advert_daily_schedules'],
+      const advert = await strapi.entityService.findOne('api::advert.advert', advertIdNum, {
+        populate: ['advert_daily_schedules', 'client'],
       });
 
       if (!advert) {
@@ -33,34 +39,80 @@ module.exports = {
       // Parse runDate to ensure proper format
       const parsedRunDate = new Date(runDate);
       if (isNaN(parsedRunDate.getTime())) {
-        return ctx.badRequest('Invalid runDate format');
+        return ctx.badRequest('Invalid runDate format. Use YYYY-MM-DD');
       }
 
       // Format date to YYYY-MM-DD for Strapi
       const formattedDate = parsedRunDate.toISOString().split('T')[0];
 
-      // Prepare runTime data
+      // Validate and format runTime as JSON array
       let runTimeData = null;
       if (runTime) {
-        // Validate runTime format (expecting "HH:mm AM/PM" or similar)
-        if (typeof runTime === 'string') {
-          runTimeData = runTime;
-        } else if (typeof runTime === 'object') {
-          runTimeData = runTime;
+        try {
+          // If runTime is already an array
+          if (Array.isArray(runTime)) {
+            // Validate each time entry
+            const validTimes = runTime.filter(time => 
+              typeof time === 'string' && time.trim().length > 0
+            );
+            
+            if (validTimes.length > 0) {
+              runTimeData = validTimes;
+            }
+          } 
+          // If runTime is a string, try to parse it as JSON or treat as single time
+          else if (typeof runTime === 'string') {
+            // Try to parse as JSON array
+            try {
+              const parsed = JSON.parse(runTime);
+              if (Array.isArray(parsed)) {
+                const validTimes = parsed.filter(time => 
+                  typeof time === 'string' && time.trim().length > 0
+                );
+                if (validTimes.length > 0) {
+                  runTimeData = validTimes;
+                }
+              } else if (typeof parsed === 'string' && parsed.trim().length > 0) {
+                // Single time as string
+                runTimeData = [parsed.trim()];
+              }
+            } catch (e) {
+              // If not valid JSON, treat as single time string
+              if (runTime.trim().length > 0) {
+                runTimeData = [runTime.trim()];
+              }
+            }
+          }
+          
+          // If we have runTime data, stringify it for Strapi JSON field
+          if (runTimeData) {
+            runTimeData = JSON.stringify(runTimeData);
+          }
+        } catch (error) {
+          strapi.log.error('Error processing runTime:', error);
+          // Continue without runTime if there's an error
         }
       }
 
-      // Upload media files if provided
+      // Handle media files upload if provided
       let uploadedMediaIds = [];
-      if (mediaFiles && mediaFiles.length > 0) {
+      if (mediaFiles && Array.isArray(mediaFiles) && mediaFiles.length > 0) {
         try {
-          // Assuming mediaFiles is an array of base64 strings or file objects
+          // For each media file, upload to Strapi
           for (const mediaFile of mediaFiles) {
-            const uploadResponse = await strapi.plugins['upload'].services.upload.upload({
-              data: {},
-              files: mediaFile,
-            });
-            uploadedMediaIds.push(uploadResponse[0].id);
+            // If mediaFile is a base64 string or File object
+            // This assumes you're sending files as multipart/form-data
+            if (ctx.is('multipart/form-data')) {
+              // Handle multipart form data
+              const uploadedFile = await strapi.plugins['upload'].services.upload.upload({
+                data: {},
+                files: mediaFile,
+              });
+              uploadedMediaIds.push(uploadedFile[0].id);
+            } else if (typeof mediaFile === 'object' && mediaFile.url) {
+              // If it's already a media object with URL
+              uploadedMediaIds.push(mediaFile.id || null);
+            }
           }
         } catch (uploadError) {
           strapi.log.error('Media upload error:', uploadError);
@@ -73,24 +125,26 @@ module.exports = {
         filters: {
           run_date: formattedDate,
           adverts: {
-            id: advertId,
+            id: advertIdNum,
           },
         },
         populate: ['adverts'],
       });
 
       if (existingSchedules.length > 0) {
-        return ctx.badRequest(`Advert is already scheduled for ${formattedDate}`);
+        return ctx.badRequest(`Advert ${advert.reference_number || advert.id} is already scheduled for ${formattedDate}`);
       }
 
-      // Create the daily schedule entry
+      // Prepare schedule data
       const scheduleData = {
         data: {
           run_date: formattedDate,
           run_time: runTimeData,
-          media: uploadedMediaIds,
+          media: uploadedMediaIds.length > 0 ? uploadedMediaIds : undefined,
           is_published: isPublished,
-          adverts: [advertId], // Connect the advert
+          adverts: {
+            connect: [advertIdNum], // Use connect for many-to-many relation
+          },
         },
       };
 
@@ -98,26 +152,62 @@ module.exports = {
       const schedule = await strapi.entityService.create('api::advert-daily-schedule.advert-daily-schedule', scheduleData);
 
       // Update advert's isScheduled status
-      await strapi.entityService.update('api::advert.advert', advertId, {
+      await strapi.entityService.update('api::advert.advert', advertIdNum, {
         data: {
           isScheduled: true,
         },
       });
 
-      // Populate the response
+      // Create workflow log for scheduling
+      try {
+        await strapi.entityService.create('api::workflow-log.workflow-log', {
+          data: {
+            action: 'scheduled',
+            description: `Advert scheduled to run on ${formattedDate}${runTime ? ' at ' + (Array.isArray(JSON.parse(runTimeData || '[]')) ? JSON.parse(runTimeData || '[]').join(', ') : runTime) : ''}`,
+            advert: advertIdNum,
+            user: ctx.state.user?.id || null,
+            metadata: {
+              scheduleId: schedule.id,
+              runDate: formattedDate,
+              runTime: runTimeData ? JSON.parse(runTimeData) : null,
+            },
+          },
+        });
+      } catch (logError) {
+        strapi.log.error('Failed to create workflow log:', logError);
+      }
+
+      // Populate the response with related data
       const populatedSchedule = await strapi.entityService.findOne('api::advert-daily-schedule.advert-daily-schedule', schedule.id, {
-        populate: ['adverts', 'media'],
+        populate: {
+          adverts: {
+            populate: ['client', 'product'],
+          },
+          media: true,
+        },
       });
 
       return ctx.send({
         success: true,
-        message: 'Advert scheduled successfully',
-        data: populatedSchedule,
+        message: `Advert ${advert.reference_number || advert.id} scheduled successfully for ${formattedDate}`,
+        data: {
+          schedule: populatedSchedule,
+          advert: {
+            id: advert.id,
+            reference_number: advert.reference_number,
+            advert_title: advert.advert_title,
+            client: advert.client,
+            isScheduled: true,
+          },
+        },
       });
 
     } catch (error) {
       strapi.log.error('Schedule advert error:', error);
-      return ctx.internalServerError('Failed to schedule advert', error);
+      return ctx.internalServerError('Failed to schedule advert', { 
+        error: error.message,
+        details: error.stack 
+      });
     }
   },
 
@@ -130,19 +220,36 @@ module.exports = {
         return ctx.badRequest('advertId is required');
       }
 
+      const advertIdNum = parseInt(advertId);
+      if (isNaN(advertIdNum)) {
+        return ctx.badRequest('advertId must be a valid number');
+      }
+
       const schedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
         filters: {
           adverts: {
-            id: advertId,
+            id: advertIdNum,
           },
         },
-        populate: ['media', 'adverts'],
+        populate: {
+          media: true,
+          adverts: {
+            populate: ['client', 'product'],
+          },
+        },
         sort: { run_date: 'asc' },
       });
 
+      // Parse run_time JSON for each schedule
+      const formattedSchedules = schedules.map(schedule => ({
+        ...schedule,
+        run_time: schedule.run_time ? JSON.parse(schedule.run_time) : null,
+      }));
+
       return ctx.send({
         success: true,
-        data: schedules,
+        data: formattedSchedules,
+        count: formattedSchedules.length,
       });
 
     } catch (error) {
@@ -154,10 +261,22 @@ module.exports = {
   // Get schedules by date range
   async getSchedulesByDateRange(ctx) {
     try {
-      const { startDate, endDate } = ctx.query;
+      const { startDate, endDate, platform, clientId } = ctx.query;
       
       if (!startDate || !endDate) {
         return ctx.badRequest('startDate and endDate are required');
+      }
+
+      // Validate date formats
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return ctx.badRequest('Invalid date format. Use YYYY-MM-DD');
+      }
+
+      if (start > end) {
+        return ctx.badRequest('startDate must be before or equal to endDate');
       }
 
       const filters = {
@@ -167,15 +286,67 @@ module.exports = {
         },
       };
 
+      // Add platform filter if provided
+      if (platform) {
+        filters.adverts = {
+          ...filters.adverts,
+          platform: platform,
+        };
+      }
+
+      // Add client filter if provided
+      if (clientId) {
+        const clientIdNum = parseInt(clientId);
+        if (!isNaN(clientIdNum)) {
+          filters.adverts = {
+            ...filters.adverts,
+            client: clientIdNum,
+          };
+        }
+      }
+
       const schedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
         filters,
-        populate: ['media', 'adverts', 'adverts.client'],
-        sort: { run_date: 'asc' },
+        populate: {
+          media: true,
+          adverts: {
+            populate: ['client', 'product', 'rate_card'],
+          },
+        },
+        sort: { run_date: 'asc', run_time: 'asc' },
       });
+
+      // Parse run_time JSON and format response
+      const formattedSchedules = schedules.map(schedule => ({
+        id: schedule.id,
+        run_date: schedule.run_date,
+        run_time: schedule.run_time ? JSON.parse(schedule.run_time) : null,
+        is_published: schedule.is_published,
+        media: schedule.media,
+        adverts: schedule.adverts.map(advert => ({
+          id: advert.id,
+          reference_number: advert.reference_number,
+          advert_title: advert.advert_title,
+          ad_size: advert.ad_size,
+          ad_type: advert.ad_type,
+          platform: advert.platform,
+          client: advert.client,
+          product: advert.product,
+          rate_card: advert.rate_card,
+          special_instructions: advert.special_instructions,
+        })),
+        created_at: schedule.createdAt,
+        updated_at: schedule.updatedAt,
+      }));
 
       return ctx.send({
         success: true,
-        data: schedules,
+        data: formattedSchedules,
+        count: formattedSchedules.length,
+        dateRange: {
+          startDate,
+          endDate,
+        },
       });
 
     } catch (error) {
@@ -193,8 +364,13 @@ module.exports = {
         return ctx.badRequest('scheduleId is required');
       }
 
+      const scheduleIdNum = parseInt(scheduleId);
+      if (isNaN(scheduleIdNum)) {
+        return ctx.badRequest('scheduleId must be a valid number');
+      }
+
       // Get the schedule first to check which adverts are connected
-      const schedule = await strapi.entityService.findOne('api::advert-daily-schedule.advert-daily-schedule', scheduleId, {
+      const schedule = await strapi.entityService.findOne('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum, {
         populate: ['adverts'],
       });
 
@@ -202,30 +378,56 @@ module.exports = {
         return ctx.notFound('Schedule not found');
       }
 
-      // Remove the schedule
-      await strapi.entityService.delete('api::advert-daily-schedule.advert-daily-schedule', scheduleId);
+      // Store advert IDs for updating
+      const advertIds = schedule.adverts.map(advert => advert.id);
 
-      // Check if any adverts still have schedules
-      for (const advert of schedule.adverts) {
+      // Remove the schedule
+      await strapi.entityService.delete('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum);
+
+      // Check if any adverts still have schedules and update their isScheduled status
+      for (const advertId of advertIds) {
         const advertSchedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
           filters: {
             adverts: {
-              id: advert.id,
+              id: advertId,
             },
           },
         });
 
         // Update advert's isScheduled status
-        await strapi.entityService.update('api::advert.advert', advert.id, {
+        await strapi.entityService.update('api::advert.advert', advertId, {
           data: {
             isScheduled: advertSchedules.length > 0,
           },
         });
+
+        // Create workflow log for unscheduling
+        try {
+          await strapi.entityService.create('api::workflow-log.workflow-log', {
+            data: {
+              action: 'unscheduled',
+              description: `Advert unscheduled from ${schedule.run_date}`,
+              advert: advertId,
+              user: ctx.state.user?.id || null,
+              metadata: {
+                scheduleId: scheduleIdNum,
+                runDate: schedule.run_date,
+              },
+            },
+          });
+        } catch (logError) {
+          strapi.log.error('Failed to create workflow log:', logError);
+        }
       }
 
       return ctx.send({
         success: true,
-        message: 'Advert unscheduled successfully',
+        message: 'Schedule removed successfully',
+        data: {
+          scheduleId: scheduleIdNum,
+          runDate: schedule.run_date,
+          affectedAdverts: advertIds,
+        },
       });
 
     } catch (error) {
@@ -244,22 +446,169 @@ module.exports = {
         return ctx.badRequest('scheduleId and isPublished (boolean) are required');
       }
 
-      const schedule = await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', scheduleId, {
+      const scheduleIdNum = parseInt(scheduleId);
+      if (isNaN(scheduleIdNum)) {
+        return ctx.badRequest('scheduleId must be a valid number');
+      }
+
+      const schedule = await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum, {
         data: {
           is_published: isPublished,
         },
       });
 
+      // Create workflow log for publish status change
+      try {
+        await strapi.entityService.create('api::workflow-log.workflow-log', {
+          data: {
+            action: isPublished ? 'published_schedule' : 'unpublished_schedule',
+            description: `Schedule ${isPublished ? 'published' : 'unpublished'} for ${schedule.run_date}`,
+            advert: schedule.adverts?.[0]?.id || null,
+            user: ctx.state.user?.id || null,
+            metadata: {
+              scheduleId: scheduleIdNum,
+              runDate: schedule.run_date,
+              isPublished,
+            },
+          },
+        });
+      } catch (logError) {
+        strapi.log.error('Failed to create workflow log:', logError);
+      }
+
       return ctx.send({
         success: true,
         message: `Schedule ${isPublished ? 'published' : 'unpublished'} successfully`,
-        data: schedule,
+        data: {
+          ...schedule,
+          run_time: schedule.run_time ? JSON.parse(schedule.run_time) : null,
+        },
       });
 
     } catch (error) {
       strapi.log.error('Toggle publish status error:', error);
       return ctx.internalServerError('Failed to toggle publish status', error);
     }
-  },  
+  },
+
+  // Update schedule (modify run_time, date, or media)
+  async updateSchedule(ctx) {
+    try {
+      const { scheduleId } = ctx.params;
+      const { runDate, runTime, mediaFiles, isPublished, advertId } = ctx.request.body;
+      
+      if (!scheduleId) {
+        return ctx.badRequest('scheduleId is required');
+      }
+
+      const scheduleIdNum = parseInt(scheduleId);
+      if (isNaN(scheduleIdNum)) {
+        return ctx.badRequest('scheduleId must be a valid number');
+      }
+
+      // Check if schedule exists
+      const existingSchedule = await strapi.entityService.findOne('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum, {
+        populate: ['adverts'],
+      });
+
+      if (!existingSchedule) {
+        return ctx.notFound('Schedule not found');
+      }
+
+      const updateData = {};
+
+      // Update run_date if provided
+      if (runDate) {
+        const parsedRunDate = new Date(runDate);
+        if (isNaN(parsedRunDate.getTime())) {
+          return ctx.badRequest('Invalid runDate format. Use YYYY-MM-DD');
+        }
+        updateData.run_date = parsedRunDate.toISOString().split('T')[0];
+      }
+
+      // Update run_time if provided
+      if (runTime !== undefined) {
+        let runTimeData = null;
+        
+        if (runTime === null || runTime === '') {
+          runTimeData = null;
+        } else if (Array.isArray(runTime)) {
+          const validTimes = runTime.filter(time => 
+            typeof time === 'string' && time.trim().length > 0
+          );
+          runTimeData = validTimes.length > 0 ? JSON.stringify(validTimes) : null;
+        } else if (typeof runTime === 'string') {
+          try {
+            const parsed = JSON.parse(runTime);
+            if (Array.isArray(parsed)) {
+              const validTimes = parsed.filter(time => 
+                typeof time === 'string' && time.trim().length > 0
+              );
+              runTimeData = validTimes.length > 0 ? JSON.stringify(validTimes) : null;
+            } else if (parsed.trim().length > 0) {
+              runTimeData = JSON.stringify([parsed.trim()]);
+            }
+          } catch (e) {
+            if (runTime.trim().length > 0) {
+              runTimeData = JSON.stringify([runTime.trim()]);
+            }
+          }
+        }
+        
+        updateData.run_time = runTimeData;
+      }
+
+      // Update is_published if provided
+      if (isPublished !== undefined) {
+        updateData.is_published = isPublished;
+      }
+
+      // Update advert relation if provided
+      if (advertId) {
+        const advertIdNum = parseInt(advertId);
+        if (!isNaN(advertIdNum)) {
+          updateData.adverts = {
+            set: [advertIdNum], // Replace existing relations with new one
+          };
+        }
+      }
+
+      // Update schedule
+      const updatedSchedule = await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum, {
+        data: updateData,
+      });
+
+      // Create workflow log for update
+      try {
+        await strapi.entityService.create('api::workflow-log.workflow-log', {
+          data: {
+            action: 'updated_schedule',
+            description: `Schedule updated for ${updatedSchedule.run_date}`,
+            advert: updatedSchedule.adverts?.[0]?.id || existingSchedule.adverts?.[0]?.id || null,
+            user: ctx.state.user?.id || null,
+            metadata: {
+              scheduleId: scheduleIdNum,
+              changes: Object.keys(updateData),
+            },
+          },
+        });
+      } catch (logError) {
+        strapi.log.error('Failed to create workflow log:', logError);
+      }
+
+      return ctx.send({
+        success: true,
+        message: 'Schedule updated successfully',
+        data: {
+          ...updatedSchedule,
+          run_time: updatedSchedule.run_time ? JSON.parse(updatedSchedule.run_time) : null,
+        },
+      });
+
+    } catch (error) {
+      strapi.log.error('Update schedule error:', error);
+      return ctx.internalServerError('Failed to update schedule', error);
+    }
+  },
 
 };
