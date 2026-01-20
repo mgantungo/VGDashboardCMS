@@ -254,6 +254,7 @@ module.exports = {
         middlewares: [],
       },
     },
+    /*Daily Advert Schedule routes*/
     {
       method: 'GET',
       path: '/advert-daily-schedules/advert/:advertId',
