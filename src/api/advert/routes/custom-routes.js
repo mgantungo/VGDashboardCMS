@@ -244,6 +244,7 @@ module.exports = {
         }
       }
     },
+    /*Daily Advert Schedule routes*/
     {
       method: 'POST',
       path: '/advert-daily-schedules/schedule',
@@ -254,7 +255,6 @@ module.exports = {
         middlewares: [],
       },
     },
-    /*Daily Advert Schedule routes*/
     {
       method: 'GET',
       path: '/advert-daily-schedules/advert/:advertId',
