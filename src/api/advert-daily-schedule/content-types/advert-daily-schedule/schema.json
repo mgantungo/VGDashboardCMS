@@ -37,6 +37,10 @@
     "is_published": {
       "type": "boolean",
       "default": false
+    },
+    "page": {
+      "type": "biginteger",
+      "default": "0"
     }
   }
 }

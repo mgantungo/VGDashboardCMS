@@ -400,6 +400,7 @@ export interface ApiAdvertDailyScheduleAdvertDailySchedule
       'images' | 'files' | 'videos' | 'audios',
       true
     >;
+    page: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
     publishedAt: Schema.Attribute.DateTime;
     run_date: Schema.Attribute.Date & Schema.Attribute.Required;
     run_time: Schema.Attribute.JSON;
