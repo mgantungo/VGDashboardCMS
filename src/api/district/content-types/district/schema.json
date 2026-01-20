@@ -30,6 +30,9 @@
       "relation": "oneToMany",
       "target": "api::enumeration-area.enumeration-area",
       "mappedBy": "district"
+    },
+    "latlong": {
+      "type": "json"
     }
   }
 }

@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "advert_daily_schedules",
+  "info": {
+    "singularName": "advert-daily-schedule",
+    "pluralName": "advert-daily-schedules",
+    "displayName": "Advert Daily Schedule"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "run_date": {
+      "type": "date",
+      "required": true
+    },
+    "run_time": {
+      "type": "json"
+    },
+    "adverts": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::advert.advert",
+      "mappedBy": "advert_daily_schedules"
+    },
+    "media": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "is_published": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

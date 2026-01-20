@@ -179,6 +179,12 @@
       "type": "boolean",
       "required": true,
       "default": false
+    },
+    "advert_daily_schedules": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::advert-daily-schedule.advert-daily-schedule",
+      "inversedBy": "adverts"
     }
   }
 }

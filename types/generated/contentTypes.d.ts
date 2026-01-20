@@ -373,6 +373,42 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAdvertDailyScheduleAdvertDailySchedule
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'advert_daily_schedules';
+  info: {
+    displayName: 'Advert Daily Schedule';
+    pluralName: 'advert-daily-schedules';
+    singularName: 'advert-daily-schedule';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    adverts: Schema.Attribute.Relation<'manyToMany', 'api::advert.advert'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_published: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::advert-daily-schedule.advert-daily-schedule'
+    > &
+      Schema.Attribute.Private;
+    media: Schema.Attribute.Media<
+      'images' | 'files' | 'videos' | 'audios',
+      true
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    run_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    run_time: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
   collectionName: 'adverts';
   info: {
@@ -387,6 +423,10 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
     ad_size: Schema.Attribute.String & Schema.Attribute.Required;
     ad_type: Schema.Attribute.Enumeration<['full_color', 'black_white']> &
       Schema.Attribute.DefaultTo<'full_color'>;
+    advert_daily_schedules: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::advert-daily-schedule.advert-daily-schedule'
+    >;
     advert_title: Schema.Attribute.String & Schema.Attribute.Required;
     approved_by_manager: Schema.Attribute.Relation<
       'manyToOne',
@@ -918,6 +958,7 @@ export interface ApiDistrictDistrict extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::enumeration-area.enumeration-area'
     >;
+    latlong: Schema.Attribute.JSON;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -2172,6 +2213,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::advert-daily-schedule.advert-daily-schedule': ApiAdvertDailyScheduleAdvertDailySchedule;
       'api::advert.advert': ApiAdvertAdvert;
       'api::api-listing.api-listing': ApiApiListingApiListing;
       'api::author.author': ApiAuthorAuthor;
