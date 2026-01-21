@@ -656,5 +656,280 @@ async scheduleAdvert(ctx) {
       return ctx.internalServerError('Failed to update schedule', error);
     }
   },
+  // Get advert daily schedules with full details
+async getFullSchedules(ctx) {
+  try {
+    const { startDate, endDate, page, isPublished, clientId } = ctx.query;
+    
+    // Build filters
+    const filters = {};
+    
+    // Date range filter
+    if (startDate && endDate) {
+      filters.run_date = {
+        $gte: startDate,
+        $lte: endDate,
+      };
+    } else if (startDate) {
+      filters.run_date = {
+        $gte: startDate,
+      };
+    } else if (endDate) {
+      filters.run_date = {
+        $lte: endDate,
+      };
+    }
+    
+    // Published status filter
+    if (isPublished !== undefined) {
+      filters.is_published = isPublished === 'true';
+    }
+    
+    // Client filter
+    if (clientId) {
+      const clientIdNum = parseInt(clientId);
+      if (!isNaN(clientIdNum)) {
+        filters.adverts = {
+          ...filters.adverts,
+          client: clientIdNum,
+        };
+      }
+    }
+    
+    // Get schedules with all required relations
+    const schedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
+      filters,
+      populate: {
+        media: true,
+        adverts: {
+          populate: {
+            client: {
+              fields: ['id', 'company_name', 'contact_person', 'email', 'phone']
+            },
+            product: true,
+          },
+          fields: [
+            'id', 
+            'advert_title', 
+            'start_date', 
+            'end_date', 
+            'frequency', 
+            'ad_size', 
+            'ad_type',
+            'special_instructions'
+          ]
+        }
+      },
+      sort: { run_date: 'asc', page: 'asc' },
+    });
+    
+    // Format the response
+    const formattedSchedules = schedules.map(schedule => {
+      const advert = schedule.adverts?.[0] || {};
+      const client = advert.client || {};
+      
+      return {
+        schedule_id: schedule.id,
+        run_date: schedule.run_date,
+        run_time: schedule.run_time ? JSON.parse(schedule.run_time) : null,
+        is_published: schedule.is_published,
+        page: schedule.page || 0,
+        media: schedule.media || [],
+        
+        // Advert data
+        advert_id: advert.id,
+        advert_title: advert.advert_title,
+        start_date: advert.start_date,
+        end_date: advert.end_date,
+        frequency: advert.frequency,
+        ad_size: advert.ad_size,
+        ad_type: advert.ad_type,
+        special_instructions: advert.special_instructions,
+        
+        // Client data
+        client_id: client.id,
+        company_name: client.company_name,
+        contact_person: client.contact_person,
+        email: client.email,
+        phone: client.phone,
+        
+        created_at: schedule.createdAt,
+        updated_at: schedule.updatedAt
+      };
+    });
+    
+    return ctx.send({
+      success: true,
+      data: formattedSchedules,
+      count: formattedSchedules.length,
+      pagination: {
+        page: parseInt(page) || 1,
+        pageSize: formattedSchedules.length,
+        total: formattedSchedules.length
+      }
+    });
+    
+  } catch (error) {
+    strapi.log.error('Get full schedules error:', error);
+    return ctx.internalServerError('Failed to get schedules');
+  }
+},
+
+// Update page for a schedule
+async updateSchedulePage(ctx) {
+  try {
+    const { scheduleId } = ctx.params;
+    const { page } = ctx.request.body;
+    
+    if (!scheduleId) {
+      return ctx.badRequest('scheduleId is required');
+    }
+    
+    if (page === undefined || page === null) {
+      return ctx.badRequest('page is required');
+    }
+    
+    const scheduleIdNum = parseInt(scheduleId);
+    if (isNaN(scheduleIdNum)) {
+      return ctx.badRequest('scheduleId must be a valid number');
+    }
+    
+    // Validate page is a number
+    const pageNum = parseInt(page);
+    if (isNaN(pageNum)) {
+      return ctx.badRequest('page must be a valid number');
+    }
+    
+    // Check if schedule exists
+    const existingSchedule = await strapi.entityService.findOne('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum);
+    
+    if (!existingSchedule) {
+      return ctx.notFound('Schedule not found');
+    }
+    
+    // Update the page
+    const updatedSchedule = await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum, {
+      data: {
+        page: pageNum,
+      },
+    });
+    
+    // Create workflow log
+    try {
+      const advert = await strapi.entityService.findOne('api::advert.advert', updatedSchedule.adverts?.[0]?.id || null);
+      
+      await strapi.entityService.create('api::workflow-log.workflow-log', {
+        data: {
+          action: 'updated_schedule_page',
+          description: `Page updated to ${pageNum} for schedule on ${updatedSchedule.run_date}`,
+          advert: advert?.id || null,
+          user: ctx.state.user?.id || null,
+          metadata: {
+            scheduleId: scheduleIdNum,
+            runDate: updatedSchedule.run_date,
+            oldPage: existingSchedule.page || 0,
+            newPage: pageNum,
+          },
+        },
+      });
+    } catch (logError) {
+      strapi.log.error('Failed to create workflow log:', logError);
+    }
+    
+    return ctx.send({
+      success: true,
+      message: 'Schedule page updated successfully',
+      data: {
+        schedule_id: updatedSchedule.id,
+        run_date: updatedSchedule.run_date,
+        old_page: existingSchedule.page || 0,
+        new_page: pageNum,
+      },
+    });
+    
+  } catch (error) {
+    strapi.log.error('Update schedule page error:', error);
+    return ctx.internalServerError('Failed to update schedule page');
+  }
+},
+
+// Bulk update pages for multiple schedules
+async bulkUpdatePages(ctx) {
+  try {
+    const { updates } = ctx.request.body;
+    
+    if (!updates || !Array.isArray(updates)) {
+      return ctx.badRequest('updates array is required');
+    }
+    
+    const results = [];
+    const errors = [];
+    
+    // Process each update
+    for (const update of updates) {
+      const { scheduleId, page } = update;
+      
+      if (!scheduleId || page === undefined) {
+        errors.push({ scheduleId, error: 'Missing scheduleId or page' });
+        continue;
+      }
+      
+      const scheduleIdNum = parseInt(scheduleId);
+      const pageNum = parseInt(page);
+      
+      if (isNaN(scheduleIdNum) || isNaN(pageNum)) {
+        errors.push({ scheduleId, error: 'Invalid scheduleId or page value' });
+        continue;
+      }
+      
+      try {
+        // Check if schedule exists
+        const existingSchedule = await strapi.entityService.findOne('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum);
+        
+        if (!existingSchedule) {
+          errors.push({ scheduleId, error: 'Schedule not found' });
+          continue;
+        }
+        
+        // Update the page
+        const updatedSchedule = await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum, {
+          data: {
+            page: pageNum,
+          },
+        });
+        
+        results.push({
+          scheduleId,
+          success: true,
+          old_page: existingSchedule.page || 0,
+          new_page: pageNum,
+          run_date: updatedSchedule.run_date,
+        });
+        
+      } catch (error) {
+        errors.push({
+          scheduleId,
+          error: error.message || 'Update failed',
+        });
+      }
+    }
+    
+    return ctx.send({
+      success: true,
+      message: 'Bulk update completed',
+      data: {
+        total: updates.length,
+        successful: results.length,
+        failed: errors.length,
+        results,
+        errors: errors.length > 0 ? errors : undefined,
+      },
+    });
+    
+  } catch (error) {
+    strapi.log.error('Bulk update pages error:', error);
+    return ctx.internalServerError('Failed to bulk update pages');
+  }
+}
 
 };
