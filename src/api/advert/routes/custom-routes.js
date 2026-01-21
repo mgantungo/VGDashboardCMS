@@ -295,5 +295,37 @@ module.exports = {
         middlewares: [],
       },
     },
+    {
+        method: 'GET',
+        path: '/advert-daily-schedules/full',
+        handler: 'daily-advert-schedule.getFullSchedules',
+        config: {
+          auth: false,
+          policies: [],
+          middlewares: [],
+          description: 'Get advert daily schedules with full details including advert and client data',
+        },
+      },
+      {
+        method: 'PUT',
+        path: '/advert-daily-schedules/:scheduleId/page',
+        handler: 'daily-advert-schedule.updateSchedulePage',
+        config: {
+          auth: false,
+          policies: [],
+          middlewares: [],
+          description: 'Update page number for a specific schedule',
+        },
+      },
+      {
+        method: 'PUT',
+        path: '/advert-daily-schedules/bulk-update-pages',
+        handler: 'daily-advert-schedule.bulkUpdatePages',
+        config: {
+          auth: false,
+          policies: [],
+          middlewares: [],
+          description: 'Bulk update page numbers for multiple schedules',
+        },
   ]
 };
