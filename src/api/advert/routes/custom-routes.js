@@ -327,5 +327,6 @@ module.exports = {
           middlewares: [],
           description: 'Bulk update page numbers for multiple schedules',
         },
+      }
   ]
 };
