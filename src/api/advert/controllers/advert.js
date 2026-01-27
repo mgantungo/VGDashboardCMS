@@ -137,6 +137,7 @@ async create(ctx) {
       base_price: parseFloat(data.basePrice) || 0,
       surcharge: parseFloat(data.surcharge) || 0,
       total_amount: parseFloat(data.totalAmount) || 0,
+      discount: parseFloat(data.discount) || 0,
       payment_method: data.paymentMethod,
       special_instructions: data.specialInstructions || '',
       status: data.status || 'draft',
