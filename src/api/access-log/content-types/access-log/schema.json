@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "access_logs",
+  "info": {
+    "singularName": "access-log",
+    "pluralName": "access-logs",
+    "displayName": "Asset Management Access Log"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Action": {
+      "type": "enumeration",
+      "required": true,
+      "default": "Check in",
+      "enum": [
+        "Check in",
+        "Check out"
+      ]
+    },
+    "Anomaly": {
+      "type": "boolean",
+      "required": true
+    },
+    "staff": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::staff-table.staff-table",
+      "inversedBy": "access_logs"
+    },
+    "company_asset": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::company-asset.company-asset",
+      "inversedBy": "access_logs"
+    },
+    "anomalies": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::anomaly.anomaly",
+      "mappedBy": "access_log"
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "kind": "collectionType",
+  "collectionName": "staff_tables",
+  "info": {
+    "singularName": "staff-table",
+    "pluralName": "staff-tables",
+    "displayName": "Asset Management Staff "
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "staff_id": {
+      "type": "uid",
+      "required": true
+    },
+    "staff_email": {
+      "type": "email",
+      "required": true,
+      "unique": true
+    },
+    "staff_name": {
+      "type": "string",
+      "required": true
+    },
+    "staff_phone_number": {
+      "type": "string",
+      "required": true
+    },
+    "department": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::department.department",
+      "inversedBy": "staff"
+    },
+    "office": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::office.office",
+      "inversedBy": "staff"
+    },
+    "company_assets": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::company-asset.company-asset",
+      "mappedBy": "staff"
+    },
+    "access_logs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::access-log.access-log",
+      "mappedBy": "staff"
+    },
+    "anomalies": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::anomaly.anomaly",
+      "mappedBy": "staff"
+    }
+  }
+}

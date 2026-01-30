@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "company_assets",
+  "info": {
+    "singularName": "company-asset",
+    "pluralName": "company-assets",
+    "displayName": "Asset Management Company Asset"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "asset_id": {
+      "type": "uid",
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "required": true,
+      "default": "Laptop",
+      "enum": [
+        "Laptop",
+        "Monitor",
+        "Camera",
+        "Car",
+        "Telephone"
+      ]
+    },
+    "serial_number": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "tag_number": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "asset_status": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "Assigned",
+        "Available",
+        "Damaged"
+      ]
+    },
+    "staff": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::staff-table.staff-table",
+      "inversedBy": "company_assets"
+    },
+    "access_logs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::access-log.access-log",
+      "mappedBy": "company_asset"
+    },
+    "anomalies": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::anomaly.anomaly",
+      "mappedBy": "company_asset"
+    },
+    "office": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::office.office",
+      "inversedBy": "company_assets"
+    }
+  }
+}

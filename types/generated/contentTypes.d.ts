@@ -373,6 +373,46 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAccessLogAccessLog extends Struct.CollectionTypeSchema {
+  collectionName: 'access_logs';
+  info: {
+    displayName: 'Asset Management Access Log';
+    pluralName: 'access-logs';
+    singularName: 'access-log';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    Action: Schema.Attribute.Enumeration<['Check in', 'Check out']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Check in'>;
+    anomalies: Schema.Attribute.Relation<'oneToMany', 'api::anomaly.anomaly'>;
+    Anomaly: Schema.Attribute.Boolean & Schema.Attribute.Required;
+    company_asset: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::company-asset.company-asset'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::access-log.access-log'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    staff: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::staff-table.staff-table'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiAdvertDailyScheduleAdvertDailySchedule
   extends Struct.CollectionTypeSchema {
   collectionName: 'advert_daily_schedules';
@@ -516,6 +556,58 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::workflow-log.workflow-log'
     >;
+  };
+}
+
+export interface ApiAnomalyAnomaly extends Struct.CollectionTypeSchema {
+  collectionName: 'anomalies';
+  info: {
+    displayName: 'Asset Management Anomaly';
+    pluralName: 'anomalies';
+    singularName: 'anomaly';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    access_log: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::access-log.access-log'
+    >;
+    company_asset: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::company-asset.company-asset'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    detected_at: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::anomaly.anomaly'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    resolved: Schema.Attribute.Boolean & Schema.Attribute.Required;
+    staff: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::staff-table.staff-table'
+    >;
+    type: Schema.Attribute.Enumeration<
+      [
+        'Unauthorized access',
+        'Late checkout',
+        'Wrong checkout location',
+        'Invalid information',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Invalid information'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -897,6 +989,96 @@ export interface ApiCommentComment extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCompanyAssetCompanyAsset
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'company_assets';
+  info: {
+    displayName: 'Asset Management Company Asset';
+    pluralName: 'company-assets';
+    singularName: 'company-asset';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    access_logs: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::access-log.access-log'
+    >;
+    anomalies: Schema.Attribute.Relation<'oneToMany', 'api::anomaly.anomaly'>;
+    asset_id: Schema.Attribute.UID & Schema.Attribute.Required;
+    asset_status: Schema.Attribute.Enumeration<
+      ['Assigned', 'Available', 'Damaged']
+    > &
+      Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::company-asset.company-asset'
+    > &
+      Schema.Attribute.Private;
+    office: Schema.Attribute.Relation<'manyToOne', 'api::office.office'>;
+    publishedAt: Schema.Attribute.DateTime;
+    serial_number: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    staff: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::staff-table.staff-table'
+    >;
+    tag_number: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    type: Schema.Attribute.Enumeration<
+      ['Laptop', 'Monitor', 'Camera', 'Car', 'Telephone']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Laptop'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiDepartmentDepartment extends Struct.CollectionTypeSchema {
+  collectionName: 'departments';
+  info: {
+    displayName: 'Asset Management Department';
+    pluralName: 'departments';
+    singularName: 'department';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    department_id: Schema.Attribute.UID & Schema.Attribute.Required;
+    department_name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::department.department'
+    > &
+      Schema.Attribute.Private;
+    offices: Schema.Attribute.Relation<'oneToMany', 'api::office.office'>;
+    publishedAt: Schema.Attribute.DateTime;
+    staff: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::staff-table.staff-table'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiDesignFileDesignFile extends Struct.CollectionTypeSchema {
   collectionName: 'design_files';
   info: {
@@ -1046,6 +1228,50 @@ export interface ApiInvoiceInvoice extends Struct.CollectionTypeSchema {
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     publishedAt: Schema.Attribute.DateTime;
     total_amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiOfficeOffice extends Struct.CollectionTypeSchema {
+  collectionName: 'offices';
+  info: {
+    displayName: 'Asset Management Office';
+    pluralName: 'offices';
+    singularName: 'office';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    company_assets: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::company-asset.company-asset'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    department: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::department.department'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::office.office'
+    > &
+      Schema.Attribute.Private;
+    location: Schema.Attribute.Text;
+    office_id: Schema.Attribute.UID & Schema.Attribute.Required;
+    office_name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    publishedAt: Schema.Attribute.DateTime;
+    staff: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::staff-table.staff-table'
+    >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1448,6 +1674,53 @@ export interface ApiRegionRegion extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required &
       Schema.Attribute.Unique;
     publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiStaffTableStaffTable extends Struct.CollectionTypeSchema {
+  collectionName: 'staff_tables';
+  info: {
+    displayName: 'Asset Management Staff ';
+    pluralName: 'staff-tables';
+    singularName: 'staff-table';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    access_logs: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::access-log.access-log'
+    >;
+    anomalies: Schema.Attribute.Relation<'oneToMany', 'api::anomaly.anomaly'>;
+    company_assets: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::company-asset.company-asset'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    department: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::department.department'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::staff-table.staff-table'
+    > &
+      Schema.Attribute.Private;
+    office: Schema.Attribute.Relation<'manyToOne', 'api::office.office'>;
+    publishedAt: Schema.Attribute.DateTime;
+    staff_email: Schema.Attribute.Email &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    staff_id: Schema.Attribute.UID & Schema.Attribute.Required;
+    staff_name: Schema.Attribute.String & Schema.Attribute.Required;
+    staff_phone_number: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -2214,8 +2487,10 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::access-log.access-log': ApiAccessLogAccessLog;
       'api::advert-daily-schedule.advert-daily-schedule': ApiAdvertDailyScheduleAdvertDailySchedule;
       'api::advert.advert': ApiAdvertAdvert;
+      'api::anomaly.anomaly': ApiAnomalyAnomaly;
       'api::api-listing.api-listing': ApiApiListingApiListing;
       'api::author.author': ApiAuthorAuthor;
       'api::bc-dataset.bc-dataset': ApiBcDatasetBcDataset;
@@ -2224,10 +2499,13 @@ declare module '@strapi/strapi' {
       'api::category.category': ApiCategoryCategory;
       'api::client.client': ApiClientClient;
       'api::comment.comment': ApiCommentComment;
+      'api::company-asset.company-asset': ApiCompanyAssetCompanyAsset;
+      'api::department.department': ApiDepartmentDepartment;
       'api::design-file.design-file': ApiDesignFileDesignFile;
       'api::district.district': ApiDistrictDistrict;
       'api::enumeration-area.enumeration-area': ApiEnumerationAreaEnumerationArea;
       'api::invoice.invoice': ApiInvoiceInvoice;
+      'api::office.office': ApiOfficeOffice;
       'api::page.page': ApiPagePage;
       'api::parish.parish': ApiParishParish;
       'api::payment.payment': ApiPaymentPayment;
@@ -2238,6 +2516,7 @@ declare module '@strapi/strapi' {
       'api::publication.publication': ApiPublicationPublication;
       'api::rate-card.rate-card': ApiRateCardRateCard;
       'api::region.region': ApiRegionRegion;
+      'api::staff-table.staff-table': ApiStaffTableStaffTable;
       'api::sub-county.sub-county': ApiSubCountySubCounty;
       'api::systemuser.systemuser': ApiSystemuserSystemuser;
       'api::tag.tag': ApiTagTag;

@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "departments",
+  "info": {
+    "singularName": "department",
+    "pluralName": "departments",
+    "displayName": "Asset Management Department"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "department_id": {
+      "type": "uid",
+      "required": true
+    },
+    "department_name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "staff": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::staff-table.staff-table",
+      "mappedBy": "department"
+    },
+    "offices": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::office.office",
+      "mappedBy": "department"
+    }
+  }
+}

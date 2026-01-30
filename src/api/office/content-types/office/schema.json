@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "offices",
+  "info": {
+    "singularName": "office",
+    "pluralName": "offices",
+    "displayName": "Asset Management Office"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "office_id": {
+      "type": "uid",
+      "required": true
+    },
+    "office_name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "location": {
+      "type": "text"
+    },
+    "staff": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::staff-table.staff-table",
+      "mappedBy": "office"
+    },
+    "department": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::department.department",
+      "inversedBy": "offices"
+    },
+    "company_assets": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::company-asset.company-asset",
+      "mappedBy": "office"
+    }
+  }
+}
