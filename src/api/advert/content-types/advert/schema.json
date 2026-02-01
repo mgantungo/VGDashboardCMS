@@ -185,6 +185,12 @@
       "relation": "manyToMany",
       "target": "api::advert-daily-schedule.advert-daily-schedule",
       "inversedBy": "adverts"
+    },
+    "vgams_sales_persons": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::vgams-sales-person.vgams-sales-person",
+      "inversedBy": "adverts"
     }
   }
 }
