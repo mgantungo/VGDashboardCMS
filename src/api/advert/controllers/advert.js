@@ -142,7 +142,7 @@ async create(ctx) {
       special_instructions: data.specialInstructions || '',
       status: data.status || 'draft',
       vgams_user: vgamsUserId,
-      vgams_sales_persons: parseInt(data.salesAgentId) : null
+      vgams_sales_persons: parseInt(data.salesAgentId)
     };
     
     console.log('📊 Final advert data:', advertData);
