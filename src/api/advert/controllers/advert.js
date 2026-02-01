@@ -48,6 +48,7 @@ async create(ctx) {
     }
     
     console.log('👤 VGAMS User ID from body:', vgamsUserId);
+    console.log('👤 VGAMS Sales Agent ID from body:', data.salesAgentId);
     
     // Verify VGAMS user exists
     const vgamsUser = await strapi.db.query('api::vgams-user.vgams-user').findOne({
