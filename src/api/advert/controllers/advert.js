@@ -141,7 +141,8 @@ async create(ctx) {
       payment_method: data.paymentMethod,
       special_instructions: data.specialInstructions || '',
       status: data.status || 'draft',
-      vgams_user: vgamsUserId
+      vgams_user: vgamsUserId,
+      vgams_sales_persons: data.salesAgentId
     };
     
     console.log('📊 Final advert data:', advertData);
