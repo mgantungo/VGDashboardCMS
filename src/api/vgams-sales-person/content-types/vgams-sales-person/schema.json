@@ -1,3 +1,4 @@
+  GNU nano 7.2                                           schema.json
 {
   "kind": "collectionType",
   "collectionName": "vgams_sales_persons",
@@ -15,9 +16,13 @@
       "type": "string",
       "required": true
     },
+    "bc_code": {
+      "type": "string",
+      "required": false
+    },
     "email": {
       "type": "email",
-      "required": true,
+      "required": false,
       "unique": true
     },
     "isActive": {
@@ -33,3 +38,4 @@
     }
   }
 }
+
