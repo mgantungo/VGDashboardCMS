@@ -21,7 +21,7 @@ module.exports = {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         },
-        timeout: 30000 // 30 second timeout
+        timeout: 300000 // 5 minutes timeout
       });
 
       // Check if we have data
