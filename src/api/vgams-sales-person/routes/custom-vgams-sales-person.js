@@ -43,7 +43,7 @@ module.exports = {
     {
       method: 'GET',
       path: '/sales-agents/getbcsalespeople',
-      handler: 'salesperson.findALLSalesPersonsBC',
+      handler: 'custom-bc-to-vgam-sales-person.findALLSalesPersonsBC',
       config: {
         auth: false, // Set to true if you want to require authentication
         policies: [],
@@ -53,9 +53,20 @@ module.exports = {
     {
       method: 'GET',
       path: '/sales-agents/getbcsalespeople/:code',
-      handler: 'salesperson.findOneSalesPersonfromBC',
+      handler: 'custom-bc-to-vgam-sales-person.findOneSalesPersonfromBC',
       config: {
         auth: false, // Set to true if you want to require authentication
+        policies: [],
+        middlewares: [],
+      },
+    },
+        // Sync from Business Central
+    {
+      method: 'POST',
+      path: '/sales-agents/sync-from-bc',
+      handler: 'custom-bc-to-vgam-sales-person.syncSalesPersonsFromBC',
+      config: {
+        auth: false,
         policies: [],
         middlewares: [],
       },
