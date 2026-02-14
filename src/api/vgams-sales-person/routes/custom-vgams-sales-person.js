@@ -42,8 +42,8 @@ module.exports = {
     },
     {
       method: 'GET',
-      path: '/sales-agents/findALLSalesPersonsBC',
-      handler: 'salesperson.find',
+      path: '/sales-agents/getbcsalespeople',
+      handler: 'salesperson.findALLSalesPersonsBC',
       config: {
         auth: false, // Set to true if you want to require authentication
         policies: [],
@@ -52,7 +52,7 @@ module.exports = {
     },
     {
       method: 'GET',
-      path: '/sales-agents/salespeople/:code',
+      path: '/sales-agents/getbcsalespeople/:code',
       handler: 'salesperson.findOneSalesPersonfromBC',
       config: {
         auth: false, // Set to true if you want to require authentication
