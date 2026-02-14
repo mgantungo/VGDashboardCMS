@@ -52,8 +52,8 @@ module.exports = {
     },
     {
       method: 'GET',
-      path: '/salespeople/:code',
-      handler: 'salesperson.findOne',
+      path: '/sales-agents/salespeople/:code',
+      handler: 'salesperson.findOneSalesPersonfromBC',
       config: {
         auth: false, // Set to true if you want to require authentication
         policies: [],
