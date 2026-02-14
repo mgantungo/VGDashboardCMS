@@ -3,8 +3,6 @@
 const axios = require('axios');
 
 module.exports = {
-
-  
   // Fetch all salespersons from Business Central and sync to CMS collection
   async syncSalesPersonsFromBC(ctx) {
     try {
