@@ -9,9 +9,9 @@ module.exports = {
   async syncSalesPersonsFromBC(ctx) {
     try {
       // Get credentials from environment variables
-      const externalApiUrl = process.env.EXTERNAL_API_URL_SALESPERSONS;// || 'http://DEVTEST.newvision.co.ug:7069/BC180NUA/ODataV4/Company(\'The%20New%20Vision\')/SalespeopleDS';
-      const username = process.env.EXTERNAL_API_USERNAME;// || 'INTEGRATION';
-      const password = process.env.EXTERNAL_API_PASSWORD;// || 'Vision@2601';
+      const externalApiUrl = process.env.EXTERNAL_API_URL_SALESPERSONS;
+      const username = process.env.EXTERNAL_API_USERNAME;
+      const password = process.env.EXTERNAL_API_PASSWORD;
 
       // Make request to external API with Basic Auth
       const response = await axios.get(externalApiUrl, {
@@ -142,24 +142,18 @@ module.exports = {
       return ctx.badRequest(`Failed to sync salespersons: ${error.message}`);
     }
   }
-
-
   ,
   async findALLSalesPersonsBC(ctx) {
+    // Your original code - just fetch from BC without inserting
     try {
-      // External API configuration
-      const externalApiUrl = 'http://DEVTEST.newvision.co.ug:7069/BC180NUA/ODataV4/Company(\'The%20New%20Vision\')/SalespeopleDS';
-      const username = 'INTEGRATION';
-      const password = 'Vision@2601';
+      const externalApiUrl = process.env.EXTERNAL_API_URL_SALESPERSONS;
+      const username = process.env.EXTERNAL_API_USERNAME;
+      const password = process.env.EXTERNAL_API_PASSWORD;
 
-      // Make request to external API with Basic Auth
       const response = await axios.get(externalApiUrl, {
         auth: {
           username: username,
           password: password
-        },
-        params: {
-          $select: 'Code,Name'
         },
         headers: {
           'Accept': 'application/json',
@@ -167,14 +161,11 @@ module.exports = {
         }
       });
 
-      // Transform the data if needed
       const transformedData = response.data.value.map(item => ({
         code: item.Code,
-        name: item.Name,
-        // Add any additional transformation here
+        name: item.Name
       }));
 
-      // Return successful response
       return ctx.send({
         status: 'success',
         data: transformedData,
@@ -183,13 +174,9 @@ module.exports = {
       });
 
     } catch (error) {
-      // Handle errors gracefully
       console.error('Error fetching salespeople data:', error.message);
-
-      // Check if it's an Axios error with response
+      
       if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
         return ctx.send({
           status: 'error',
           message: 'External API error',
@@ -200,14 +187,12 @@ module.exports = {
           }
         }, error.response.status);
       } else if (error.request) {
-        // The request was made but no response was received
         return ctx.send({
           status: 'error',
           message: 'No response received from external API',
           details: error.message
         }, 503);
       } else {
-        // Something happened in setting up the request that triggered an Error
         return ctx.send({
           status: 'error',
           message: 'Error setting up the request',
@@ -222,17 +207,16 @@ module.exports = {
     const { code } = ctx.params;
     
     try {
-      const externalApiUrl = `http://DEVTEST.newvision.co.ug:7069/BC180NUA/ODataV4/Company('The%20New%20Vision')/SalespeopleDS?$filter=Code eq '${code}'`;
-      const username = 'INTEGRATION';
-      const password = 'Vision@2601';
+      const externalApiUrl = process.env.EXTERNAL_API_URL_SALESPERSONS;
+      const username = process.env.EXTERNAL_API_USERNAME;
+      const password = process.env.EXTERNAL_API_PASSWORD;
 
-      const response = await axios.get(externalApiUrl, {
+      const urlWithFilter = `${externalApiUrl.split('?')[0]}?$filter=Code eq '${code}'&$select=Code,Name`;
+
+      const response = await axios.get(urlWithFilter, {
         auth: {
           username: username,
           password: password
-        },
-        params: {
-          $select: 'Code,Name'
         },
         headers: {
           'Accept': 'application/json',
