@@ -15,12 +15,15 @@
       "type": "string",
       "required": true
     },
+    "bc_no": {
+      "type": "string"
+    },
     "contact_person": {
       "type": "string"
     },
     "email": {
       "type": "email",
-      "required": true
+      "required": false
     },
     "phone": {
       "type": "string",

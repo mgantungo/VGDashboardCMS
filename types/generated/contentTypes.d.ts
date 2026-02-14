@@ -925,6 +925,7 @@ export interface ApiClientClient extends Struct.CollectionTypeSchema {
   attributes: {
     address: Schema.Attribute.Text;
     adverts: Schema.Attribute.Relation<'oneToMany', 'api::advert.advert'>;
+    bc_no: Schema.Attribute.String;
     clientTin: Schema.Attribute.String;
     company_name: Schema.Attribute.String & Schema.Attribute.Required;
     contact_person: Schema.Attribute.String;
@@ -934,7 +935,7 @@ export interface ApiClientClient extends Struct.CollectionTypeSchema {
     credit_approved: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
     credit_limit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
-    email: Schema.Attribute.Email & Schema.Attribute.Required;
+    email: Schema.Attribute.Email;
     invoices: Schema.Attribute.Relation<'oneToMany', 'api::invoice.invoice'>;
     is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -1842,12 +1843,11 @@ export interface ApiVgamsSalesPersonVgamsSalesPerson
   };
   attributes: {
     adverts: Schema.Attribute.Relation<'manyToMany', 'api::advert.advert'>;
+    bc_code: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    email: Schema.Attribute.Email &
-      Schema.Attribute.Required &
-      Schema.Attribute.Unique;
+    email: Schema.Attribute.Email & Schema.Attribute.Unique;
     isActive: Schema.Attribute.Boolean &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<false>;
