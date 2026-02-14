@@ -3,7 +3,7 @@
 const axios = require('axios');
 
 module.exports = {
-  async findALLSalesPersons(ctx) {
+  async findALLSalesPersonsBC(ctx) {
     try {
       // External API configuration
       const externalApiUrl = 'http://DEVTEST.newvision.co.ug:7069/BC180NUA/ODataV4/Company(\'The%20New%20Vision\')/SalespeopleDS';
@@ -76,7 +76,7 @@ module.exports = {
   },
 
   // Optional: Add a method to get a single salesperson by code
-  async findOneSalesPerson(ctx) {
+  async findOneSalesPersonfromBC(ctx) {
     const { code } = ctx.params;
     
     try {
