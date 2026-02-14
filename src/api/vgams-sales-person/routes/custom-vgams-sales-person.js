@@ -39,6 +39,26 @@ module.exports = {
         middlewares: [],
         description: 'Get specific sales agent by ID'
       }
+    },
+    {
+      method: 'GET',
+      path: '/sales-agents/findALLSalesPersonsBC',
+      handler: 'salesperson.find',
+      config: {
+        auth: false, // Set to true if you want to require authentication
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/salespeople/:code',
+      handler: 'salesperson.findOne',
+      config: {
+        auth: false, // Set to true if you want to require authentication
+        policies: [],
+        middlewares: [],
+      },
     }
   ]
 };
