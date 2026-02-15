@@ -31,15 +31,17 @@ module.exports = {
       }
     },
     {
-      method: 'POST',
+      method: 'GET',
       path: '/rate-cards/analyzeResources',
       handler: 'rate-card.analyzeResources',
       config: {
         policies: [],
         middlewares: [],
+        /*
         auth: {
           strategies: ['api-token']
         }
+        */
       }
     },
   ]
