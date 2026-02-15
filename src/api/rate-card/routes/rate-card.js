@@ -44,5 +44,19 @@ module.exports = {
         */
       }
     },
+    {
+      method: 'GET',
+      path: '/rate-cards/inspectDimValuDS',
+      handler: 'rate-card.inspectDimValuDS',
+      config: {
+        policies: [],
+        middlewares: [],
+        /*
+        auth: {
+          strategies: ['api-token']
+        }
+        */
+      }
+    },
   ]
 };
