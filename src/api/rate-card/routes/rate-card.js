@@ -29,6 +29,18 @@ module.exports = {
           strategies: ['api-token']
         }
       }
-    }
+    },
+    {
+      method: 'POST',
+      path: '/rate-cards/analyzeResources',
+      handler: 'rate-card.analyzeResources',
+      config: {
+        policies: [],
+        middlewares: [],
+        auth: {
+          strategies: ['api-token']
+        }
+      }
+    },
   ]
 };
