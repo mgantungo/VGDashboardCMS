@@ -169,5 +169,33 @@ module.exports = {
       console.error('Error in updateNullExpiryDates:', err);
       return ctx.throw(500, err);
     }
-  }
+  },
+  async analyzeResources(ctx) {
+            try {
+              const axios = require('axios');
+              
+              const response = await axios.get(process.env.EXTERNAL_API_URL_RESOURCEDS, {
+                auth: {
+                  username: process.env.EXTERNAL_API_USERNAME,
+                  password: process.env.EXTERNAL_API_PASSWORD
+                },
+                headers: {
+                  'Accept': 'application/json'
+                }
+              });
+          
+              // Return the raw data for analysis
+              return ctx.send({
+                success: true,
+                data: response.data,
+                columnInfo: {
+                  available: Object.keys(response.data.value[0] || {}),
+                  sample: response.data.value.slice(0, 3), // First 3 records as sample
+                  totalRecords: response.data.value.length
+                }
+              });
+            } catch (error) {
+              return ctx.badRequest(error.message);
+            }
+}
 };
