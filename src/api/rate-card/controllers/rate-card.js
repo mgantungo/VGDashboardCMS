@@ -197,5 +197,31 @@ module.exports = {
             } catch (error) {
               return ctx.badRequest(error.message);
             }
-}
+    },
+  async inspectDimValuDS(ctx) {
+      try {
+        const axios = require('axios');
+        
+        const response = await axios.get(process.env.EXTERNAL_API_URL_DimValuDS, {
+          auth: {
+            username: process.env.EXTERNAL_API_USERNAME,
+            password: process.env.EXTERNAL_API_PASSWORD
+          },
+          timeout: 30000
+        });
+    
+        // Return useful analysis
+        const data = response.data;
+        return ctx.send({
+          success: true,
+          metadata: data['@odata.context'],
+          recordCount: data.value?.length || 0,
+          sample: data.value?.slice(0, 3), // First 3 records
+          allData: data.value, // Full dataset
+          columns: data.value?.length > 0 ? Object.keys(data.value[0]) : []
+        });
+      } catch (error) {
+        return ctx.badRequest(error.message);
+      }
+    }
 };
