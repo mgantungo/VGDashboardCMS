@@ -327,6 +327,17 @@ module.exports = {
           middlewares: [],
           description: 'Bulk update page numbers for multiple schedules',
         },
-      }
+      },
+      {
+        method: 'GET',
+        path: '/advert-office-locations/get-office-locations',
+        handler: 'advert-office-locations.getLocations',
+        config: {
+          auth: false,
+          policies: [],
+          middlewares: [],
+          description: 'Locations of offices',
+        },
+      },
   ]
 };
