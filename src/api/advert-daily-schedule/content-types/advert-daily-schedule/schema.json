@@ -4,7 +4,7 @@
   "info": {
     "singularName": "advert-daily-schedule",
     "pluralName": "advert-daily-schedules",
-    "displayName": "Advert Daily Schedule"
+    "displayName": "CIO Advert Daily Schedule"
   },
   "options": {
     "draftAndPublish": false

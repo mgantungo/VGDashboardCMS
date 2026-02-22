@@ -4,17 +4,24 @@
   "info": {
     "singularName": "rate-card",
     "pluralName": "rate-cards",
-    "displayName": "Rate Card"
+    "displayName": "CIO Rate Card"
   },
   "options": {
     "draftAndPublish": false
   },
+  "pluginOptions": {},
   "attributes": {
     "product": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::product.product",
       "inversedBy": "rate_cards"
+    },
+    "no": {
+      "type": "string"
+    },
+    "base_unit_of_measure": {
+      "type": "string"
     },
     "ad_type": {
       "type": "string",

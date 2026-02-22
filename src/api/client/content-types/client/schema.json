@@ -4,7 +4,7 @@
   "info": {
     "singularName": "client",
     "pluralName": "clients",
-    "displayName": "Client"
+    "displayName": "CIO Client"
   },
   "options": {
     "draftAndPublish": false

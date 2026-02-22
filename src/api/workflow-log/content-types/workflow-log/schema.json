@@ -4,7 +4,7 @@
   "info": {
     "singularName": "workflow-log",
     "pluralName": "workflow-logs",
-    "displayName": "Workflow Log"
+    "displayName": "CIO Workflow Log"
   },
   "options": {
     "draftAndPublish": false

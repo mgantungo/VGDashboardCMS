@@ -4,11 +4,12 @@
   "info": {
     "singularName": "design-file",
     "pluralName": "design-files",
-    "displayName": "Design File"
+    "displayName": "CIO Design File"
   },
   "options": {
     "draftAndPublish": false
   },
+  "pluginOptions": {},
   "attributes": {
     "advert": {
       "type": "relation",
@@ -22,13 +23,22 @@
     "file": {
       "type": "media",
       "multiple": false,
-      "allowedTypes": ["images", "files", "videos"],
-      "required": true
+      "required": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ]
     },
     "file_type": {
       "type": "enumeration",
-      "enum": ["design", "brief", "reference", "final"],
-      "required": true
+      "required": true,
+      "enum": [
+        "design",
+        "brief",
+        "reference",
+        "final"
+      ]
     },
     "version": {
       "type": "integer",

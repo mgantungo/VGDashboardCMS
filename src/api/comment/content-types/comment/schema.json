@@ -4,11 +4,12 @@
   "info": {
     "singularName": "comment",
     "pluralName": "comments",
-    "displayName": "Comment"
+    "displayName": "CIO Comment"
   },
   "options": {
     "draftAndPublish": false
   },
+  "pluginOptions": {},
   "attributes": {
     "advert": {
       "type": "relation",
@@ -27,13 +28,13 @@
     },
     "comment_type": {
       "type": "enumeration",
+      "default": "general",
       "enum": [
         "general",
         "approval",
         "rejection",
         "revision_request"
-      ],
-      "default": "general"
+      ]
     },
     "created_at": {
       "type": "datetime"

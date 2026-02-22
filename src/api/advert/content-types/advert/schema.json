@@ -4,7 +4,7 @@
   "info": {
     "singularName": "advert",
     "pluralName": "adverts",
-    "displayName": "Advert"
+    "displayName": "CIO Advert"
   },
   "options": {
     "draftAndPublish": false

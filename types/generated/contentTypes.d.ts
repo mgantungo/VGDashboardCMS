@@ -417,7 +417,7 @@ export interface ApiAdvertDailyScheduleAdvertDailySchedule
   extends Struct.CollectionTypeSchema {
   collectionName: 'advert_daily_schedules';
   info: {
-    displayName: 'Advert Daily Schedule';
+    displayName: 'CIO Advert Daily Schedule';
     pluralName: 'advert-daily-schedules';
     singularName: 'advert-daily-schedule';
   };
@@ -453,7 +453,7 @@ export interface ApiAdvertDailyScheduleAdvertDailySchedule
 export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
   collectionName: 'adverts';
   info: {
-    displayName: 'Advert';
+    displayName: 'CIO Advert';
     pluralName: 'adverts';
     singularName: 'advert';
   };
@@ -915,7 +915,7 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
 export interface ApiClientClient extends Struct.CollectionTypeSchema {
   collectionName: 'clients';
   info: {
-    displayName: 'Client';
+    displayName: 'CIO Client';
     pluralName: 'clients';
     singularName: 'client';
   };
@@ -959,7 +959,7 @@ export interface ApiClientClient extends Struct.CollectionTypeSchema {
 export interface ApiCommentComment extends Struct.CollectionTypeSchema {
   collectionName: 'comments';
   info: {
-    displayName: 'Comment';
+    displayName: 'CIO Comment';
     pluralName: 'comments';
     singularName: 'comment';
   };
@@ -1087,7 +1087,7 @@ export interface ApiDepartmentDepartment extends Struct.CollectionTypeSchema {
 export interface ApiDesignFileDesignFile extends Struct.CollectionTypeSchema {
   collectionName: 'design_files';
   info: {
-    displayName: 'Design File';
+    displayName: 'CIO Design File';
     pluralName: 'design-files';
     singularName: 'design-file';
   };
@@ -1359,7 +1359,7 @@ export interface ApiParishParish extends Struct.CollectionTypeSchema {
 export interface ApiPaymentPayment extends Struct.CollectionTypeSchema {
   collectionName: 'payments';
   info: {
-    displayName: 'Payment';
+    displayName: 'CIO Payment';
     pluralName: 'payments';
     singularName: 'payment';
   };
@@ -1617,7 +1617,7 @@ export interface ApiPublicationPublication extends Struct.CollectionTypeSchema {
 export interface ApiRateCardRateCard extends Struct.CollectionTypeSchema {
   collectionName: 'rate_cards';
   info: {
-    displayName: 'Rate Card';
+    displayName: 'CIO Rate Card';
     pluralName: 'rate-cards';
     singularName: 'rate-card';
   };
@@ -1626,6 +1626,7 @@ export interface ApiRateCardRateCard extends Struct.CollectionTypeSchema {
   };
   attributes: {
     ad_type: Schema.Attribute.String & Schema.Attribute.Required;
+    base_unit_of_measure: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1640,6 +1641,7 @@ export interface ApiRateCardRateCard extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     metadata: Schema.Attribute.JSON;
+    no: Schema.Attribute.String;
     price_bw: Schema.Attribute.Decimal;
     price_fc: Schema.Attribute.Decimal;
     product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
@@ -1834,7 +1836,7 @@ export interface ApiVgamsSalesPersonVgamsSalesPerson
   extends Struct.CollectionTypeSchema {
   collectionName: 'vgams_sales_persons';
   info: {
-    displayName: 'VGAMS Sales Persons';
+    displayName: 'CIO VGAMS Sales Persons';
     pluralName: 'vgams-sales-persons';
     singularName: 'vgams-sales-person';
   };
@@ -1869,7 +1871,7 @@ export interface ApiVgamsUserVgamsUser extends Struct.CollectionTypeSchema {
   collectionName: 'vgams_users';
   info: {
     description: 'Vision Group Advertising Management System Users';
-    displayName: 'VGAMS Users';
+    displayName: 'CIO VGAMS Users';
     pluralName: 'vgams-users';
     singularName: 'vgams-user';
   };
@@ -1938,7 +1940,7 @@ export interface ApiVgamsUserVgamsUser extends Struct.CollectionTypeSchema {
 export interface ApiWorkflowLogWorkflowLog extends Struct.CollectionTypeSchema {
   collectionName: 'workflow_logs';
   info: {
-    displayName: 'Workflow Log';
+    displayName: 'CIO Workflow Log';
     pluralName: 'workflow-logs';
     singularName: 'workflow-log';
   };

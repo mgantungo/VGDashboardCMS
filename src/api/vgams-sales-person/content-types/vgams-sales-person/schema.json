@@ -4,7 +4,7 @@
   "info": {
     "singularName": "vgams-sales-person",
     "pluralName": "vgams-sales-persons",
-    "displayName": "VGAMS Sales Persons"
+    "displayName": "CIO VGAMS Sales Persons"
   },
   "options": {
     "draftAndPublish": false
@@ -37,4 +37,3 @@
     }
   }
 }
-
