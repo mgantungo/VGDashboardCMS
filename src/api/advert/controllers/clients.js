@@ -1,7 +1,7 @@
 'use strict';
 
 module.exports = {
-  async findIdAndName(ctx) {
+  async getClients(ctx) {
     const { page = 1, pageSize = 1000 } = ctx.query;
     
     try {
