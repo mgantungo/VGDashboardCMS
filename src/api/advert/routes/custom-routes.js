@@ -339,5 +339,16 @@ module.exports = {
           description: 'Locations of offices',
         },
       },
+      {
+        method: 'GET',
+        path: '/clients/get-ad-client',
+        handler: 'clients.getClients',
+        config: {
+          auth: false,
+          policies: [],
+          middlewares: [],
+          description: 'Get Clients List',
+        },
+      },
   ]
 };
