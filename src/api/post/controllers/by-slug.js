@@ -9,6 +9,14 @@ const resolveImageUrl = (url) => {
   return `${CMS_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
+const processContentImages = (content, baseUrl) => {
+  if (!content) return '';
+  return content.replace(
+    /(<img[^>]+src=["'])\/uploads\//gi,
+    `$1${baseUrl}/uploads/`
+  );
+};
+
 const POPULATE = {
   featured_image: {
     fields: ['url', 'alternativeText', 'formats', 'ext', 'mime', 'size'],
@@ -66,7 +74,7 @@ module.exports = {
         try {
           const drafts = await strapi.entityService.findMany('api::post.post', {
             filters: { id: strapiId },
-            publicationState: 'preview', // includes both published and drafts
+            publicationState: 'preview',
             populate: POPULATE,
             limit: 1,
           });
@@ -134,8 +142,12 @@ module.exports = {
       // Resolve category
       const primaryCategory = post.categories?.length > 0 ? post.categories[0] : null;
 
-      // Calculate read time from content
-      const wordCount = (post.content || '').replace(/<[^>]*>/g, '').split(/\s+/).length;
+      // Calculate read time from content (strip HTML first)
+      const wordCount = (post.content || '')
+        .replace(/<[^>]*>/g, '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean).length;
       const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
 
       // Format date
@@ -153,8 +165,12 @@ module.exports = {
           id: post.id,
           slug: post.slug || slug,
           title: post.title || '',
-          excerpt: (post.excerpt || '').replace(/&hellip;/g, '...').replace(/&amp;/g, '&'),
-          content: post.content || '',
+          excerpt: (post.excerpt || '')
+            .replace(/&hellip;/g, '...')
+            .replace(/&amp;/g, '&')
+            .replace(/&nbsp;/g, ' ')
+            .trim(),
+          content: processContentImages(post.content, CMS_BASE_URL),
           image: featuredImage?.url || '',
           imageAlt: featuredImage?.alt || post.title || '',
           imageFormats: featuredImage?.formats || {},
