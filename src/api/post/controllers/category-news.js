@@ -21,7 +21,7 @@ module.exports = {
 
       // Normalize slug: replace "-and-" with just "-"
       // This handles cases like "research-and-innovation" → "research-innovation"
-      //const originalSlug = categorySlug;
+      const originalSlug = categorySlug;
       //categorySlug = categorySlug.replace(/-and-/g, '-');
 
       console.log(`=== FETCHING ARTICLES FOR CATEGORY: ${categorySlug} ===`);
