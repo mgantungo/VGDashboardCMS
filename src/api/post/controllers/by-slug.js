@@ -9,6 +9,21 @@ const resolveImageUrl = (url) => {
   return `${CMS_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
+const POPULATE = {
+  featured_image: {
+    fields: ['url', 'alternativeText', 'formats', 'ext', 'mime', 'size'],
+  },
+  authors: {
+    fields: ['id', 'username', 'display_name', 'first_name', 'last_name'],
+  },
+  categories: {
+    fields: ['id', 'name', 'slug'],
+  },
+  tags: {
+    fields: ['id', 'name', 'slug'],
+  },
+};
+
 module.exports = {
   async getBySlug(ctx) {
     try {
@@ -31,36 +46,61 @@ module.exports = {
 
       console.log('🔑 Extracted Strapi ID:', strapiId);
 
-      // Fetch directly by Strapi ID
       let post = null;
 
+      // Strategy 1: Find as published
       try {
         post = await strapi.entityService.findOne('api::post.post', strapiId, {
-          populate: {
-            featured_image: {
-              fields: ['url', 'alternativeText', 'formats', 'ext', 'mime', 'size'],
-            },
-            authors: {
-              fields: ['id', 'username', 'display_name', 'first_name', 'last_name'],
-            },
-            categories: {
-              fields: ['id', 'name', 'slug'],
-            },
-            tags: {
-              fields: ['id', 'name', 'slug'],
-            },
-          },
+          populate: POPULATE,
         });
+        if (post) {
+          console.log('✅ Found as published, id:', post.id);
+        }
       } catch (e) {
-        console.log('⚠️ findOne failed:', e.message);
+        console.log('⚠️ findOne (published) failed:', e.message);
+      }
+
+      // Strategy 2: Fall back to draft / preview state
+      if (!post) {
+        console.log('⚠️ Not found as published, trying preview state...');
+        try {
+          const drafts = await strapi.entityService.findMany('api::post.post', {
+            filters: { id: strapiId },
+            publicationState: 'preview', // includes both published and drafts
+            populate: POPULATE,
+            limit: 1,
+          });
+          post = drafts?.[0] || null;
+          if (post) {
+            console.log('✅ Found as draft/preview, id:', post.id);
+          }
+        } catch (e) {
+          console.log('⚠️ findMany (preview) failed:', e.message);
+        }
+      }
+
+      // Strategy 3: Last resort - raw DB query, bypasses all publication state
+      if (!post) {
+        console.log('⚠️ Trying raw DB query...');
+        try {
+          const results = await strapi.db.query('api::post.post').findMany({
+            where: { id: strapiId },
+            populate: ['featured_image', 'authors', 'categories', 'tags'],
+            limit: 1,
+          });
+          post = results?.[0] || null;
+          if (post) {
+            console.log('✅ Found via raw DB query, id:', post.id);
+          }
+        } catch (e) {
+          console.log('⚠️ Raw DB query failed:', e.message);
+        }
       }
 
       if (!post) {
-        console.log('❌ No article found for Strapi ID:', strapiId);
+        console.log('❌ Article not found after all strategies for ID:', strapiId);
         return ctx.notFound('Article not found');
       }
-
-      console.log('✅ Found article:', post.id, post.title);
 
       // Resolve featured image
       let featuredImage = null;
@@ -94,7 +134,7 @@ module.exports = {
       // Resolve category
       const primaryCategory = post.categories?.length > 0 ? post.categories[0] : null;
 
-      // Calculate read time
+      // Calculate read time from content
       const wordCount = (post.content || '').replace(/<[^>]*>/g, '').split(/\s+/).length;
       const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
 
