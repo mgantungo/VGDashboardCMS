@@ -353,7 +353,7 @@ module.exports = {
       {
         method: 'GET',
         path: '/advert/get-office-location',
-        handler: 'office-location.getOfficeLocations',
+        handler: 'advert-office-locations.getOfficeLocations',
         config: {
           auth: false,
           policies: [],
