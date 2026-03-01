@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "office_locations",
+  "info": {
+    "singularName": "office-location",
+    "pluralName": "office-locations",
+    "displayName": "CIO Office Location"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "bc_code": {
+      "type": "string"
+    },
+    "office_location": {
+      "type": "string"
+    }
+  }
+}

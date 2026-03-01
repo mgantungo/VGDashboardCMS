@@ -1201,7 +1201,7 @@ export interface ApiEnumerationAreaEnumerationArea
 export interface ApiInvoiceInvoice extends Struct.CollectionTypeSchema {
   collectionName: 'invoices';
   info: {
-    displayName: 'Invoice';
+    displayName: 'CIO Invoice';
     pluralName: 'invoices';
     singularName: 'invoice';
   };
@@ -1233,6 +1233,36 @@ export interface ApiInvoiceInvoice extends Struct.CollectionTypeSchema {
     payments: Schema.Attribute.Relation<'oneToMany', 'api::payment.payment'>;
     publishedAt: Schema.Attribute.DateTime;
     total_amount: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiOfficeLocationOfficeLocation
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'office_locations';
+  info: {
+    displayName: 'CIO Office Location';
+    pluralName: 'office-locations';
+    singularName: 'office-location';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    bc_code: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::office-location.office-location'
+    > &
+      Schema.Attribute.Private;
+    office_location: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -2512,6 +2542,7 @@ declare module '@strapi/strapi' {
       'api::district.district': ApiDistrictDistrict;
       'api::enumeration-area.enumeration-area': ApiEnumerationAreaEnumerationArea;
       'api::invoice.invoice': ApiInvoiceInvoice;
+      'api::office-location.office-location': ApiOfficeLocationOfficeLocation;
       'api::office.office': ApiOfficeOffice;
       'api::page.page': ApiPagePage;
       'api::parish.parish': ApiParishParish;
