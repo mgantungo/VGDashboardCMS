@@ -41,6 +41,37 @@ module.exports={
         error: error.message
       }, error.response?.status || 500);
     }
+  },
+  async getOfficeLocations(ctx) {
+    try {
+      // Fetch all office locations from Strapi
+      const entries = await strapi.entityService.findMany('api::office-location.office-location', {
+        fields: ['bc_code', 'office_location'],
+        publicationState: 'live'
+      });
+
+      // Transform data to match desired format (bc_code as code, office_location as office)
+      const locations = entries.map(entry => ({
+        code: entry.bc_code,
+        office: entry.office_location || 'No Office Name' // Handle empty values
+      }));
+
+      // Send response
+      ctx.send({
+        success: true,
+        data: locations,
+        count: locations.length
+      });
+
+    } catch (error) {
+      console.error('Error fetching office locations:', error.message);
+      
+      ctx.send({
+        success: false,
+        message: 'Failed to fetch office locations',
+        error: error.message
+      }, 500);
+    }
   }
 
 }
