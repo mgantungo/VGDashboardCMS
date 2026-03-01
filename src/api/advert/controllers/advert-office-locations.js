@@ -4,7 +4,7 @@ const axios = require('axios');
 
 module.exports={
 
-  async getLocations(ctx) {
+  async getBCLocations(ctx) {
     try {
       const { EXTERNAL_API_OFFICELOCATION, EXTERNAL_API_USERNAME, EXTERNAL_API_PASSWORD } = process.env;
 
