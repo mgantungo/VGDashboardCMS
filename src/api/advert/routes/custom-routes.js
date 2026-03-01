@@ -350,5 +350,16 @@ module.exports = {
           description: 'Get Clients List',
         },
       },
+      {
+        method: 'GET',
+        path: '/advert/get-office-location',
+        handler: 'office-location.getOfficeLocations',
+        config: {
+          auth: false,
+          policies: [],
+          middlewares: [],
+          description: 'Get office location',
+        },
+      },
   ]
 };
