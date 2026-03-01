@@ -331,7 +331,7 @@ module.exports = {
       {
         method: 'GET',
         path: '/advert-office-locations/get-office-locations',
-        handler: 'advert-office-locations.getLocations',
+        handler: 'advert-office-locations.getBCLocations',
         config: {
           auth: false,
           policies: [],
