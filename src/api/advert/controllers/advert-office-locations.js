@@ -1,4 +1,7 @@
 'use strict';
+
+const axios = require('axios');
+
 module.exports={
 
   async getLocations(ctx) {
