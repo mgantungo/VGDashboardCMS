@@ -1,28 +1,33 @@
 'use strict';
-module.exports={
 
+module.exports = {
   async getLocations(ctx) {
     try {
       const { EXTERNAL_API_OFFICELOCATION, EXTERNAL_API_USERNAME, EXTERNAL_API_PASSWORD } = process.env;
 
-      // Make the API request with basic authentication
-      const response = await axios.get(EXTERNAL_API_OFFICELOCATION, {
-        auth: {
-          username: EXTERNAL_API_USERNAME,
-          password: EXTERNAL_API_PASSWORD
-        },
+      // Create basic auth header
+      const auth = Buffer.from(`${EXTERNAL_API_USERNAME}:${EXTERNAL_API_PASSWORD}`).toString('base64');
+
+      const response = await fetch(EXTERNAL_API_OFFICELOCATION, {
+        method: 'GET',
         headers: {
+          'Authorization': `Basic ${auth}`,
           'Content-Type': 'application/json'
         }
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
       // Extract only code and name from each location
-      const locations = response.data.value.map(location => ({
+      const locations = data.value.map(location => ({
         code: location.Code,
-        name: location.Name || 'No Name' // Handle empty names by providing default
+        name: location.Name || 'No Name'
       }));
 
-      // Send the filtered data
       ctx.send({
         success: true,
         data: locations,
@@ -36,8 +41,7 @@ module.exports={
         success: false,
         message: 'Failed to fetch locations',
         error: error.message
-      }, error.response?.status || 500);
+      }, error.status || 500);
     }
   }
-
-}
+};
