@@ -336,7 +336,7 @@ module.exports = {
           auth: false,
           policies: [],
           middlewares: [],
-          description: 'Locations of offices',
+          description: 'Locations of offices from business central',
         },
       },
       {
@@ -358,7 +358,7 @@ module.exports = {
           auth: false,
           policies: [],
           middlewares: [],
-          description: 'Get office location',
+          description: 'Get office location from VGAD',
         },
       },
   ]
