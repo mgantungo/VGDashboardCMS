@@ -1,6 +1,8 @@
-# Vision Group Analytics Dashboard– Strapi 5 Controllers & Routes
+# Vision Group – Strapi 5 Controllers & Routes
+# Base URL: https://cms-vgad.visiongroup.co.ug/
 
 
+# x-api-key: place this secret token in header of every Request
 
 ---
 
