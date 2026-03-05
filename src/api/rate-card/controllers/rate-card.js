@@ -199,155 +199,213 @@ module.exports = {
             }
     },
   /*get cost and revenue center*/
-  async inspectDimValuDS(ctx) {
-  try {
-    const axios = require('axios');
-    
-    const response = await axios.get(process.env.EXTERNAL_API_URL_DimValuDS, {
-      auth: {
-        username: process.env.EXTERNAL_API_USERNAME,
-        password: process.env.EXTERNAL_API_PASSWORD
-      },
-      timeout: 30000
-    });
-
-    const data = response.data;
-    const records = data.value || [];
-
-    // Separate locations based on Dimension_Code31351
-    const revenueStreams = [];
-    const costStreams = [];
-
-    records.forEach(location => {
-      const dimensionCode = location.Dimension_Code31351;
+      async inspectDimValuDS(ctx) {
+        try {
+          const axios = require('axios');
+          
+          const response = await axios.get(process.env.EXTERNAL_API_URL_DimValuDS, {
+            auth: {
+              username: process.env.EXTERNAL_API_USERNAME,
+              password: process.env.EXTERNAL_API_PASSWORD
+            },
+            timeout: 30000
+          });
       
-      if (dimensionCode === 'REVSTREAM') {
-        revenueStreams.push({
-          uuid: location.Code,
-          name: location.Name || 'No Name'
-        });
-      } else if (dimensionCode === 'COST CENTRE') {
-        costStreams.push({
-          uuid: location.Code,
-          name: location.Name || 'No Name'
-        });
-      }
-    });
-
-    // Save revenue streams - check UUID first
-    const revenueResults = {
-      created: [],
-      skipped: []
-    };
-
-    for (const revenueStream of revenueStreams) {
-      // Check if a record with this UUID already exists
-      const existing = await strapi.entityService.findMany(
-        'api::revenue-stream.revenue-stream',
-        {
-          filters: { uuid: revenueStream.uuid },
-          limit: 1
-        }
-      );
-
-      if (existing.length === 0) {
-        // UUID doesn't exist - create new record
-        const created = await strapi.entityService.create(
-          'api::revenue-stream.revenue-stream',
-          {
-            data: revenueStream
+          const data = response.data;
+          const records = data.value || [];
+      
+          // Separate locations based on Dimension_Code31351
+          const revenueStreams = [];
+          const costStreams = [];
+      
+          records.forEach(location => {
+            const dimensionCode = location.Dimension_Code31351;
+            const rawCode = location.Code || '';
+            const rawName = location.Name || 'No Name';
+            
+            // Still sanitize but now it's a text field - we can be more permissive
+            // But let's keep it clean by removing any extreme characters
+            const sanitizedCode = rawCode.replace(/[^\w\s\-_.~]/g, '_');
+            
+            // If sanitization changed the value, log it
+            if (sanitizedCode !== rawCode) {
+              console.log(`⚠️ Sanitized code from "${rawCode}" to "${sanitizedCode}"`);
+            }
+            
+            if (dimensionCode === 'REVSTREAM') {
+              revenueStreams.push({
+                code: sanitizedCode,
+                name: rawName
+              });
+            } else if (dimensionCode === 'COST CENTRE') {
+              costStreams.push({
+                code: sanitizedCode,
+                name: rawName
+              });
+            }
+          });
+      
+          console.log(`📊 Found ${revenueStreams.length} revenue streams and ${costStreams.length} cost streams`);
+      
+          // Save revenue streams - check code first
+          const revenueResults = {
+            created: [],
+            skipped: [],
+            failed: []
+          };
+      
+          for (const revenueStream of revenueStreams) {
+            try {
+              // Skip if code is empty after sanitization
+              if (!revenueStream.code) {
+                console.log(`❌ Skipped revenue stream - empty code: ${JSON.stringify(revenueStream)}`);
+                revenueResults.failed.push({
+                  ...revenueStream,
+                  reason: 'Empty code after sanitization'
+                });
+                continue;
+              }
+      
+              // Check if a record with this code already exists
+              const existing = await strapi.entityService.findMany(
+                'api::revenue-stream.revenue-stream',
+                {
+                  filters: { code: revenueStream.code },
+                  limit: 1
+                }
+              );
+      
+              if (existing.length === 0) {
+                // Code doesn't exist - create new record
+                const created = await strapi.entityService.create(
+                  'api::revenue-stream.revenue-stream',
+                  {
+                    data: revenueStream
+                  }
+                );
+                revenueResults.created.push({
+                  code: revenueStream.code,
+                  name: revenueStream.name,
+                  id: created.id
+                });
+                console.log(`✅ Created revenue stream: ${revenueStream.code} - ${revenueStream.name}`);
+              } else {
+                // Code already exists - skip
+                revenueResults.skipped.push({
+                  code: revenueStream.code,
+                  name: revenueStream.name,
+                  existingId: existing[0].id
+                });
+                console.log(`⏭️ Skipped revenue stream (already exists): ${revenueStream.code} - ${revenueStream.name}`);
+              }
+            } catch (error) {
+              console.error(`❌ Failed to process revenue stream ${revenueStream.code}:`, error.message);
+              revenueResults.failed.push({
+                ...revenueStream,
+                reason: error.message
+              });
+            }
           }
-        );
-        revenueResults.created.push({
-          uuid: revenueStream.uuid,
-          name: revenueStream.name,
-          id: created.id
-        });
-        console.log(`✅ Created revenue stream: ${revenueStream.uuid} - ${revenueStream.name}`);
-      } else {
-        // UUID already exists - skip
-        revenueResults.skipped.push({
-          uuid: revenueStream.uuid,
-          name: revenueStream.name,
-          existingId: existing[0].id
-        });
-        console.log(`⏭️ Skipped revenue stream (already exists): ${revenueStream.uuid} - ${revenueStream.name}`);
-      }
-    }
-
-    // Save cost streams - check UUID first
-    const costResults = {
-      created: [],
-      skipped: []
-    };
-
-    for (const costStream of costStreams) {
-      // Check if a record with this UUID already exists
-      const existing = await strapi.entityService.findMany(
-        'api::cost-stream.cost-stream',
-        {
-          filters: { uuid: costStream.uuid },
-          limit: 1
-        }
-      );
-
-      if (existing.length === 0) {
-        // UUID doesn't exist - create new record
-        const created = await strapi.entityService.create(
-          'api::cost-stream.cost-stream',
-          {
-            data: costStream
+      
+          // Save cost streams - check code first
+          const costResults = {
+            created: [],
+            skipped: [],
+            failed: []
+          };
+      
+          for (const costStream of costStreams) {
+            try {
+              // Skip if code is empty after sanitization
+              if (!costStream.code) {
+                console.log(`❌ Skipped cost stream - empty code: ${JSON.stringify(costStream)}`);
+                costResults.failed.push({
+                  ...costStream,
+                  reason: 'Empty code after sanitization'
+                });
+                continue;
+              }
+      
+              // Check if a record with this code already exists
+              const existing = await strapi.entityService.findMany(
+                'api::cost-stream.cost-stream',
+                {
+                  filters: { code: costStream.code },
+                  limit: 1
+                }
+              );
+      
+              if (existing.length === 0) {
+                // Code doesn't exist - create new record
+                const created = await strapi.entityService.create(
+                  'api::cost-stream.cost-stream',
+                  {
+                    data: costStream
+                  }
+                );
+                costResults.created.push({
+                  code: costStream.code,
+                  name: costStream.name,
+                  id: created.id
+                });
+                console.log(`✅ Created cost stream: ${costStream.code} - ${costStream.name}`);
+              } else {
+                // Code already exists - skip
+                costResults.skipped.push({
+                  code: costStream.code,
+                  name: costStream.name,
+                  existingId: existing[0].id
+                });
+                console.log(`⏭️ Skipped cost stream (already exists): ${costStream.code} - ${costStream.name}`);
+              }
+            } catch (error) {
+              console.error(`❌ Failed to process cost stream ${costStream.code}:`, error.message);
+              costResults.failed.push({
+                ...costStream,
+                reason: error.message
+              });
+            }
           }
-        );
-        costResults.created.push({
-          uuid: costStream.uuid,
-          name: costStream.name,
-          id: created.id
-        });
-        console.log(`✅ Created cost stream: ${costStream.uuid} - ${costStream.name}`);
-      } else {
-        // UUID already exists - skip
-        costResults.skipped.push({
-          uuid: costStream.uuid,
-          name: costStream.name,
-          existingId: existing[0].id
-        });
-        console.log(`⏭️ Skipped cost stream (already exists): ${costStream.uuid} - ${costStream.name}`);
+      
+          // Log summary
+          console.log('\n📈 PROCESSING SUMMARY:');
+          console.log(`Revenue Streams - Created: ${revenueResults.created.length}, Skipped: ${revenueResults.skipped.length}, Failed: ${revenueResults.failed.length}`);
+          console.log(`Cost Streams - Created: ${costResults.created.length}, Skipped: ${costResults.skipped.length}, Failed: ${costResults.failed.length}`);
+      
+          // Return comprehensive analysis with storage results
+          return ctx.send({
+            success: true,
+            metadata: data['@odata.context'],
+            recordCount: records.length,
+            summary: {
+              totalRecords: records.length,
+              revenueStreams: {
+                total: revenueStreams.length,
+                created: revenueResults.created.length,
+                skipped: revenueResults.skipped.length,
+                failed: revenueResults.failed.length
+              },
+              costStreams: {
+                total: costStreams.length,
+                created: costResults.created.length,
+                skipped: costResults.skipped.length,
+                failed: costResults.failed.length
+              },
+              other: records.length - (revenueStreams.length + costStreams.length)
+            },
+            sample: records.slice(0, 3),
+            columns: records.length > 0 ? Object.keys(records[0]) : [],
+            storageResults: {
+              revenueStreams: revenueResults,
+              costStreams: costResults
+            }
+          });
+      
+        } catch (error) {
+          console.error('Error in inspectDimValuDS:', error.message);
+          return ctx.badRequest(error.message);
+        }
       }
-    }
-
-    // Return comprehensive analysis with storage results
-    return ctx.send({
-      success: true,
-      metadata: data['@odata.context'],
-      recordCount: records.length,
-      summary: {
-        totalRecords: records.length,
-        revenueStreams: {
-          total: revenueStreams.length,
-          created: revenueResults.created.length,
-          skipped: revenueResults.skipped.length
-        },
-        costStreams: {
-          total: costStreams.length,
-          created: costResults.created.length,
-          skipped: costResults.skipped.length
-        },
-        other: records.length - (revenueStreams.length + costStreams.length)
-      },
-      sample: records.slice(0, 3),
-      columns: records.length > 0 ? Object.keys(records[0]) : [],
-      storageResults: {
-        revenueStreams: revenueResults,
-        costStreams: costResults
-      }
-    });
-
-  } catch (error) {
-    console.error('Error in inspectDimValuDS:', error.message);
-    return ctx.badRequest(error.message);
-  }
-}
   /*
   async inspectDimValuDS(ctx) {
       try {
