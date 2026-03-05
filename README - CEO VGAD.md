@@ -1,6 +1,6 @@
-# Vision Group – Strapi 5 Controllers & Routes
+# Vision Group Analytics Dashboard– Strapi 5 Controllers & Routes
 
-All files are **ready to drop into your Strapi 5 project** under `src/api/`.
+
 
 ---
 
@@ -178,8 +178,6 @@ src/api/
 | GET | `/api/sales/brand-lift` | Brand lift studies |
 | GET | `/api/sales/contract-value-trends` | Contract value trends |
 | GET | `/api/sales/supervisor-analytics` | Sales supervisor analytics |
-
----
 
 ## Notes
 
