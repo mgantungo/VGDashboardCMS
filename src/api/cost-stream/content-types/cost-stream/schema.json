@@ -4,7 +4,7 @@
   "info": {
     "singularName": "cost-stream",
     "pluralName": "cost-streams",
-    "displayName": "Cost Stream"
+    "displayName": "CIO Cost Stream"
   },
   "options": {
     "draftAndPublish": false
