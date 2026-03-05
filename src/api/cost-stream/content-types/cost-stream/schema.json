@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cost_streams",
+  "info": {
+    "singularName": "cost-stream",
+    "pluralName": "cost-streams",
+    "displayName": "Cost Stream"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "uuid": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    }
+  }
+}

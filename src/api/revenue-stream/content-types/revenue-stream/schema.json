@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "revenue_streams",
+  "info": {
+    "singularName": "revenue-stream",
+    "pluralName": "revenue-streams",
+    "displayName": "Revenue Stream"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "uuid": {
+      "type": "uid"
+    },
+    "name": {
+      "type": "string"
+    }
+  }
+}

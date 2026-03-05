@@ -1048,6 +1048,35 @@ export interface ApiCompanyAssetCompanyAsset
   };
 }
 
+export interface ApiCostStreamCostStream extends Struct.CollectionTypeSchema {
+  collectionName: 'cost_streams';
+  info: {
+    displayName: 'Cost Stream';
+    pluralName: 'cost-streams';
+    singularName: 'cost-stream';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::cost-stream.cost-stream'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    uuid: Schema.Attribute.String;
+  };
+}
+
 export interface ApiDepartmentDepartment extends Struct.CollectionTypeSchema {
   collectionName: 'departments';
   info: {
@@ -1527,7 +1556,7 @@ export interface ApiProductCategoryProductCategory
   extends Struct.CollectionTypeSchema {
   collectionName: 'product_categories';
   info: {
-    displayName: 'Product Category';
+    displayName: 'CIO Product Category';
     pluralName: 'product-categories';
     singularName: 'product-category';
   };
@@ -1567,7 +1596,7 @@ export interface ApiProductCategoryProductCategory
 export interface ApiProductProduct extends Struct.CollectionTypeSchema {
   collectionName: 'products';
   info: {
-    displayName: 'Product';
+    displayName: 'CIO Product';
     pluralName: 'products';
     singularName: 'product';
   };
@@ -1714,6 +1743,36 @@ export interface ApiRegionRegion extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiRevenueStreamRevenueStream
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'revenue_streams';
+  info: {
+    displayName: 'Revenue Stream';
+    pluralName: 'revenue-streams';
+    singularName: 'revenue-stream';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::revenue-stream.revenue-stream'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    uuid: Schema.Attribute.UID;
   };
 }
 
@@ -2537,6 +2596,7 @@ declare module '@strapi/strapi' {
       'api::client.client': ApiClientClient;
       'api::comment.comment': ApiCommentComment;
       'api::company-asset.company-asset': ApiCompanyAssetCompanyAsset;
+      'api::cost-stream.cost-stream': ApiCostStreamCostStream;
       'api::department.department': ApiDepartmentDepartment;
       'api::design-file.design-file': ApiDesignFileDesignFile;
       'api::district.district': ApiDistrictDistrict;
@@ -2554,6 +2614,7 @@ declare module '@strapi/strapi' {
       'api::publication.publication': ApiPublicationPublication;
       'api::rate-card.rate-card': ApiRateCardRateCard;
       'api::region.region': ApiRegionRegion;
+      'api::revenue-stream.revenue-stream': ApiRevenueStreamRevenueStream;
       'api::staff-table.staff-table': ApiStaffTableStaffTable;
       'api::sub-county.sub-county': ApiSubCountySubCounty;
       'api::systemuser.systemuser': ApiSystemuserSystemuser;
