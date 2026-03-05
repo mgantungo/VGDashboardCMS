@@ -1051,7 +1051,7 @@ export interface ApiCompanyAssetCompanyAsset
 export interface ApiCostStreamCostStream extends Struct.CollectionTypeSchema {
   collectionName: 'cost_streams';
   info: {
-    displayName: 'Cost Stream';
+    displayName: 'CIO Cost Stream';
     pluralName: 'cost-streams';
     singularName: 'cost-stream';
   };
@@ -1059,6 +1059,7 @@ export interface ApiCostStreamCostStream extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    code: Schema.Attribute.String & Schema.Attribute.Unique;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1073,7 +1074,6 @@ export interface ApiCostStreamCostStream extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    uuid: Schema.Attribute.String;
   };
 }
 
@@ -1750,7 +1750,7 @@ export interface ApiRevenueStreamRevenueStream
   extends Struct.CollectionTypeSchema {
   collectionName: 'revenue_streams';
   info: {
-    displayName: 'Revenue Stream';
+    displayName: 'CIO Revenue Stream';
     pluralName: 'revenue-streams';
     singularName: 'revenue-stream';
   };
@@ -1758,6 +1758,7 @@ export interface ApiRevenueStreamRevenueStream
     draftAndPublish: false;
   };
   attributes: {
+    code: Schema.Attribute.String & Schema.Attribute.Unique;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1772,7 +1773,6 @@ export interface ApiRevenueStreamRevenueStream
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    uuid: Schema.Attribute.UID;
   };
 }
 

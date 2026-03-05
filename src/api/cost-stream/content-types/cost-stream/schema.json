@@ -11,8 +11,9 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "uuid": {
-      "type": "string"
+    "code": {
+      "type": "string",
+      "unique": true
     },
     "name": {
       "type": "string"
