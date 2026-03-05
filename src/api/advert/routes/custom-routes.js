@@ -369,7 +369,7 @@ module.exports = {
           auth: false,
           policies: [],
           middlewares: [],
-          description: 'Get and sync ',
+          description: 'Get and sync office locations from business central',
         },
       },
   ]
