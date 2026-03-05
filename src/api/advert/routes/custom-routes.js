@@ -361,5 +361,16 @@ module.exports = {
           description: 'Get office location from VGAD',
         },
       },
+      {
+        method: 'GET',
+        path: '/advert/get-and-sync-office-locations-from-bc',
+        handler: 'advert-office-locations.getAndPopulateBCLocations',
+        config: {
+          auth: false,
+          policies: [],
+          middlewares: [],
+          description: 'Get and sync ',
+        },
+      },
   ]
 };
