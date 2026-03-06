@@ -191,6 +191,11 @@
       "relation": "manyToMany",
       "target": "api::vgams-sales-person.vgams-sales-person",
       "inversedBy": "adverts"
+    },
+    "publish_onweb": {
+      "type": "boolean",
+      "required": true,
+      "default": false
     }
   }
 }

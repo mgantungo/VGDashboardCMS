@@ -25,7 +25,15 @@
     },
     "category_type": {
       "type": "enumeration",
-      "enum": ["print", "tv", "radio", "digital", "outdoor", "publishing", "commercial"],
+      "enum": [
+        "print",
+        "tv",
+        "radio",
+        "digital",
+        "outdoor",
+        "publishing",
+        "commercial"
+      ],
       "required": true
     },
     "is_active": {

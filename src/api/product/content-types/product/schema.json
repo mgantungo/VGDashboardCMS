@@ -9,6 +9,7 @@
   "options": {
     "draftAndPublish": false
   },
+  "pluginOptions": {},
   "attributes": {
     "product_name": {
       "type": "string",
@@ -46,6 +47,18 @@
     "is_active": {
       "type": "boolean",
       "default": true
+    },
+    "revenue_stream": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::revenue-stream.revenue-stream",
+      "inversedBy": "products"
+    },
+    "cost_stream": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cost-stream.cost-stream",
+      "inversedBy": "products"
     }
   }
 }

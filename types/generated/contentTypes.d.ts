@@ -519,6 +519,9 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Required;
     product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    publish_onweb: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
     publishedAt: Schema.Attribute.DateTime;
     rate_card: Schema.Attribute.Relation<
       'manyToOne',
@@ -1070,6 +1073,7 @@ export interface ApiCostStreamCostStream extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String;
+    products: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1609,6 +1613,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'api::product-category.product-category'
     >;
     circulation: Schema.Attribute.Integer;
+    cost_stream: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::cost-stream.cost-stream'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1631,6 +1639,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'api::rate-card.rate-card'
     >;
     readership: Schema.Attribute.Integer;
+    revenue_stream: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::revenue-stream.revenue-stream'
+    >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1769,6 +1781,7 @@ export interface ApiRevenueStreamRevenueStream
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String;
+    products: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
