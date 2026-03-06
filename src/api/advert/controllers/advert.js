@@ -99,7 +99,8 @@ async create(ctx) {
     
     // Handle client - find or create
     let clientId = null;
-    
+
+    /*
     // Check if client exists by email
     const existingClient = await strapi.db.query('api::client.client').findOne({
       where: { email: data.email }
@@ -122,6 +123,7 @@ async create(ctx) {
       clientId = newClient.id;
       console.log('✅ Created new client:', clientId, data.clientName);
     }
+    */
     
     // Prepare advert data for creation
     const advertData = {
