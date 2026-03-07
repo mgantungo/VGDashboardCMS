@@ -4,9 +4,10 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 
 module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
-  /**
-   * Override default create to use VGAMS users relation
-   */
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CREATE  (POST /adverts)
+  // ─────────────────────────────────────────────────────────────────────────
   async create(ctx) {
     try {
       let data = ctx.request.body?.data;
@@ -32,7 +33,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
 
       console.log('📦 Final parsed data:', data);
 
-      // ── Auth: VGAMS User ──────────────────────────────────────────────────────
+      // ── Auth: VGAMS User ────────────────────────────────────────────────
       const vgamsUserId = data.vgamsUserId;
       if (!vgamsUserId) {
         console.error('❌ No VGAMS user ID provided');
@@ -46,9 +47,11 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         console.error('❌ VGAMS user not found or inactive:', vgamsUserId);
         return ctx.unauthorized('Invalid user or account is inactive.');
       }
-      console.log('✅ VGAMS user verified:', { id: vgamsUser.id, name: vgamsUser.name, role: vgamsUser.role });
+      console.log('✅ VGAMS user verified:', {
+        id: vgamsUser.id, name: vgamsUser.name, role: vgamsUser.role
+      });
 
-      // ── Client (required – new-client creation is blocked) ───────────────────
+      // ── Client (must be selected from dropdown – new-client creation blocked) ──
       const clientId = data.clientId ? parseInt(data.clientId) : null;
       if (!clientId) {
         console.error('❌ No client ID provided');
@@ -62,11 +65,11 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         console.error('❌ Client not found:', clientId);
         return ctx.badRequest('Selected client does not exist.');
       }
-      console.log('✅ Client verified:', { id: existingClient.id });
+      console.log('✅ Client verified:', { id: existingClient.id, name: existingClient.company_name });
 
-      // ── Revenue & Cost Streams (resolved from the product) ───────────────────
+      // ── Revenue & Cost Streams (resolved from the selected product) ─────
       let revenueStream = null;
-      let costStream   = null;
+      let costStream    = null;
 
       if (data.product) {
         const product = await strapi.entityService.findOne(
@@ -79,7 +82,6 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
             }
           }
         );
-
         if (product) {
           revenueStream = product.revenue_stream || null;
           costStream    = product.cost_stream    || null;
@@ -89,7 +91,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         }
       }
 
-      // ── Reference Number ─────────────────────────────────────────────────────
+      // ── Reference Number ────────────────────────────────────────────────
       const now     = new Date();
       const year    = now.getFullYear();
       const month   = String(now.getMonth() + 1).padStart(2, '0');
@@ -107,35 +109,36 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       const referenceNumber = `ADV-${year}${month}${day}${hours}${minutes}${seconds}${counter}`;
 
       console.log('📝 Generated reference:', referenceNumber);
+      console.log('📊 Today\'s advert count:', todayAdvertsCount, '| Counter:', counter);
 
-      // ── Sales Agent (manyToMany → connect syntax) ────────────────────────────
+      // ── Sales Agent (manyToMany – Strapi v5 requires connect syntax) ────
       const salesAgentConnect = data.salesAgentId
         ? { connect: [parseInt(data.salesAgentId)] }
         : undefined;
 
-      // ── Advert Data Object ────────────────────────────────────────────────────
+      // ── Advert Data ─────────────────────────────────────────────────────
       const advertData = {
-        advert_title:      data.advertTitle,
-        reference_number:  referenceNumber,
+        advert_title:     data.advertTitle,
+        reference_number: referenceNumber,
 
         // Relations
-        client:            clientId,
-        product:           data.product    ? parseInt(data.product)   : null,
-        rate_card:         data.rateCard   ? parseInt(data.rateCard)  : null,
-        vgams_user:        parseInt(vgamsUserId),
-        vgams_sales_persons: salesAgentConnect,   // manyToMany – connect[]
+        client:              clientId,
+        product:             data.product  ? parseInt(data.product)  : null,
+        rate_card:           data.rateCard ? parseInt(data.rateCard) : null,
+        vgams_user:          parseInt(vgamsUserId),
+        vgams_sales_persons: salesAgentConnect,
 
         // Ad details
-        ad_size:           data.adSize    || '',
-        ad_type:           data.adType    || 'full_color',
-        frequency:         parseInt(data.frequency) || 1,
-        publish_onweb:     Boolean(data.publishOnWeb),
+        ad_size:       data.adSize || '',
+        ad_type:       data.adType || 'full_color',
+        frequency:     parseInt(data.frequency) || 1,
+        publish_onweb: Boolean(data.publishOnWeb),
 
         // Schedule
         start_date: data.startDate,
-        end_date:   data.endDate  || null,
+        end_date:   data.endDate || null,
 
-        // Pricing  (base × frequency × dateCount; discount & surcharge applied)
+        // Pricing
         base_price:   parseFloat(data.basePrice)   || 0,
         surcharge:    parseFloat(data.surcharge)   || 0,
         discount:     parseFloat(data.discount)    || 0,
@@ -144,23 +147,23 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         // Payment & workflow
         payment_method:       data.paymentMethod,
         special_instructions: data.specialInstructions || '',
-        status: data.status || 'draft',
+        status:               data.status || 'draft',
       };
 
       console.log('📊 Final advert data:', advertData);
 
-      // ── Create Advert ─────────────────────────────────────────────────────────
+      // ── Create ───────────────────────────────────────────────────────────
       const advert = await strapi.entityService.create('api::advert.advert', {
         data: advertData
       });
       console.log('✅ Advert created – ID:', advert.id);
 
-      // ── File Uploads ──────────────────────────────────────────────────────────
+      // ── File Uploads ─────────────────────────────────────────────────────
       if (files && Object.keys(files).length > 0) {
         try {
           console.log('📁 Processing file uploads...');
-          const uploadService   = strapi.plugins['upload'].services.upload;
-          const uploadedFiles   = await uploadService.upload({
+          const uploadService = strapi.plugins['upload'].services.upload;
+          const uploadedFiles = await uploadService.upload({
             data:  { refId: advert.id, ref: 'api::advert.advert', field: 'attachments' },
             files: Object.values(files)
           });
@@ -172,11 +175,12 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
             });
           }
         } catch (uploadError) {
+          // Don't fail advert creation if file upload fails
           console.error('❌ File upload failed (advert still created):', uploadError.message);
         }
       }
 
-      // ── Fetch Full Advert (with all relations including streams) ───────────────
+      // ── Fetch Full Advert (with all relations) ───────────────────────────
       const fullAdvert = await strapi.entityService.findOne('api::advert.advert', advert.id, {
         populate: {
           vgams_user:          { fields: ['id', 'name', 'email', 'role'] },
@@ -211,7 +215,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         success: true,
         data: {
           ...fullAdvert,
-          // Revenue & cost streams surfaced at the top level for BI / reporting
+          // Surface streams at top-level for BI / downstream consumers
           revenue_stream: fullAdvert.product?.revenue_stream || null,
           cost_stream:    fullAdvert.product?.cost_stream    || null,
         },
@@ -227,64 +231,45 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
     }
   },
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // FIND MY ADVERTS  (POST /adverts/my-adverts)
+  //
+  // Consolidated replacement for the old findByVgamsUser.
+  // Reads vgamsUserId from the request body (no "data" wrapper) which matches
+  // how useAdverts.loadAdverts sends it: { vgamsUserId, ...params }
+  // Also accepts body.data.vgamsUserId and ctx.query.vgamsUserId as fallbacks.
+  // ─────────────────────────────────────────────────────────────────────────
   async findMyAdverts(ctx) {
     try {
-      const { data } = ctx.request.body || {};
-      const vgamsUserId = data?.vgamsUserId || ctx.query.vgamsUserId;
+      const body        = ctx.request.body || {};
+      const vgamsUserId = body.vgamsUserId
+        || body.data?.vgamsUserId
+        || ctx.query.vgamsUserId;
 
-      if (!vgamsUserId) return ctx.badRequest('User ID required');
+      if (!vgamsUserId) {
+        return ctx.badRequest('User ID required');
+      }
 
       console.log('🔍 Finding adverts for VGAMS user:', vgamsUserId);
 
       const vgamsUser = await strapi.db.query('api::vgams-user.vgams-user').findOne({
         where: { id: vgamsUserId, isActive: true }
       });
-      if (!vgamsUser) return ctx.unauthorized('User not found or inactive');
+      if (!vgamsUser) {
+        return ctx.unauthorized('User not found or inactive');
+      }
 
       const { query } = ctx;
-      const filters = {
-        vgams_user: { id: parseInt(vgamsUserId) },
-        ...(query.status && { status: query.status })
-      };
 
       const adverts = await strapi.entityService.findMany('api::advert.advert', {
-        filters,
-        populate: {
-          client:  { fields: ['id', 'company_name'] },
-          product: {
-            fields: ['id', 'product_name'],
-            populate: {
-              revenue_stream: { fields: ['id', 'code', 'name'] },
-              cost_stream:    { fields: ['id', 'code', 'name'] }
-            }
-          },
-          rate_card:           { fields: ['id', 'size_dimension', 'ad_type'] },
-          vgams_sales_persons: { fields: ['id', 'name'] }
+        filters: {
+          vgams_user: parseInt(vgamsUserId),
+          ...(query.status && { status: query.status })
         },
-        sort:  query.sort  || 'createdAt:desc',
-        limit: query.limit || 100,
-        start: query.start || 0
-      });
-
-      return { success: true, data: adverts, count: adverts.length };
-
-    } catch (err) {
-      console.error('❌ Error finding adverts:', err.message);
-      return ctx.internalServerError(`Failed to find adverts: ${err.message}`);
-    }
-  },
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  async findOne(ctx) {
-    try {
-      const { id } = ctx.params;
-
-      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
         populate: {
           vgams_user:          { fields: ['id', 'name', 'email', 'role'] },
           vgams_sales_persons: { fields: ['id', 'name', 'email'] },
-          client:              { fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'bc_no'] },
+          client:              { fields: ['id', 'company_name', 'contact_person', 'email', 'phone'] },
           product: {
             fields: ['id', 'product_name', 'product_id'],
             populate: {
@@ -292,36 +277,170 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
               cost_stream:    { fields: ['id', 'code', 'name'] }
             }
           },
-          rate_card:   { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw'] },
-          attachments: true
-        }
+          rate_card: { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw'] }
+        },
+        sort:  query.sort  || 'createdAt:desc',
+        limit: query.limit || 50,
+        start: query.start || 0
       });
-
-      if (!advert) return ctx.notFound('Advert not found');
 
       return {
         success: true,
-        data: {
-          ...advert,
-          revenue_stream: advert.product?.revenue_stream || null,
-          cost_stream:    advert.product?.cost_stream    || null,
+        data: adverts.map(a => ({
+          ...a,
+          revenue_stream: a.product?.revenue_stream || null,
+          cost_stream:    a.product?.cost_stream    || null,
+        })),
+        count: adverts.length,
+        user: {
+          id:    vgamsUser.id,
+          name:  vgamsUser.name,
+          email: vgamsUser.email,
+          role:  vgamsUser.role
         }
       };
 
     } catch (err) {
+      console.error('❌ Error fetching adverts:', err.message);
+      return ctx.internalServerError('Failed to fetch adverts');
+    }
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FIND ONE  (GET /adverts/:id)
+  // ─────────────────────────────────────────────────────────────────────────
+  async findOne(ctx) {
+    try {
+      const { id } = ctx.params;
+      console.log('🔍 Fetching single advert:', id);
+
+      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
+        populate: {
+          vgams_user:          { fields: ['id', 'name', 'email', 'role'] },
+          vgams_sales_persons: { fields: ['id', 'name', 'email'] },
+          client: {
+            fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address', 'bc_no']
+          },
+          product: {
+            fields: ['id', 'product_name', 'product_id', 'description', 'circulation'],
+            populate: {
+              category: {
+                fields: ['id', 'category_name', 'category_type', 'description']
+              },
+              revenue_stream: { fields: ['id', 'code', 'name'] },
+              cost_stream:    { fields: ['id', 'code', 'name'] }
+            }
+          },
+          rate_card: {
+            fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw', 'surcharge_percentage']
+          },
+          attachments: {
+            fields: ['id', 'name', 'url', 'mime', 'size', 'createdAt']
+          }
+          // workflow_history and comments re-enable once schema is confirmed:
+          // workflow_history: { fields: [...], sort: 'timestamp:desc' },
+          // comments: { fields: [...], sort: 'created_at:desc' }
+        }
+      });
+
+      if (!advert) {
+        console.error('❌ Advert not found:', id);
+        return ctx.notFound('Advert not found');
+      }
+
+      const transformedAdvert = {
+        id:               advert.id,
+        reference_number: advert.reference_number,
+        advert_title:     advert.advert_title,
+        ad_size:          advert.ad_size,
+        ad_type:          advert.ad_type,
+        frequency:        advert.frequency,
+        publish_onweb:    advert.publish_onweb,
+        start_date:       advert.start_date,
+        end_date:         advert.end_date,
+        base_price:       advert.base_price,
+        surcharge:        advert.surcharge,
+        discount:         advert.discount || 0,
+        total_amount:     advert.total_amount,
+        payment_method:   advert.payment_method,
+        special_instructions: advert.special_instructions,
+        status:           advert.status,
+        isActive:         advert.isActive,
+        isPaid:           advert.isPaid,
+        isScheduled:      advert.isScheduled,
+        isApproved:       advert.isApproved,
+        isCanceled:       advert.isCanceled,
+        createdAt:        advert.createdAt,
+        updatedAt:        advert.updatedAt,
+        publishedAt:      advert.publishedAt,
+
+        vgams_user: advert.vgams_user
+          ? { id: advert.vgams_user.id, name: advert.vgams_user.name, email: advert.vgams_user.email, role: advert.vgams_user.role }
+          : null,
+
+        vgams_sales_persons: advert.vgams_sales_persons || [],
+
+        client: advert.client
+          ? { id: advert.client.id, company_name: advert.client.company_name, contact_person: advert.client.contact_person, email: advert.client.email, phone: advert.client.phone, address: advert.client.address, bc_no: advert.client.bc_no }
+          : null,
+
+        product: advert.product
+          ? {
+              id:           advert.product.id,
+              product_name: advert.product.product_name,
+              product_id:   advert.product.product_id,
+              description:  advert.product.description,
+              circulation:  advert.product.circulation,
+              category: advert.product.category
+                ? { id: advert.product.category.id, name: advert.product.category.category_name, type: advert.product.category.category_type, description: advert.product.category.description }
+                : null
+            }
+          : null,
+
+        rate_card: advert.rate_card
+          ? { id: advert.rate_card.id, size_dimension: advert.rate_card.size_dimension, ad_type: advert.rate_card.ad_type, price_fc: advert.rate_card.price_fc, price_bw: advert.rate_card.price_bw, surcharge_percentage: advert.rate_card.surcharge_percentage }
+          : null,
+
+        attachments: (advert.attachments || []).map(f => ({
+          id: f.id, name: f.name, url: f.url, mime: f.mime, size: f.size, uploadedAt: f.createdAt
+        })),
+
+        // Streams surfaced at top level for reporting / BI
+        revenue_stream: advert.product?.revenue_stream || null,
+        cost_stream:    advert.product?.cost_stream    || null,
+      };
+
+      console.log('✅ Advert fetched:', {
+        id:             transformedAdvert.id,
+        reference:      transformedAdvert.reference_number,
+        title:          transformedAdvert.advert_title,
+        status:         transformedAdvert.status,
+        revenue_stream: transformedAdvert.revenue_stream?.code ?? 'N/A',
+        cost_stream:    transformedAdvert.cost_stream?.code    ?? 'N/A',
+        productCategory: transformedAdvert.product?.category?.type || 'No category'
+      });
+
+      return { success: true, data: transformedAdvert };
+
+    } catch (err) {
       console.error('❌ Error fetching advert:', err.message);
+      console.error('❌ Error stack:', err.stack);
       return ctx.internalServerError(`Failed to fetch advert: ${err.message}`);
     }
   },
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // UPDATE  (PUT /adverts/:id)
+  // ─────────────────────────────────────────────────────────────────────────
   async update(ctx) {
     try {
       const { id } = ctx.params;
       const { data } = ctx.request.body;
       const vgamsUserId = data.vgamsUserId || ctx.headers['x-vgams-user-id'];
 
-      if (!vgamsUserId) return ctx.badRequest('User identification required');
+      if (!vgamsUserId) {
+        return ctx.badRequest('User identification required');
+      }
 
       const existingAdvert = await strapi.entityService.findOne('api::advert.advert', id, {
         populate: ['vgams_user']
@@ -348,37 +467,49 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       });
 
       const updatedAdvert = await strapi.entityService.update('api::advert.advert', id, {
-        data: updateData,
+        data:     updateData,
         populate: ['product', 'rate_card', 'client', 'vgams_user', 'vgams_sales_persons']
       });
 
       return { success: true, data: updatedAdvert, message: 'Advert updated successfully' };
 
     } catch (err) {
-      console.error('Error updating advert:', err);
+      console.error('❌ Error updating advert:', err.message);
       return ctx.internalServerError('Failed to update advert');
     }
   },
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // DATE RANGE ADVERTS  (GET /adverts-by-date-range)
+  // ─────────────────────────────────────────────────────────────────────────
   async getDateRangeAdverts(ctx) {
     try {
       const { query } = ctx;
+      console.log('📅 Date range query received:', query);
 
       const startDate = query.startDate ? new Date(query.startDate) : new Date();
       const endDate   = query.endDate   ? new Date(query.endDate)   : new Date();
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);
 
-      if (startDate > endDate) return ctx.badRequest('Start date must be before end date');
+      if (startDate > endDate) {
+        return ctx.badRequest('Start date must be before end date');
+      }
+
+      console.log('📅 Fetching adverts for date range:', {
+        startDate: startDate.toISOString(),
+        endDate:   endDate.toISOString()
+      });
 
       const filters = {
         createdAt: { $gte: startDate.toISOString(), $lte: endDate.toISOString() },
-        ...(query.userId   && { vgams_user: { id: parseInt(query.userId) } }),
-        ...(query.status   && { status: query.status }),
-        ...(query.clientId && { client: { id: parseInt(query.clientId) } }),
+        ...(query.userId    && { vgams_user: { id: parseInt(query.userId) } }),
+        ...(query.status    && { status: query.status }),
+        ...(query.clientId  && { client:  { id: parseInt(query.clientId) } }),
         ...(query.productId && { product: { id: parseInt(query.productId) } })
       };
+
+      console.log('🔍 Filters applied:', JSON.stringify(filters, null, 2));
 
       const adverts = await strapi.entityService.findMany('api::advert.advert', {
         filters,
@@ -387,7 +518,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
           vgams_sales_persons: { fields: ['id', 'name', 'email'] },
           client:              { fields: ['id', 'company_name', 'contact_person', 'email', 'phone'] },
           product: {
-            fields: ['id', 'product_name'],
+            fields: ['id', 'product_name', 'product_id'],
             populate: {
               revenue_stream: { fields: ['id', 'code', 'name'] },
               cost_stream:    { fields: ['id', 'code', 'name'] }
@@ -402,14 +533,48 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       });
 
       const transformed = adverts.map(a => ({
-        ...a,
-        revenue_stream: a.product?.revenue_stream || null,
-        cost_stream:    a.product?.cost_stream    || null,
-        createdByUser:  a.vgams_user || null
+        id:               a.id,
+        reference_number: a.reference_number,
+        advert_title:     a.advert_title,
+        ad_size:          a.ad_size,
+        ad_type:          a.ad_type,
+        frequency:        a.frequency,
+        publish_onweb:    a.publish_onweb,
+        start_date:       a.start_date,
+        end_date:         a.end_date,
+        base_price:       a.base_price,
+        surcharge:        a.surcharge,
+        discount:         a.discount,
+        total_amount:     a.total_amount,
+        payment_method:   a.payment_method,
+        special_instructions: a.special_instructions,
+        status:           a.status,
+        isActive:         a.isActive,
+        isPaid:           a.isPaid,
+        isCanceled:       a.isCanceled,
+        createdAt:        a.createdAt,
+        updatedAt:        a.updatedAt,
+        attachments:      a.attachments,
+        client:           a.client    || null,
+        product:          a.product   || null,
+        rate_card:        a.rate_card || null,
+        vgams_sales_persons: a.vgams_sales_persons || [],
+        createdByUser:    a.vgams_user || null,
+        revenue_stream:   a.product?.revenue_stream || null,
+        cost_stream:      a.product?.cost_stream    || null,
       }));
 
       const totalAmount   = transformed.reduce((s, a) => s + (parseFloat(a.total_amount) || 0), 0);
-      const totalDiscount = transformed.reduce((s, a) => s + (parseFloat(a.discount) || 0), 0);
+      const totalDiscount = transformed.reduce((s, a) => s + (parseFloat(a.discount)      || 0), 0);
+
+      const uniqueUsers = Array.from(
+        transformed.reduce((map, a) => {
+          if (a.createdByUser) map.set(a.createdByUser.id, a.createdByUser);
+          return map;
+        }, new Map()).values()
+      );
+
+      console.log('✅ Found adverts:', transformed.length);
 
       return {
         success:    true,
@@ -418,14 +583,18 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         statistics: {
           totalAmount,
           totalDiscount,
-          averageAmount: transformed.length > 0 ? totalAmount / transformed.length : 0
+          averageAmount: transformed.length > 0 ? totalAmount / transformed.length : 0,
+          uniqueUsers:   uniqueUsers.length
         },
-        dateRange: { start: startDate, end: endDate }
+        dateRange: { start: startDate, end: endDate },
+        users:     uniqueUsers
       };
 
     } catch (err) {
       console.error('❌ Error fetching date range adverts:', err.message);
+      console.error('❌ Error details:', err.details);
       return ctx.internalServerError(`Failed to fetch adverts: ${err.message}`);
     }
   }
+
 }));
