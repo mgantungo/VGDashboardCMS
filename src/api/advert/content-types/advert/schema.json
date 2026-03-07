@@ -208,6 +208,9 @@
     },
     "client_reference_no": {
       "type": "string"
+    },
+    "publishing_dates": {
+      "type": "json"
     }
   }
 }
