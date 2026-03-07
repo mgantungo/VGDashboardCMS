@@ -18,7 +18,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       console.log('📦 Parsed data:', data);
       console.log('📎 Uploaded files:', files ? Object.keys(files) : 'No files');
 
-      // If data is a string (from FormData), parse it
+      // If data arrives as a string (FormData), parse it
       if (typeof data === 'string') {
         try {
           data = JSON.parse(data);
@@ -51,7 +51,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         id: vgamsUser.id, name: vgamsUser.name, role: vgamsUser.role
       });
 
-      // ── Client (must be selected from dropdown – new-client creation blocked) ──
+      // ── Client ───────────────────────────────────────────────────────────
       const clientId = data.clientId ? parseInt(data.clientId) : null;
       if (!clientId) {
         console.error('❌ No client ID provided');
@@ -67,9 +67,12 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       }
       console.log('✅ Client verified:', { id: existingClient.id, name: existingClient.company_name });
 
-      // ── Revenue & Cost Streams (resolved from the selected product) ─────
-      let revenueStream = null;
-      let costStream    = null;
+      // ── Revenue & Cost Stream codes (resolved from product, stored as strings) ──
+      // Now that the schema has revenue_stream and cost_stream as plain string fields,
+      // we look up the codes once at creation and store them directly on the advert.
+      // No need to populate the product relation on every subsequent read.
+      let revenueStreamCode = null;
+      let costStreamCode    = null;
 
       if (data.product) {
         const product = await strapi.entityService.findOne(
@@ -83,9 +86,9 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
           }
         );
         if (product) {
-          revenueStream = product.revenue_stream || null;
-          costStream    = product.cost_stream    || null;
-          console.log('✅ Revenue stream:', revenueStream?.code, '| Cost stream:', costStream?.code);
+          revenueStreamCode = product.revenue_stream?.code || null;
+          costStreamCode    = product.cost_stream?.code    || null;
+          console.log('✅ Revenue stream:', revenueStreamCode, '| Cost stream:', costStreamCode);
         } else {
           console.warn('⚠️ Product not found:', data.product);
         }
@@ -127,6 +130,15 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         rate_card:           data.rateCard ? parseInt(data.rateCard) : null,
         vgams_user:          parseInt(vgamsUserId),
         vgams_sales_persons: salesAgentConnect,
+
+        // Denormalised stream codes — stored directly so reads never need
+        // to join through product → revenue_stream / cost_stream
+        revenue_stream:    revenueStreamCode,
+        cost_stream:       costStreamCode,
+
+        // Location & client reference (previously encoded into specialInstructions)
+        office_location:    data.officeLocation    || null,
+        client_reference_no: data.referenceDocument || null,
 
         // Ad details
         ad_size:       data.adSize || '',
@@ -175,50 +187,42 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
             });
           }
         } catch (uploadError) {
-          // Don't fail advert creation if file upload fails
           console.error('❌ File upload failed (advert still created):', uploadError.message);
         }
       }
 
-      // ── Fetch Full Advert (with all relations) ───────────────────────────
+      // ── Fetch Full Advert ────────────────────────────────────────────────
+      // revenue_stream and cost_stream are now plain string fields on the advert —
+      // no need to populate through the product relation anymore.
       const fullAdvert = await strapi.entityService.findOne('api::advert.advert', advert.id, {
         populate: {
           vgams_user:          { fields: ['id', 'name', 'email', 'role'] },
           vgams_sales_persons: { fields: ['id', 'name', 'email'] },
           client:              { fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'bc_no'] },
-          product: {
-            fields: ['id', 'product_name', 'product_id'],
-            populate: {
-              revenue_stream: { fields: ['id', 'code', 'name'] },
-              cost_stream:    { fields: ['id', 'code', 'name'] }
-            }
-          },
-          rate_card:   { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw'] },
-          attachments: true
+          product:             { fields: ['id', 'product_name', 'product_id'] },
+          rate_card:           { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw'] },
+          attachments:         true
         }
       });
 
       console.log('📋 Created advert summary:', {
-        id:             fullAdvert.id,
-        reference:      fullAdvert.reference_number,
-        title:          fullAdvert.advert_title,
-        client:         fullAdvert.client?.company_name,
-        createdBy:      fullAdvert.vgams_user?.name,
-        status:         fullAdvert.status,
-        revenue_stream: fullAdvert.product?.revenue_stream?.code ?? 'N/A',
-        cost_stream:    fullAdvert.product?.cost_stream?.code    ?? 'N/A',
-        attachments:    fullAdvert.attachments?.length || 0,
-        publish_onweb:  fullAdvert.publish_onweb
+        id:                 fullAdvert.id,
+        reference:          fullAdvert.reference_number,
+        title:              fullAdvert.advert_title,
+        client:             fullAdvert.client?.company_name,
+        createdBy:          fullAdvert.vgams_user?.name,
+        status:             fullAdvert.status,
+        revenue_stream:     fullAdvert.revenue_stream     ?? 'N/A',
+        cost_stream:        fullAdvert.cost_stream        ?? 'N/A',
+        office_location:    fullAdvert.office_location    ?? 'N/A',
+        client_reference_no: fullAdvert.client_reference_no ?? 'N/A',
+        attachments:        fullAdvert.attachments?.length || 0,
+        publish_onweb:      fullAdvert.publish_onweb
       });
 
       return {
         success: true,
-        data: {
-          ...fullAdvert,
-          // Surface streams at top-level for BI / downstream consumers
-          revenue_stream: fullAdvert.product?.revenue_stream || null,
-          cost_stream:    fullAdvert.product?.cost_stream    || null,
-        },
+        data:    fullAdvert,
         message: data.status === 'draft'
           ? 'Draft saved successfully'
           : 'Advert submitted for review'
@@ -233,11 +237,6 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
 
   // ─────────────────────────────────────────────────────────────────────────
   // FIND MY ADVERTS  (POST /adverts/my-adverts)
-  //
-  // Consolidated replacement for the old findByVgamsUser.
-  // Reads vgamsUserId from the request body (no "data" wrapper) which matches
-  // how useAdverts.loadAdverts sends it: { vgamsUserId, ...params }
-  // Also accepts body.data.vgamsUserId and ctx.query.vgamsUserId as fallbacks.
   // ─────────────────────────────────────────────────────────────────────────
   async findMyAdverts(ctx) {
     try {
@@ -270,14 +269,8 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
           vgams_user:          { fields: ['id', 'name', 'email', 'role'] },
           vgams_sales_persons: { fields: ['id', 'name', 'email'] },
           client:              { fields: ['id', 'company_name', 'contact_person', 'email', 'phone'] },
-          product: {
-            fields: ['id', 'product_name', 'product_id'],
-            populate: {
-              revenue_stream: { fields: ['id', 'code', 'name'] },
-              cost_stream:    { fields: ['id', 'code', 'name'] }
-            }
-          },
-          rate_card: { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw'] }
+          product:             { fields: ['id', 'product_name', 'product_id'] },
+          rate_card:           { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw'] }
         },
         sort:  query.sort  || 'createdAt:desc',
         limit: query.limit || 50,
@@ -286,12 +279,8 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
 
       return {
         success: true,
-        data: adverts.map(a => ({
-          ...a,
-          revenue_stream: a.product?.revenue_stream || null,
-          cost_stream:    a.product?.cost_stream    || null,
-        })),
-        count: adverts.length,
+        data:    adverts,   // revenue_stream, cost_stream, office_location, client_reference_no
+        count:   adverts.length,   // are plain fields — returned automatically
         user: {
           id:    vgamsUser.id,
           name:  vgamsUser.name,
@@ -326,9 +315,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
             populate: {
               category: {
                 fields: ['id', 'category_name', 'category_type', 'description']
-              },
-              revenue_stream: { fields: ['id', 'code', 'name'] },
-              cost_stream:    { fields: ['id', 'code', 'name'] }
+              }
             }
           },
           rate_card: {
@@ -337,7 +324,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
           attachments: {
             fields: ['id', 'name', 'url', 'mime', 'size', 'createdAt']
           }
-          // workflow_history and comments re-enable once schema is confirmed:
+          // workflow_history and comments: re-enable once schema confirmed
           // workflow_history: { fields: [...], sort: 'timestamp:desc' },
           // comments: { fields: [...], sort: 'created_at:desc' }
         }
@@ -365,15 +352,27 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         payment_method:   advert.payment_method,
         special_instructions: advert.special_instructions,
         status:           advert.status,
-        isActive:         advert.isActive,
-        isPaid:           advert.isPaid,
-        isScheduled:      advert.isScheduled,
-        isApproved:       advert.isApproved,
-        isCanceled:       advert.isCanceled,
-        createdAt:        advert.createdAt,
-        updatedAt:        advert.updatedAt,
-        publishedAt:      advert.publishedAt,
 
+        // New direct string fields
+        revenue_stream:      advert.revenue_stream      || null,
+        cost_stream:         advert.cost_stream         || null,
+        office_location:     advert.office_location     || null,
+        client_reference_no: advert.client_reference_no || null,
+
+        // Boolean flags
+        isActive:    advert.isActive,
+        isPaid:      advert.isPaid,
+        isScheduled: advert.isScheduled,
+        isApproved:  advert.isApproved,
+        isCanceled:  advert.isCanceled,
+        hasRun:      advert.hasRun,
+        isClosed:    advert.isClosed,
+
+        createdAt:   advert.createdAt,
+        updatedAt:   advert.updatedAt,
+        publishedAt: advert.publishedAt,
+
+        // Relations
         vgams_user: advert.vgams_user
           ? { id: advert.vgams_user.id, name: advert.vgams_user.name, email: advert.vgams_user.email, role: advert.vgams_user.role }
           : null,
@@ -403,20 +402,17 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
 
         attachments: (advert.attachments || []).map(f => ({
           id: f.id, name: f.name, url: f.url, mime: f.mime, size: f.size, uploadedAt: f.createdAt
-        })),
-
-        // Streams surfaced at top level for reporting / BI
-        revenue_stream: advert.product?.revenue_stream || null,
-        cost_stream:    advert.product?.cost_stream    || null,
+        }))
       };
 
       console.log('✅ Advert fetched:', {
-        id:             transformedAdvert.id,
-        reference:      transformedAdvert.reference_number,
-        title:          transformedAdvert.advert_title,
-        status:         transformedAdvert.status,
-        revenue_stream: transformedAdvert.revenue_stream?.code ?? 'N/A',
-        cost_stream:    transformedAdvert.cost_stream?.code    ?? 'N/A',
+        id:              transformedAdvert.id,
+        reference:       transformedAdvert.reference_number,
+        title:           transformedAdvert.advert_title,
+        status:          transformedAdvert.status,
+        revenue_stream:  transformedAdvert.revenue_stream  ?? 'N/A',
+        cost_stream:     transformedAdvert.cost_stream     ?? 'N/A',
+        office_location: transformedAdvert.office_location ?? 'N/A',
         productCategory: transformedAdvert.product?.category?.type || 'No category'
       });
 
@@ -458,7 +454,8 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
 
       const allowedFields = [
         'advert_title', 'ad_size', 'ad_type', 'frequency',
-        'start_date', 'end_date', 'special_instructions', 'publish_onweb'
+        'start_date', 'end_date', 'special_instructions', 'publish_onweb',
+        'office_location', 'client_reference_no'
       ];
 
       const updateData = {};
@@ -517,15 +514,9 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
           vgams_user:          { fields: ['id', 'name', 'email', 'role'] },
           vgams_sales_persons: { fields: ['id', 'name', 'email'] },
           client:              { fields: ['id', 'company_name', 'contact_person', 'email', 'phone'] },
-          product: {
-            fields: ['id', 'product_name', 'product_id'],
-            populate: {
-              revenue_stream: { fields: ['id', 'code', 'name'] },
-              cost_stream:    { fields: ['id', 'code', 'name'] }
-            }
-          },
-          rate_card:   { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw'] },
-          attachments: true
+          product:             { fields: ['id', 'product_name', 'product_id'] },
+          rate_card:           { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw'] },
+          attachments:         true
         },
         sort:  query.sort  || 'createdAt:desc',
         limit: query.limit || 1000,
@@ -549,19 +540,25 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         payment_method:   a.payment_method,
         special_instructions: a.special_instructions,
         status:           a.status,
-        isActive:         a.isActive,
-        isPaid:           a.isPaid,
-        isCanceled:       a.isCanceled,
-        createdAt:        a.createdAt,
-        updatedAt:        a.updatedAt,
-        attachments:      a.attachments,
-        client:           a.client    || null,
-        product:          a.product   || null,
-        rate_card:        a.rate_card || null,
+
+        // Direct string fields — no join needed
+        revenue_stream:      a.revenue_stream      || null,
+        cost_stream:         a.cost_stream         || null,
+        office_location:     a.office_location     || null,
+        client_reference_no: a.client_reference_no || null,
+
+        isActive:    a.isActive,
+        isPaid:      a.isPaid,
+        isCanceled:  a.isCanceled,
+        createdAt:   a.createdAt,
+        updatedAt:   a.updatedAt,
+
+        client:              a.client    || null,
+        product:             a.product   || null,
+        rate_card:           a.rate_card || null,
         vgams_sales_persons: a.vgams_sales_persons || [],
-        createdByUser:    a.vgams_user || null,
-        revenue_stream:   a.product?.revenue_stream || null,
-        cost_stream:      a.product?.cost_stream    || null,
+        createdByUser:       a.vgams_user || null,
+        attachments:         a.attachments
       }));
 
       const totalAmount   = transformed.reduce((s, a) => s + (parseFloat(a.total_amount) || 0), 0);
