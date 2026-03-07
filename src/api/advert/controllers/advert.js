@@ -48,8 +48,9 @@ const transformAdvert = (a) => ({
   publishOnWeb:  a.publish_onweb,
 
   // ── Schedule ───────────────────────────────────────────────────────────
-  startDate: a.start_date,
-  endDate:   a.end_date,
+  startDate:      a.start_date,
+  endDate:        a.end_date,
+  publishingDates: Array.isArray(a.publishing_dates) ? a.publishing_dates : [],
 
   // ── Pricing ────────────────────────────────────────────────────────────
   basePrice:   a.base_price,
@@ -216,6 +217,18 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       const referenceNumber = `ADV-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${pad(todayCount + 1, 3)}`;
       console.log('📝 Generated reference:', referenceNumber, '| Counter:', todayCount + 1);
 
+      // ── Publishing dates: merge datesList + startDate + endDate, dedupe, sort asc ──
+      const rawDates = Array.isArray(data.publishingDates)
+        ? data.publishingDates
+        : (Array.isArray(data.datesList) ? data.datesList : []);
+      const datesSet = new Set([
+        ...rawDates,
+        ...(data.startDate ? [data.startDate] : []),
+        ...(data.endDate   ? [data.endDate]   : [])
+      ].filter(Boolean));
+      const publishingDates = [...datesSet].sort();
+      console.log('📅 Publishing dates:', publishingDates);
+
       // ── Create ────────────────────────────────────────────────────────────
       const advert = await strapi.entityService.create('api::advert.advert', {
         data: {
@@ -243,6 +256,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
           payment_method:      data.paymentMethod,
           special_instructions: data.specialInstructions || '',
           status:              data.status || 'draft',
+          publishing_dates:    publishingDates,
         }
       });
       console.log('✅ Advert created – ID:', advert.id);
@@ -413,6 +427,21 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       ];
       const updateData = {};
       allowedFields.forEach(field => { if (data[field] !== undefined) updateData[field] = data[field]; });
+
+      // Rebuild publishing_dates if dates are provided
+      if (data.publishingDates !== undefined || data.datesList !== undefined ||
+          data.startDate !== undefined || data.endDate !== undefined) {
+        const rawDates = Array.isArray(data.publishingDates)
+          ? data.publishingDates
+          : (Array.isArray(data.datesList) ? data.datesList : []);
+        const datesSet = new Set([
+          ...rawDates,
+          ...(data.startDate ? [data.startDate] : []),
+          ...(data.endDate   ? [data.endDate]   : [])
+        ].filter(Boolean));
+        updateData.publishing_dates = [...datesSet].sort();
+        console.log('📅 Updated publishing_dates:', updateData.publishing_dates);
+      }
 
       const updated = await strapi.entityService.update('api::advert.advert', id, {
         data: updateData,
