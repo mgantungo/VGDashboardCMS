@@ -196,6 +196,18 @@
       "type": "boolean",
       "required": true,
       "default": false
+    },
+    "revenue_stream": {
+      "type": "string"
+    },
+    "cost_stream": {
+      "type": "string"
+    },
+    "office_location": {
+      "type": "string"
+    },
+    "client_reference_no": {
+      "type": "string"
     }
   }
 }

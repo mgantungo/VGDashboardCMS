@@ -476,7 +476,9 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
     attachments: Schema.Attribute.Media<'images' | 'files' | 'videos', true>;
     base_price: Schema.Attribute.Decimal & Schema.Attribute.Required;
     client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    client_reference_no: Schema.Attribute.String;
     comments: Schema.Attribute.Relation<'oneToMany', 'api::comment.comment'>;
+    cost_stream: Schema.Attribute.String;
     created_by_clerk: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.user'
@@ -514,6 +516,7 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
       'api::advert.advert'
     > &
       Schema.Attribute.Private;
+    office_location: Schema.Attribute.String;
     payment_method: Schema.Attribute.Enumeration<
       ['cash', 'credit', 'pdc', 'bank_transfer', 'mobile_money']
     > &
@@ -528,6 +531,7 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
       'api::rate-card.rate-card'
     >;
     reference_number: Schema.Attribute.UID<''>;
+    revenue_stream: Schema.Attribute.String;
     reviewed_by_editor: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.user'
