@@ -56,6 +56,7 @@ module.exports = {
         middlewares: []
       }
     },
+    // ── Advert CRUD ───────────────────────────────────────────────────────
     {
       method: 'POST',
       path: '/adverts',
@@ -65,9 +66,12 @@ module.exports = {
       }
     },
     {
+      // POST so the body carries { vgamsUserId } without exposing it in the URL.
+      // Previously pointed to advert.findByVgamsUser (broken – read from headers).
+      // Now points to advert.findMyAdverts which correctly reads from body.
       method: 'POST',
       path: '/adverts/my-adverts',
-      handler: 'advert.findByVgamsUser',
+      handler: 'advert.findMyAdverts',
       config: {
         auth: false
       }
@@ -88,15 +92,7 @@ module.exports = {
         auth: false
       }
     },
-    {
-      method: 'GET',
-      path: '/adverts/my-adverts/:userId',
-      handler: 'advert.findMyAdverts',
-      config: {
-        auth: false
-      }
-    },
-    // ADD THIS ROUTE - DATE RANGE ADVERTS
+    // ── Date Range ────────────────────────────────────────────────────────
     {
       method: 'GET',
       path: '/adverts/date-range',
@@ -107,78 +103,70 @@ module.exports = {
     },
     {
       method: 'GET',
-      path: '/adverts-by-date-range',  
+      path: '/adverts-by-date-range',
       handler: 'advert.getDateRangeAdverts',
       config: {
         auth: false
       }
     },
+    // ── Payments ──────────────────────────────────────────────────────────
     {
       method: 'POST',
       path: '/adverts/filtered-transactions',
       handler: 'prepare-payment.getFilteredTransactions',
       config: {
-        auth: false, // Set to true for production
+        auth: false,
         policies: [],
         middlewares: [],
         description: 'Get filtered transactions by date range from request body',
         notes: 'Returns transactions where isActive=false, isPaid=false, isCanceled=false. Accepts dates in request body (not query params).',
         tags: ['Transactions', 'Filtered'],
         body: {
-          startDate: {
-            type: 'string',
-            required: true,
-            description: 'Start date (YYYY-MM-DD)',
-            example: '2026-01-01'
-          },
-          endDate: {
-            type: 'string',
-            required: true,
-            description: 'End date (YYYY-MM-DD)',
-            example: '2026-01-31'
-          }
+          startDate: { type: 'string', required: true, description: 'Start date (YYYY-MM-DD)', example: '2026-01-01' },
+          endDate:   { type: 'string', required: true, description: 'End date (YYYY-MM-DD)',   example: '2026-01-31' }
         }
       }
     },
     {
-      "method": "POST",
-      "path": "/adverts/mark-paid",
-      "handler": "prepare-payment.markAsPaid",
-      "config": {
-        "policies": [],
-        "middlewares": [],
-        "description": "Mark an advert as fully paid using reference number (for cash payments - NO invoice created). Sets isPaid=true and isActive=true"
+      method: 'POST',
+      path: '/adverts/mark-paid',
+      handler: 'prepare-payment.markAsPaid',
+      config: {
+        policies: [],
+        middlewares: [],
+        description: 'Mark an advert as fully paid using reference number (for cash payments - NO invoice created). Sets isPaid=true and isActive=true'
       }
     },
     {
-      "method": "POST",
-      "path": "/adverts/record-payment",
-      "handler": "prepare-payment.recordPayment",
-      "config": {
-        "policies": [],
-        "middlewares": [],
-        "description": "Record a partial or full payment for an advert. Automatically marks as paid when total payments >= total amount"
+      method: 'POST',
+      path: '/adverts/record-payment',
+      handler: 'prepare-payment.recordPayment',
+      config: {
+        policies: [],
+        middlewares: [],
+        description: 'Record a partial or full payment for an advert. Automatically marks as paid when total payments >= total amount'
       }
     },
     {
-      "method": "GET",
-      "path": "/adverts/payment-history/:referenceNumber",
-      "handler": "prepare-payment.getPaymentHistory",
-      "config": {
-        "policies": [],
-        "middlewares": [],
-        "description": "Get payment history for an advert by reference number"
+      method: 'GET',
+      path: '/adverts/payment-history/:referenceNumber',
+      handler: 'prepare-payment.getPaymentHistory',
+      config: {
+        policies: [],
+        middlewares: [],
+        description: 'Get payment history for an advert by reference number'
       }
     },
+    // ── Design House ──────────────────────────────────────────────────────
     {
-      method: 'POST',  // Changed from GET to POST to accept body parameters
+      method: 'POST',
       path: '/design-house/active-adverts',
       handler: 'design-house.getActiveAdverts',
       config: {
-        auth: false,  // Set to true if authentication required
+        auth: false,
         description: 'Get active adverts for design work with optional date range',
         tags: ['Design House']
-        }
+      }
     },
     {
       method: 'GET',
@@ -209,21 +197,13 @@ module.exports = {
         description: 'Mark design work as complete',
         tags: ['Design House'],
         body: {
-          notes: {
-            type: 'string',
-            description: 'Notes about the design completion',
-            required: false
-          },
-          designerEmail: {
-            type: 'string',
-            description: 'Email of the designer who completed the work',
-            required: false
-          }
+          notes:         { type: 'string', description: 'Notes about the design completion', required: false },
+          designerEmail: { type: 'string', description: 'Email of the designer who completed the work', required: false }
         }
       }
     },
     {
-      method: 'POST',  // Changed from GET to POST to accept body parameters
+      method: 'POST',
       path: '/design-house/stats',
       handler: 'design-house.getDesignStats',
       config: {
@@ -231,29 +211,21 @@ module.exports = {
         description: 'Get design statistics with optional date range',
         tags: ['Design House'],
         body: {
-          startDate: {
-            type: 'string',
-            description: 'Start date in YYYY-MM-DD format (optional, defaults to today)',
-            example: '2026-01-01'
-          },
-          endDate: {
-            type: 'string',
-            description: 'End date in YYYY-MM-DD format (optional, defaults to today)',
-            example: '2026-01-31'
-          }
+          startDate: { type: 'string', description: 'Start date in YYYY-MM-DD format (optional, defaults to today)', example: '2026-01-01' },
+          endDate:   { type: 'string', description: 'End date in YYYY-MM-DD format (optional, defaults to today)',   example: '2026-01-31' }
         }
       }
     },
-    /*Daily Advert Schedule routes*/
+    // ── Daily Advert Schedules ────────────────────────────────────────────
     {
       method: 'POST',
       path: '/advert-daily-schedules/schedule',
       handler: 'daily-advert-schedule.scheduleAdvert',
       config: {
-        auth: false, // Set to true if you want authentication
+        auth: false,
         policies: [],
-        middlewares: [],
-      },
+        middlewares: []
+      }
     },
     {
       method: 'GET',
@@ -262,8 +234,8 @@ module.exports = {
       config: {
         auth: false,
         policies: [],
-        middlewares: [],
-      },
+        middlewares: []
+      }
     },
     {
       method: 'GET',
@@ -272,8 +244,8 @@ module.exports = {
       config: {
         auth: false,
         policies: [],
-        middlewares: [],
-      },
+        middlewares: []
+      }
     },
     {
       method: 'DELETE',
@@ -282,8 +254,8 @@ module.exports = {
       config: {
         auth: false,
         policies: [],
-        middlewares: [],
-      },
+        middlewares: []
+      }
     },
     {
       method: 'PUT',
@@ -292,85 +264,87 @@ module.exports = {
       config: {
         auth: false,
         policies: [],
-        middlewares: [],
-      },
+        middlewares: []
+      }
     },
     {
-        method: 'GET',
-        path: '/advert-daily-schedules/full',
-        handler: 'daily-advert-schedule.getFullSchedules',
-        config: {
-          auth: false,
-          policies: [],
-          middlewares: [],
-          description: 'Get advert daily schedules with full details including advert and client data',
-        },
-      },
-      {
-        method: 'PUT',
-        path: '/advert-daily-schedules/:scheduleId/page',
-        handler: 'daily-advert-schedule.updateSchedulePage',
-        config: {
-          auth: false,
-          policies: [],
-          middlewares: [],
-          description: 'Update page number for a specific schedule',
-        },
-      },
-      {
-        method: 'PUT',
-        path: '/advert-daily-schedules/bulk-update-pages',
-        handler: 'daily-advert-schedule.bulkUpdatePages',
-        config: {
-          auth: false,
-          policies: [],
-          middlewares: [],
-          description: 'Bulk update page numbers for multiple schedules',
-        },
-      },
-      {
-        method: 'GET',
-        path: '/advert-office-locations/get-office-locations',
-        handler: 'advert-office-locations.getBCLocations',
-        config: {
-          auth: false,
-          policies: [],
-          middlewares: [],
-          description: 'Locations of offices from business central',
-        },
-      },
-      {
-        method: 'GET',
-        path: '/clients/get-ad-client',
-        handler: 'clients.getClients',
-        config: {
-          auth: false,
-          policies: [],
-          middlewares: [],
-          description: 'Get Clients List',
-        },
-      },
-      {
-        method: 'GET',
-        path: '/advert/get-office-location',
-        handler: 'advert-office-locations.getOfficeLocations',
-        config: {
-          auth: false,
-          policies: [],
-          middlewares: [],
-          description: 'Get office location from VGAD',
-        },
-      },
-      {
-        method: 'GET',
-        path: '/advert/get-and-sync-office-locations-from-bc',
-        handler: 'advert-office-locations.getAndPopulateBCLocations',
-        config: {
-          auth: false,
-          policies: [],
-          middlewares: [],
-          description: 'Get and sync office locations from business central',
-        },
-      },
+      method: 'GET',
+      path: '/advert-daily-schedules/full',
+      handler: 'daily-advert-schedule.getFullSchedules',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+        description: 'Get advert daily schedules with full details including advert and client data'
+      }
+    },
+    {
+      method: 'PUT',
+      path: '/advert-daily-schedules/:scheduleId/page',
+      handler: 'daily-advert-schedule.updateSchedulePage',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+        description: 'Update page number for a specific schedule'
+      }
+    },
+    {
+      method: 'PUT',
+      path: '/advert-daily-schedules/bulk-update-pages',
+      handler: 'daily-advert-schedule.bulkUpdatePages',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+        description: 'Bulk update page numbers for multiple schedules'
+      }
+    },
+    // ── Office Locations ──────────────────────────────────────────────────
+    {
+      method: 'GET',
+      path: '/advert-office-locations/get-office-locations',
+      handler: 'advert-office-locations.getBCLocations',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+        description: 'Locations of offices from business central'
+      }
+    },
+    {
+      method: 'GET',
+      path: '/advert/get-office-location',
+      handler: 'advert-office-locations.getOfficeLocations',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+        description: 'Get office location from VGAD'
+      }
+    },
+    {
+      method: 'GET',
+      path: '/advert/get-and-sync-office-locations-from-bc',
+      handler: 'advert-office-locations.getAndPopulateBCLocations',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+        description: 'Get and sync office locations from business central'
+      }
+    },
+    // ── Clients ───────────────────────────────────────────────────────────
+    {
+      method: 'GET',
+      path: '/clients/get-ad-client',
+      handler: 'clients.getClients',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+        description: 'Get Clients List'
+      }
+    }
   ]
 };
