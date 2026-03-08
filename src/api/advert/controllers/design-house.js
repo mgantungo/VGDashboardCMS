@@ -139,7 +139,7 @@ const ADVERT_POPULATE = {
     fields: ['id', 'name', 'email'],
   },
   comments: {
-    fields: ['id', 'content', 'createdAt', 'updatedAt'],
+    fields: ['id', 'comment_text', 'createdAt', 'updatedAt'],
     sort: { createdAt: 'desc' },
   },
 };
