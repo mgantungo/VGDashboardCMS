@@ -556,7 +556,7 @@ async scheduleAdvert(ctx) {
   },
 
   // Update schedule (modify run_time, date, or media)
-  async updateSchedule(ctx) {
+  async updateScheduleRun(ctx) {
     try {
       const { scheduleId } = ctx.params;
       const { runDate, runTime, mediaFiles, isPublished, advertId } = ctx.request.body;
