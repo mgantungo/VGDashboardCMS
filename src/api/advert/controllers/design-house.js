@@ -51,6 +51,12 @@ function transformAdvert(advert, today) {
     ? [...advert.publishing_dates].sort()
     : [];
 
+  // Dates that already have a schedule entry
+  const scheduledDates = (advert.advert_daily_schedules || [])
+    .map(s => s.run_date)
+    .filter(Boolean)
+    .sort();
+
   // Derive platform label from product → category
   const platform = advert.product?.category?.category_type
     || advert.product?.category?.category_name
@@ -76,7 +82,8 @@ function transformAdvert(advert, today) {
     frequency:           advert.frequency,
     startDate,
     endDate,
-    publishingDates,                       // ← NEW: array of ISO date strings
+    publishingDates,
+    scheduledDates,                        // dates that already have a schedule
     totalAmount:         advert.total_amount,
     paymentMethod:       advert.payment_method,
     specialInstructions: advert.special_instructions || '',
@@ -145,6 +152,9 @@ const ADVERT_POPULATE = {
   comments: {
     fields: ['id', 'comment_text', 'createdAt', 'updatedAt'],
     sort: { createdAt: 'desc' },
+  },
+  advert_daily_schedules: {
+    fields: ['id', 'run_date'],
   },
 };
 
