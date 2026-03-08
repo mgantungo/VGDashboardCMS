@@ -726,29 +726,20 @@ async getFullSchedules(ctx) {
       }
     }
     
-    // Get schedules with all required relations
+    // Get schedules with all required relations.
+    // NOTE: Do NOT use a `fields` restriction on adverts in Strapi v5 — it suppresses
+    // nested populate results (the client relation returns empty).
+    // Use populate: true on client to guarantee contact_person / email / phone come through.
     const schedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
       filters,
       populate: {
         media: true,
         adverts: {
           populate: {
-            client: {
-              fields: ['id', 'company_name', 'contact_person', 'email', 'phone']
-            },
+            client:  true,
             product: true,
           },
-          fields: [
-            'id', 
-            'advert_title', 
-            'start_date', 
-            'end_date', 
-            'frequency', 
-            'ad_size', 
-            'ad_type',
-            'special_instructions'
-          ]
-        }
+        },
       },
       sort: { run_date: 'asc', page: 'asc' },
     });
@@ -756,35 +747,41 @@ async getFullSchedules(ctx) {
     // Format the response
     const formattedSchedules = schedules.map(schedule => {
       const advert = schedule.adverts?.[0] || {};
-      const client = advert.client || {};
+      const client = advert.client           || {};
+
+      // Contact details live on the client record.
+      // Fall back to advert-level fields for older records that stored them directly.
+      const contactPerson = client.contact_person || advert.contact_person || null;
+      const email         = client.email          || advert.email          || null;
+      const phone         = client.phone          || advert.phone          || null;
       
       return {
-        schedule_id: schedule.id,
-        run_date: schedule.run_date,
-        run_time: schedule.run_time ? parseRunTime(schedule.run_time) : null,
+        schedule_id:  schedule.id,
+        run_date:     schedule.run_date,
+        run_time:     schedule.run_time ? parseRunTime(schedule.run_time) : null,
         is_published: schedule.is_published,
-        page: schedule.page || 0,
+        page:  schedule.page || 0,
         media: schedule.media || [],
         
         // Advert data
-        advert_id: advert.id,
-        advert_title: advert.advert_title,
-        start_date: advert.start_date,
-        end_date: advert.end_date,
-        frequency: advert.frequency,
-        ad_size: advert.ad_size,
-        ad_type: advert.ad_type,
+        advert_id:            advert.id,
+        advert_title:         advert.advert_title,
+        start_date:           advert.start_date,
+        end_date:             advert.end_date,
+        frequency:            advert.frequency,
+        ad_size:              advert.ad_size,
+        ad_type:              advert.ad_type,
         special_instructions: advert.special_instructions,
         
-        // Client data
-        client_id: client.id,
-        company_name: client.company_name,
-        contact_person: client.contact_person,
-        email: client.email,
-        phone: client.phone,
+        // Client / contact data
+        client_id:      client.id,
+        company_name:   client.company_name || advert.clientName || null,
+        contact_person: contactPerson,
+        email:          email,
+        phone:          phone,
         
         created_at: schedule.createdAt,
-        updated_at: schedule.updatedAt
+        updated_at: schedule.updatedAt,
       };
     });
     
