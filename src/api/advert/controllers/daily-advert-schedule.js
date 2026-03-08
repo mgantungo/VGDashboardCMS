@@ -950,4 +950,57 @@ async bulkUpdatePages(ctx) {
   }
 }
 
+// Update run_date and/or run_time for a schedule
+async updateSchedule(ctx) {
+  try {
+    const { scheduleId } = ctx.params;
+    const { runDate, runTime } = ctx.request.body || {};
+
+    if (!scheduleId) return ctx.badRequest('scheduleId is required');
+    const id = parseInt(scheduleId);
+    if (isNaN(id)) return ctx.badRequest('scheduleId must be a valid number');
+
+    const existing = await strapi.entityService.findOne('api::advert-daily-schedule.advert-daily-schedule', id);
+    if (!existing) return ctx.notFound('Schedule not found');
+
+    const updateData = {};
+
+    if (runDate) {
+      const parsed = new Date(runDate);
+      if (isNaN(parsed.getTime())) return ctx.badRequest('Invalid runDate format');
+      updateData.run_date = parsed.toISOString().split('T')[0];
+    }
+
+    if (runTime !== undefined) {
+      if (Array.isArray(runTime)) {
+        updateData.run_time = JSON.stringify(runTime);
+      } else if (typeof runTime === 'string') {
+        updateData.run_time = JSON.stringify([runTime]);
+      } else {
+        updateData.run_time = null;
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) return ctx.badRequest('Nothing to update');
+
+    const updated = await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', id, {
+      data: updateData,
+    });
+
+    return ctx.send({
+      success: true,
+      message: 'Schedule updated',
+      data: {
+        schedule_id: updated.id,
+        run_date: updated.run_date,
+        run_time: parseRunTime(updated.run_time),
+      },
+    });
+  } catch (error) {
+    strapi.log.error('Update schedule error:', error);
+    return ctx.internalServerError('Failed to update schedule');
+  }
+},
+
+
 };
