@@ -17,6 +17,7 @@ async scheduleAdvert(ctx) {
     
     let advertId, runDate, runTime, isPublished = false;
     let mediaFiles = null;
+    let existingAttachmentIds = [];
     
     // For multipart requests in Strapi v5
     if (contentType.includes('multipart/form-data')) {
@@ -36,6 +37,11 @@ async scheduleAdvert(ctx) {
         runDate = body.runDate;
         runTime = body.runTime;
         isPublished = body.isPublished === 'true' || body.isPublished === true;
+        try {
+          existingAttachmentIds = body.existingAttachmentIds
+            ? JSON.parse(body.existingAttachmentIds)
+            : [];
+        } catch (e) { existingAttachmentIds = []; }
         
         // Get files
         if (files.mediaFiles) {
@@ -74,6 +80,9 @@ async scheduleAdvert(ctx) {
       runTime = body.runTime;
       mediaFiles = body.mediaFiles;
       isPublished = body.isPublished || false;
+      existingAttachmentIds = Array.isArray(body.existingAttachmentIds)
+        ? body.existingAttachmentIds
+        : [];
     }
     
     strapi.log.info('Extracted data - advertId:', advertId, 'runDate:', runDate);
@@ -207,6 +216,22 @@ async scheduleAdvert(ctx) {
         
       } catch (uploadError) {
         strapi.log.error('Upload process error:', uploadError);
+      }
+    }
+
+    // Connect existing CMS attachment IDs to schedule media
+    if (Array.isArray(existingAttachmentIds) && existingAttachmentIds.length > 0) {
+      try {
+        const existingIds = existingAttachmentIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+        if (existingIds.length > 0) {
+          const allMediaIds = [...uploadedMediaIds, ...existingIds];
+          await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', schedule.id, {
+            data: { media: allMediaIds }
+          });
+          strapi.log.info(`Linked ${existingIds.length} existing attachment(s) to schedule`);
+        }
+      } catch (linkError) {
+        strapi.log.error('Error linking existing attachments:', linkError);
       }
     }
 
