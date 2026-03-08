@@ -526,6 +526,7 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<false>;
     publishedAt: Schema.Attribute.DateTime;
+    publishing_dates: Schema.Attribute.JSON;
     rate_card: Schema.Attribute.Relation<
       'manyToOne',
       'api::rate-card.rate-card'

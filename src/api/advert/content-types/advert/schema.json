@@ -159,6 +159,10 @@
       "required": true,
       "default": false
     },
+    "isApproved": {
+      "type": "boolean",
+      "default": false
+    },
     "isScheduled": {
       "type": "boolean",
       "default": false
@@ -168,10 +172,6 @@
       "default": false
     },
     "isClosed": {
-      "type": "boolean",
-      "default": false
-    },
-    "isApproved": {
       "type": "boolean",
       "default": false
     },
