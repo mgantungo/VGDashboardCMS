@@ -948,7 +948,7 @@ async bulkUpdatePages(ctx) {
     strapi.log.error('Bulk update pages error:', error);
     return ctx.internalServerError('Failed to bulk update pages');
   }
-}
+},
 
 // Update run_date and/or run_time for a schedule
 async updateSchedule(ctx) {
