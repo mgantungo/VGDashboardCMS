@@ -136,21 +136,7 @@ async scheduleAdvert(ctx) {
       }
     }
 
-    // Check for existing schedules
-    const existingSchedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
-      filters: {
-        run_date: formattedDate,
-        adverts: {
-          id: advertIdNum,
-        },
-      },
-    });
-
-    if (existingSchedules.length > 0) {
-      return ctx.badRequest(`Advert already scheduled for ${formattedDate}`);
-    }
-
-    // Create schedule FIRST
+    // Create schedule
     const scheduleData = {
       data: {
         run_date: formattedDate,
