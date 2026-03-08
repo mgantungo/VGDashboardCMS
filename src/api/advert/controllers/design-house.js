@@ -64,6 +64,7 @@ function transformAdvert(advert, today) {
     reference:           advert.reference_number,
     advertTitle:         advert.advert_title,
     clientName:          advert.client?.company_name || '—',
+    contactPerson:       advert.client?.contact_person || '',
     clientRef:           advert.client_reference_no || '',
     platform,
     category:            advert.product?.category?.category_name || '—',
