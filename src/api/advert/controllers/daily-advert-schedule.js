@@ -515,6 +515,18 @@ async scheduleAdvert(ctx) {
         return ctx.badRequest('scheduleId must be a valid number');
       }
 
+      // Guard: a page / slot number must be assigned before a schedule can be published.
+      if (isPublished) {
+        const existing = await strapi.entityService.findOne(
+          'api::advert-daily-schedule.advert-daily-schedule',
+          scheduleIdNum
+        );
+        if (!existing) return ctx.notFound('Schedule not found');
+        if (!existing.page || existing.page < 1) {
+          return ctx.badRequest('A page / slot number must be assigned before publishing this schedule.');
+        }
+      }
+
       const schedule = await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum, {
         data: {
           is_published: isPublished,
