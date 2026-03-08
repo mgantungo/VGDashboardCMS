@@ -739,6 +739,11 @@ async getFullSchedules(ctx) {
             client:  true,
             product: true,
           },
+          fields: [
+            'id', 'advert_title', 'start_date', 'end_date',
+            'frequency', 'ad_size', 'ad_type', 'special_instructions',
+            'contact_person', 'contact_number', 'contact_email',
+          ],
         },
       },
       sort: { run_date: 'asc', page: 'asc' },
@@ -749,11 +754,11 @@ async getFullSchedules(ctx) {
       const advert = schedule.adverts?.[0] || {};
       const client = advert.client           || {};
 
-      // Contact details live on the client record.
-      // Fall back to advert-level fields for older records that stored them directly.
-      const contactPerson = client.contact_person || advert.contact_person || null;
-      const email         = client.email          || advert.email          || null;
-      const phone         = client.phone          || advert.phone          || null;
+      // Contact details are stored directly on the advert record.
+      // Also check client relation as a secondary fallback.
+      const contactPerson = advert.contact_person || client.contact_person || null;
+      const contactNumber = advert.contact_number || client.phone          || null;
+      const contactEmail  = advert.contact_email  || client.email          || null;
       
       return {
         schedule_id:  schedule.id,
@@ -777,8 +782,8 @@ async getFullSchedules(ctx) {
         client_id:      client.id,
         company_name:   client.company_name || advert.clientName || null,
         contact_person: contactPerson,
-        email:          email,
-        phone:          phone,
+        contact_number: contactNumber,
+        contact_email:  contactEmail,
         
         created_at: schedule.createdAt,
         updated_at: schedule.updatedAt,
