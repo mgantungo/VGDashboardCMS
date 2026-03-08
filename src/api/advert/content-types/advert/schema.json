@@ -211,6 +211,15 @@
     },
     "publishing_dates": {
       "type": "json"
+    },
+    "contact_person": {
+      "type": "string"
+    },
+    "contact_number": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
     }
   }
 }

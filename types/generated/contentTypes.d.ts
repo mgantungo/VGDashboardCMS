@@ -478,6 +478,9 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
     client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
     client_reference_no: Schema.Attribute.String;
     comments: Schema.Attribute.Relation<'oneToMany', 'api::comment.comment'>;
+    contact_email: Schema.Attribute.String;
+    contact_number: Schema.Attribute.String;
+    contact_person: Schema.Attribute.String;
     cost_stream: Schema.Attribute.String;
     created_by_clerk: Schema.Attribute.Relation<
       'manyToOne',
