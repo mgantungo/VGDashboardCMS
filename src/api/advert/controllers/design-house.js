@@ -116,6 +116,7 @@ const ADVERT_FIELDS = [
   'hasRun', 'isScheduled',
   'publish_onweb', 'revenue_stream', 'cost_stream',
   'office_location', 'client_reference_no',
+  'contact_person', 'contact_number', 'contact_email',
   'createdAt', 'updatedAt',
 ];
 
