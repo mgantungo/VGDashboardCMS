@@ -5,6 +5,13 @@
  * 
  */
 
+// Safely parse run_time — Strapi v5 may return JSON fields already parsed
+function parseRunTime(val) {
+  if (!val) return null;
+  if (Array.isArray(val) || typeof val === 'object') return val;
+  try { return JSON.parse(val); } catch (e) { return [val]; }
+}
+
 module.exports = {
   // Custom schedule advert method
 async scheduleAdvert(ctx) {
@@ -300,7 +307,7 @@ async scheduleAdvert(ctx) {
       // Parse run_time JSON for each schedule
       const formattedSchedules = schedules.map(schedule => ({
         ...schedule,
-        run_time: schedule.run_time ? JSON.parse(schedule.run_time) : null,
+        run_time: schedule.run_time ? parseRunTime(schedule.run_time) : null,
       }));
 
       return ctx.send({
@@ -377,7 +384,7 @@ async scheduleAdvert(ctx) {
       const formattedSchedules = schedules.map(schedule => ({
         id: schedule.id,
         run_date: schedule.run_date,
-        run_time: schedule.run_time ? JSON.parse(schedule.run_time) : null,
+        run_time: schedule.run_time ? parseRunTime(schedule.run_time) : null,
         is_published: schedule.is_published,
         media: schedule.media,
         adverts: schedule.adverts.map(advert => ({
@@ -538,7 +545,7 @@ async scheduleAdvert(ctx) {
         message: `Schedule ${isPublished ? 'published' : 'unpublished'} successfully`,
         data: {
           ...schedule,
-          run_time: schedule.run_time ? JSON.parse(schedule.run_time) : null,
+          run_time: schedule.run_time ? parseRunTime(schedule.run_time) : null,
         },
       });
 
@@ -658,7 +665,7 @@ async scheduleAdvert(ctx) {
         message: 'Schedule updated successfully',
         data: {
           ...updatedSchedule,
-          run_time: updatedSchedule.run_time ? JSON.parse(updatedSchedule.run_time) : null,
+          run_time: updatedSchedule.run_time ? parseRunTime(updatedSchedule.run_time) : null,
         },
       });
 
@@ -742,7 +749,7 @@ async getFullSchedules(ctx) {
       return {
         schedule_id: schedule.id,
         run_date: schedule.run_date,
-        run_time: schedule.run_time ? JSON.parse(schedule.run_time) : null,
+        run_time: schedule.run_time ? parseRunTime(schedule.run_time) : null,
         is_published: schedule.is_published,
         page: schedule.page || 0,
         media: schedule.media || [],
