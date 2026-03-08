@@ -292,7 +292,7 @@ module.exports = {
     {
       method: 'PUT',
       path: '/advert-daily-schedules/:scheduleId/update',
-      handler: 'daily-advert-schedule.updateSchedule',
+      handler: 'daily-advert-schedule.updateScheduleRun',
       config: {
         auth: false,
       },
