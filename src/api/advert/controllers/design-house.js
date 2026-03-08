@@ -1,1026 +1,435 @@
 'use strict';
 
 /**
- * Design House Controller - Complete Revised Version
- * Handles all design house operations for adverts ready for design work
+ * Design House Controller
+ * Handles all design house operations for adverts ready for design work.
+ *
+ * Filtering rules:
+ *   - isPaid: true          → only paid adverts qualify
+ *   - isCanceled: false     → exclude cancelled adverts
+ *   - date range overlap    → advert's [start_date … end_date] overlaps the requested [startDate … endDate]
+ *   - isApproved            → TRUE means design work is signed off; advert moves to scheduling queue
  */
 
-module.exports = {
-  
-  /**
-   * Get adverts ready for design work
-   * Accepts both POST (body) and GET (query) parameters
-   */
-async getActiveAdverts(ctx) {
-  try {
-    console.log('🎨 Design House: Fetching active adverts for design work');
-    
-    // Log the complete request for debugging
-    console.log('📡 Request method:', ctx.request.method);
-    console.log('📦 Request headers:', ctx.request.headers);
-    console.log('📤 Request body raw:', ctx.request.body);
-    
-    // Validate that request body exists
-    if (!ctx.request.body) {
-      console.error('❌ Request body is undefined');
-      return ctx.badRequest({
-        success: false,
-        message: 'Request body is required. Make sure Content-Type: application/json is set.'
-      });
-    }
-    
-    // Get parameters from request body
-    const { startDate, endDate, debug } = ctx.request.body;
-    
-    // Validate required parameters
-    if (!startDate || !endDate) {
-      return ctx.badRequest({
-        success: false,
-        message: 'Both startDate and endDate are required in the request body',
-        example: {
-          startDate: "2026-01-01",
-          endDate: "2026-01-31",
-          debug: true
-        }
-      });
-    }
-    
-    console.log('✅ Received parameters:', { startDate, endDate, debug });
-    
-    // Parse dates or use today as default
-    const now = new Date();
-    let dateRangeStart = startDate;
-    let dateRangeEnd = endDate;
-    let hasCustomDateRange = true;
-    
-    console.log('✅ Using provided startDate:', startDate);
-    console.log('✅ Using provided endDate:', endDate);
-    
-    console.log('📅 Query date range (as strings):', dateRangeStart, 'to', dateRangeEnd);
-    console.log('📅 Custom date range?', hasCustomDateRange);
-    
-    // Debug: Check what adverts exist
-    if (debug) {
-      console.log('🔍 DEBUG MODE: Checking database...');
-      const allAdverts = await strapi.entityService.findMany('api::advert.advert', {
-        fields: ['id', 'reference_number', 'advert_title', 'start_date', 'end_date', 'isPaid', 'isActive', 'isClosed', 'isCanceled'],
-        limit: 10
-      });
-      console.log('📊 Sample adverts:', allAdverts);
-    }
-    
-    // Build filters using camelCase field names from schema
-    // IMPORTANT: For date fields, compare as strings directly
-    const filters = {
-      isPaid: true,
-      isClosed: false,
-      isActive: true,
-      isCanceled: false,
-      $and: [
-        {
-          start_date: { 
-            $lte: dateRangeEnd  // advert's start_date <= our end date
-          }
-        },
-        {
-          end_date: { 
-            $gte: dateRangeStart  // advert's end_date >= our start date
-          }
-        }
-      ]
-    };
-    
-    console.log('🔍 Entity Service filters:', JSON.stringify(filters, null, 2));
-    
-    // First, test boolean filters alone
-    console.log('🧪 Testing boolean filters alone...');
-    const booleanFiltered = await strapi.entityService.findMany('api::advert.advert', {
-      filters: {
-        isPaid: true,
-        isClosed: false,
-        isActive: true,
-        isCanceled: false
-      },
-      fields: ['id', 'reference_number', 'advert_title', 'isPaid', 'isActive', 'isClosed', 'isCanceled'],
-      limit: 10
-    });
-    
-    console.log(`📊 Found ${booleanFiltered.length} adverts matching boolean criteria`);
-    
-    // Now test date range (Jan 1-31, 2026) to see what exists
-    console.log('🧪 Testing date range Jan 1-31, 2026...');
-    const januaryAdverts = await strapi.entityService.findMany('api::advert.advert', {
-      filters: {
-        $and: [
-          { start_date: { $lte: '2026-01-31' } },
-          { end_date: { $gte: '2026-01-01' } }
-        ]
-      },
-      fields: ['id', 'reference_number', 'advert_title', 'start_date', 'end_date', 'isPaid', 'isActive'],
-      limit: 20
-    });
-    
-    console.log(`📊 Found ${januaryAdverts.length} adverts in January 2026`);
-    januaryAdverts.forEach(advert => {
-      console.log(`  - ${advert.reference_number}: ${advert.start_date} to ${advert.end_date} | Paid:${advert.isPaid} Active:${advert.isActive}`);
-    });
-    
-    // Now test with our specific date range
-    console.log('🧪 Testing with exact date filters...');
-    const dateFiltered = await strapi.entityService.findMany('api::advert.advert', {
-      filters: {
-        $and: [
-          { start_date: { $lte: dateRangeEnd } },
-          { end_date: { $gte: dateRangeStart } }
-        ]
-      },
-      fields: ['id', 'reference_number', 'advert_title', 'start_date', 'end_date', 'isPaid', 'isActive'],
-      limit: 20
-    });
-    
-    console.log(`📊 Found ${dateFiltered.length} adverts in date range ${dateRangeStart} to ${dateRangeEnd}`);
-    
-    // Query using Strapi Entity Service with all filters
-    const adverts = await strapi.entityService.findMany('api::advert.advert', {
-      filters,
-      fields: [
-        'id',
-        'reference_number',
-        'advert_title',
-        'frequency',
-        'ad_size',
-        'ad_type',
-        'start_date',
-        'end_date',
-        'base_price',
-        'surcharge',
-        'discount',
-        'total_amount',
-        'payment_method',
-        'special_instructions',
-        'status',
-        'isActive',
-        'isPaid',
-        'isClosed',
-        'isCanceled',
-        'isApproved',
-        'hasRun',
-        'isScheduled',
-        'createdAt',
-        'updatedAt'
-      ],
-      populate: {
-        client: {
-          fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address']
-        },
-        product: {
-          fields: ['id', 'product_name', 'description'],
-          populate: {
-            category: {
-              fields: ['id', 'category_name', 'category_type', 'description']
-            }
-          }
-        },
-        rate_card: {
-          fields: ['id', 'price_fc', 'price_bw', 'ad_type', 'size_dimension', 'duration', 'time_slot', 'currency']
-        },
-        attachments: {
-          fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
-        },
-        vgams_user: {
-          fields: ['id', 'name', 'email', 'role']
-        },
-        comments: {
-          fields: ['id', 'comment_text', 'createdAt', 'updatedAt'],
-          sort: { createdAt: 'desc' }
-        }
-      },
-      sort: { start_date: 'asc' },
-      limit: -1
-    });
-    
-    console.log(`✅ Found ${adverts.length} adverts ready for design work`);
-    
-    // If no results found, let's do a manual check
-    if (adverts.length === 0) {
-      console.log('🔍 No results found. Doing manual analysis...');
-      
-      // Get all adverts that match boolean criteria
-      const allBooleanMatches = await strapi.entityService.findMany('api::advert.advert', {
-        filters: {
-          isPaid: true,
-          isClosed: false,
-          isActive: true,
-          isCanceled: false
-        },
-        fields: [
-          'id',
-          'reference_number',
-          'advert_title',
-          'start_date',
-          'end_date',
-          'isPaid',
-          'isActive',
-          'isClosed',
-          'isCanceled'
-        ],
-        limit: 50
-      });
-      
-      console.log(`📊 Found ${allBooleanMatches.length} adverts matching boolean criteria`);
-      
-      // Manual date filtering
-      const manualMatches = allBooleanMatches.filter(advert => {
-        const advertStart = advert.start_date;
-        const advertEnd = advert.end_date;
-        
-        if (!advertStart || !advertEnd) return false;
-        
-        // Check if date ranges overlap
-        // advert's date range overlaps with our query range if:
-        // advertStart <= dateRangeEnd AND advertEnd >= dateRangeStart
-        const overlaps = advertStart <= dateRangeEnd && advertEnd >= dateRangeStart;
-        
-        return overlaps;
-      });
-      
-      console.log(`📊 Manual filtering shows ${manualMatches.length} should match:`);
-      manualMatches.forEach(advert => {
-        console.log(`  - ${advert.reference_number}: ${advert.start_date} to ${advert.end_date}`);
-      });
-    }
-    
-    // Calculate statistics
-    const stats = {
-      total: adverts.length,
-      by_category: {},
-      by_product: {},
-      by_status: {},
-      total_value: 0,
-      with_designs: 0,
-      without_designs: 0,
-      urgent: 0,
-      new_today: 0,
-      within_date_range: 0
-    };
-    
-    // Calculate 3 days from now as date string
-    const threeDaysFromNow = new Date(now);
-    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-    const threeDaysFromNowStr = threeDaysFromNow.toISOString().split('T')[0];
-    
-    const todayDateOnly = now.toISOString().split('T')[0];
-    
-    adverts.forEach(advert => {
-      stats.total_value += parseFloat(advert.total_amount) || 0;
-      
-      // By category
-      const categoryName = advert.product?.category?.category_name || 'Uncategorized';
-      stats.by_category[categoryName] = (stats.by_category[categoryName] || 0) + 1;
-      
-      // By product
-      const productName = advert.product?.product_name || 'Unknown';
-      stats.by_product[productName] = (stats.by_product[productName] || 0) + 1;
-      
-      // By design status
-      const designStatus = advert.isApproved ? 'completed' : 'pending';
-      stats.by_status[designStatus] = (stats.by_status[designStatus] || 0) + 1;
-      
-      // With/without design uploads
-      const hasAttachments = (advert.attachments || []).length > 0;
-      if (hasAttachments) {
-        stats.with_designs++;
-      } else {
-        stats.without_designs++;
-      }
-      
-      // Urgent (ending within 3 days) - compare as date strings
-      if (advert.end_date && advert.end_date <= threeDaysFromNowStr) {
-        stats.urgent++;
-      }
-      
-      // New today (starting today) - only if no custom date range was provided
-      if (!hasCustomDateRange) {
-        if (advert.start_date && advert.start_date === todayDateOnly) {
-          stats.new_today++;
-        }
-      }
-      
-      stats.within_date_range++;
-    });
-    
-    return ctx.send({
-      success: true,
-      message: `Found ${adverts.length} adverts ready for design work`,
-      count: adverts.length,
-      data: adverts,
-      statistics: stats,
-      filters_applied: {
-        isPaid: true,
-        isClosed: false,
-        isActive: true,
-        isCanceled: false,
-        date_range: {
-          startDate: dateRangeStart,
-          endDate: dateRangeEnd,
-          dateFieldType: 'date (YYYY-MM-DD)'
-        },
-        custom_date_range: hasCustomDateRange,
-        debug_info: {
-          booleanFilteredCount: booleanFiltered.length,
-          januaryAdvertsCount: januaryAdverts.length,
-          dateFilteredCount: dateFiltered.length,
-          receivedParams: { startDate, endDate, debug }
-        }
-      },
-      timestamp: now.toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Error fetching active adverts:', error);
-    return ctx.internalServerError({
-      success: false,
-      message: 'Failed to fetch active adverts',
-      error: error.message,
-      requestMethod: ctx.request.method,
-      requestBody: ctx.request.body,
-      requestQuery: ctx.query,
-      requestHeaders: ctx.request.headers
-    });
-  }
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatFileSize(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
-  ,
-  
+
+/**
+ * Normalise a raw Strapi advert record into the camelCase shape the frontend expects.
+ * @param {object} advert  - raw record from entityService
+ * @param {string} today   - YYYY-MM-DD string for today
+ */
+function transformAdvert(advert, today) {
+  const attachments = (advert.attachments || []).map(f => ({
+    id:        f.id,
+    name:      f.name,
+    url:       f.url,
+    size:      f.size,
+    mime:      f.mime,
+    ext:       f.ext,
+    createdAt: f.createdAt,
+  }));
+
+  const totalBytes    = attachments.reduce((s, f) => s + (f.size || 0), 0);
+  const startDate     = advert.start_date;  // YYYY-MM-DD
+  const endDate       = advert.end_date;    // YYYY-MM-DD
+
+  const runningNow  = !!startDate && !!endDate && startDate <= today && endDate >= today;
+  const isUpcoming  = !!startDate && startDate > today;
+
+  // Publishing dates – stored as JSON array of YYYY-MM-DD strings
+  const publishingDates = Array.isArray(advert.publishing_dates)
+    ? [...advert.publishing_dates].sort()
+    : [];
+
+  // Derive platform label from product → category
+  const platform = advert.product?.category?.category_type
+    || advert.product?.category?.category_name
+    || advert.product?.product_name
+    || '—';
+
+  const salesAgents = (advert.vgams_sales_persons || []).map(sp => sp.name || sp.email || '');
+
+  return {
+    id:                  advert.id,
+    reference:           advert.reference_number,
+    advertTitle:         advert.advert_title,
+    clientName:          advert.client?.company_name || '—',
+    clientRef:           advert.client_reference_no || '',
+    platform,
+    category:            advert.product?.category?.category_name || '—',
+    product:             advert.product?.product_name || '—',
+    adSize:              advert.ad_size,
+    adType:              advert.ad_type,
+    frequency:           advert.frequency,
+    startDate,
+    endDate,
+    publishingDates,                       // ← NEW: array of ISO date strings
+    totalAmount:         advert.total_amount,
+    paymentMethod:       advert.payment_method,
+    specialInstructions: advert.special_instructions || '',
+    status:              advert.status,
+    isActive:            advert.isActive,
+    isPaid:              advert.isPaid,
+    isApproved:          advert.isApproved,   // design approved → next stage
+    isScheduled:         advert.isScheduled,
+    hasRun:              advert.hasRun,
+    isClosed:            advert.isClosed,
+    isCanceled:          advert.isCanceled,
+    attachments,
+    attachmentsCount:    attachments.length,
+    totalFileSize:       formatFileSize(totalBytes),
+    createdBy:           advert.vgams_user?.name || advert.vgams_user?.email || '',
+    salesAgents,
+    hasBrief:            !!(advert.special_instructions?.trim()),
+    // Derived display fields
+    runningNow,                             // today within advert date range
+    isUpcoming,                             // advert starts in the future
+    designStatus:        advert.isApproved ? 'approved' : 'pending',
+    createdAt:           advert.createdAt,
+    updatedAt:           advert.updatedAt,
+  };
+}
+
+/** Fields to always request from entityService */
+const ADVERT_FIELDS = [
+  'id', 'reference_number', 'advert_title',
+  'frequency', 'ad_size', 'ad_type',
+  'start_date', 'end_date',
+  'base_price', 'surcharge', 'discount', 'total_amount',
+  'payment_method', 'special_instructions',
+  'publishing_dates',                      // ← NEW
+  'status',
+  'isActive', 'isPaid', 'isClosed', 'isCanceled', 'isApproved',
+  'hasRun', 'isScheduled',
+  'publish_onweb', 'revenue_stream', 'cost_stream',
+  'office_location', 'client_reference_no',
+  'createdAt', 'updatedAt',
+];
+
+const ADVERT_POPULATE = {
+  client: {
+    fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address'],
+  },
+  product: {
+    fields: ['id', 'product_name', 'description'],
+    populate: {
+      category: { fields: ['id', 'category_name', 'category_type', 'description'] },
+    },
+  },
+  rate_card: {
+    fields: ['id', 'price_fc', 'price_bw', 'ad_type', 'size_dimension', 'duration', 'time_slot', 'currency'],
+  },
+  attachments: {
+    fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt'],
+  },
+  vgams_user: {
+    fields: ['id', 'name', 'email', 'role'],
+  },
+  vgams_sales_persons: {
+    fields: ['id', 'name', 'email'],
+  },
+  comments: {
+    fields: ['id', 'content', 'createdAt', 'updatedAt'],
+    sort: { createdAt: 'desc' },
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controller
+// ─────────────────────────────────────────────────────────────────────────────
+
+module.exports = {
+
   /**
-   * Get adverts for a specific date range
-   * GET /api/design-house/date-range-adverts
+   * GET active adverts for design work.
+   * POST /api/design-house/active-adverts
+   * Body: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD' }
+   *
+   * Returns ALL paid, non-cancelled adverts whose date range overlaps the
+   * requested window. Each record carries runningNow / isUpcoming flags so the
+   * frontend can bucket them without an extra round-trip.
    */
-  async getDateRangeAdverts(ctx) {
+  async getActiveAdverts(ctx) {
     try {
-      console.log('📅 Design House: Fetching adverts by date range');
-      
-      const { startDate, endDate } = ctx.query;
-      
+      const body = ctx.request.body || {};
+      const { startDate, endDate } = body;
+
       if (!startDate || !endDate) {
         return ctx.badRequest({
           success: false,
-          message: 'Both startDate and endDate query parameters are required',
-          example: '/api/design-house/date-range-adverts?startDate=2026-01-01&endDate=2026-01-31'
+          message: 'Both startDate and endDate are required in the request body',
+          example: { startDate: '2026-01-01', endDate: '2026-01-31' },
         });
       }
-      
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Core filter: paid, not cancelled, date range overlaps window
       const filters = {
-        isPaid: true,
-        isClosed: false,
-        isActive: true,
+        isPaid:     true,
         isCanceled: false,
         $and: [
-          { start_date: { $lte: endDate } },
-          { end_date: { $gte: startDate } }
-        ]
-      };
-      
-      const adverts = await strapi.entityService.findMany('api::advert.advert', {
-        filters,
-        fields: [
-          'id',
-          'reference_number',
-          'advert_title',
-          'start_date',
-          'end_date',
-          'total_amount',
-          'isActive',
-          'isPaid',
-          'isClosed',
-          'isCanceled',
-          'isApproved'
+          { start_date: { $lte: endDate   } },
+          { end_date:   { $gte: startDate } },
         ],
-        populate: {
-          client: {
-            fields: ['company_name']
-          },
-          attachments: {
-            fields: ['id']
-          }
-        },
-        sort: { start_date: 'asc' },
-        limit: -1
+      };
+
+      const raw = await strapi.entityService.findMany('api::advert.advert', {
+        filters,
+        fields:   ADVERT_FIELDS,
+        populate:  ADVERT_POPULATE,
+        sort:      { start_date: 'asc' },
+        limit:    -1,
       });
-      
-      let totalValue = 0;
-      adverts.forEach(advert => {
-        totalValue += parseFloat(advert.total_amount) || 0;
-      });
-      
+
+      const adverts = raw.map(a => transformAdvert(a, today));
+
+      // Quick summary counts
+      const summary = {
+        total:            adverts.length,
+        runningNow:       adverts.filter(a => a.runningNow).length,
+        upcoming:         adverts.filter(a => a.isUpcoming).length,
+        pendingDesign:    adverts.filter(a => !a.isApproved).length,
+        designApproved:   adverts.filter(a =>  a.isApproved).length,
+        readyToSchedule:  adverts.filter(a =>  a.isApproved && !a.isScheduled).length,
+        scheduled:        adverts.filter(a =>  a.isScheduled).length,
+        withFiles:        adverts.filter(a =>  a.attachmentsCount > 0).length,
+        withoutFiles:     adverts.filter(a =>  a.attachmentsCount === 0).length,
+        urgent:           adverts.filter(a => {
+          if (!a.endDate) return false;
+          const daysLeft = Math.ceil((new Date(a.endDate) - new Date()) / 86400000);
+          return daysLeft >= 0 && daysLeft <= 3;
+        }).length,
+      };
+
       return ctx.send({
-        success: true,
-        message: `Found ${adverts.length} adverts for date range ${startDate} to ${endDate}`,
-        count: adverts.length,
-        data: adverts,
-        date_range: { startDate, endDate },
-        statistics: {
-          total_adverts: adverts.length,
-          total_value: totalValue,
-          pending_designs: adverts.filter(a => !a.isApproved).length,
-          completed_designs: adverts.filter(a => a.isApproved).length,
-          with_attachments: adverts.filter(a => (a.attachments || []).length > 0).length,
-          without_attachments: adverts.filter(a => (a.attachments || []).length === 0).length
-        }
+        success:  true,
+        count:    adverts.length,
+        adverts,
+        summary,
+        dateRange: { startDate, endDate },
       });
-      
+
     } catch (error) {
-      console.error('❌ Error fetching date range adverts:', error);
-      return ctx.internalServerError({
-        success: false,
-        message: 'Failed to fetch adverts by date range',
-        error: error.message
-      });
+      console.error('❌ getActiveAdverts:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
     }
   },
-  
+
   /**
-   * Get specific advert details for design work
+   * Get specific advert details for design work.
    * GET /api/design-house/adverts/:id
    */
   async getAdvertDetails(ctx) {
     try {
       const { id } = ctx.params;
-      
-      if (!id) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Advert ID is required'
-        });
-      }
-      
-      console.log(`🎨 Fetching advert details for ID: ${id}`);
-      
-      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
-        fields: [
-          'id',
-          'reference_number',
-          'advert_title',
-          'frequency',
-          'ad_size',
-          'ad_type',
-          'start_date',
-          'end_date',
-          'base_price',
-          'surcharge',
-          'discount',
-          'total_amount',
-          'payment_method',
-          'special_instructions',
-          'status',
-          'isActive',
-          'isPaid',
-          'isClosed',
-          'isCanceled',
-          'isApproved',
-          'hasRun',
-          'isScheduled',
-          'createdAt',
-          'updatedAt'
-        ],
-        populate: {
-          client: {
-            fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address']
-          },
-          product: {
-            fields: ['id', 'product_name', 'description'],
-            populate: {
-              category: {
-                fields: ['id', 'category_name', 'category_type', 'description']
-              }
-            }
-          },
-          rate_card: {
-            fields: ['id', 'ad_type', 'size_dimension', 'price_fc', 'price_bw', 'duration', 'time_slot', 'currency']
-          },
-          attachments: {
-            fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
-          },
-          vgams_user: {
-            fields: ['id', 'name', 'email', 'role']
-          },
-          comments: {
-            fields: ['id', 'content', 'createdAt', 'updatedAt'],
-            sort: { createdAt: 'desc' }
-          }
-        }
+      if (!id) return ctx.badRequest({ success: false, message: 'Advert ID is required' });
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const raw = await strapi.entityService.findOne('api::advert.advert', id, {
+        fields:   ADVERT_FIELDS,
+        populate:  ADVERT_POPULATE,
       });
-      
-      if (!advert) {
-        return ctx.notFound({
-          success: false,
-          message: `Advert with ID ${id} not found`
-        });
-      }
-      
-      console.log(`✅ Advert details retrieved: ${advert.reference_number}`);
-      
-      return ctx.send({
-        success: true,
-        data: advert
-      });
-      
+
+      if (!raw) return ctx.notFound({ success: false, message: `Advert ${id} not found` });
+
+      return ctx.send({ success: true, advert: transformAdvert(raw, today) });
+
     } catch (error) {
-      console.error('❌ Error fetching advert details:', error);
-      return ctx.internalServerError({
-        success: false,
-        message: 'Failed to fetch advert details',
-        error: error.message
-      });
+      console.error('❌ getAdvertDetails:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
     }
   },
-  
+
   /**
-   * Get all design files (attachments) for an advert
-   * GET /api/design-house/adverts/:id/files
-   */
-  async getDesignFiles(ctx) {
-    try {
-      const { id } = ctx.params;
-      
-      if (!id) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Advert ID is required'
-        });
-      }
-      
-      console.log(`📁 Fetching design files for advert ID: ${id}`);
-      
-      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
-        fields: ['id', 'reference_number', 'advert_title'],
-        populate: {
-          attachments: {
-            fields: ['id', 'name', 'url', 'size', 'mime', 'ext', 'createdAt', 'updatedAt']
-          }
-        }
-      });
-      
-      if (!advert) {
-        return ctx.notFound({
-          success: false,
-          message: `Advert with ID ${id} not found`
-        });
-      }
-      
-      const attachments = advert.attachments || [];
-      
-      console.log(`✅ Found ${attachments.length} files for ${advert.reference_number}`);
-      
-      // Organize files by type
-      const filesByType = {
-        images: [],
-        documents: [],
-        videos: [],
-        designs: [],
-        other: []
-      };
-      
-      let totalSize = 0;
-      
-      attachments.forEach(file => {
-        totalSize += file.size || 0;
-        
-        const ext = (file.ext || '').toLowerCase();
-        const mime = (file.mime || '').toLowerCase();
-        
-        if (mime.startsWith('image/')) {
-          filesByType.images.push(file);
-        } else if (ext === '.psd' || ext === '.ai' || ext === '.sketch' || ext === '.fig' || ext === '.xd') {
-          filesByType.designs.push(file);
-        } else if (mime.startsWith('video/')) {
-          filesByType.videos.push(file);
-        } else if (mime.startsWith('application/')) {
-          filesByType.documents.push(file);
-        } else {
-          filesByType.other.push(file);
-        }
-      });
-      
-      return ctx.send({
-        success: true,
-        advert: {
-          id: advert.id,
-          reference_number: advert.reference_number,
-          advert_title: advert.advert_title
-        },
-        files: attachments,
-        filesByType: filesByType,
-        statistics: {
-          total: attachments.length,
-          totalSize: totalSize,
-          totalSizeMB: (totalSize / (1024 * 1024)).toFixed(2),
-          images: filesByType.images.length,
-          documents: filesByType.documents.length,
-          videos: filesByType.videos.length,
-          designs: filesByType.designs.length,
-          other: filesByType.other.length
-        }
-      });
-      
-    } catch (error) {
-      console.error('❌ Error fetching design files:', error);
-      return ctx.internalServerError({
-        success: false,
-        message: 'Failed to fetch design files',
-        error: error.message
-      });
-    }
-  },
-  
-  /**
-   * Upload design files to an advert
+   * Upload design files for an advert.
    * POST /api/design-house/adverts/:id/upload
-   * Content-Type: multipart/form-data
    */
   async uploadDesignFiles(ctx) {
     try {
       const { id } = ctx.params;
-      
-      if (!id) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Advert ID is required'
-        });
-      }
-      
-      // Check if advert exists and meets criteria
+      if (!id) return ctx.badRequest({ success: false, message: 'Advert ID is required' });
+
       const advert = await strapi.entityService.findOne('api::advert.advert', id, {
-        fields: ['id', 'reference_number', 'isPaid', 'isClosed', 'isCanceled', 'isActive']
+        fields:  ['id', 'reference_number', 'advert_title', 'isPaid', 'isCanceled'],
+        populate: { attachments: { fields: ['id'] } },
       });
-      
-      if (!advert) {
-        return ctx.notFound({
-          success: false,
-          message: `Advert with ID ${id} not found`
+
+      if (!advert)        return ctx.notFound({ success: false, message: `Advert ${id} not found` });
+      if (advert.isCanceled) return ctx.badRequest({ success: false, message: 'Cannot upload files for a cancelled advert' });
+
+      // Strapi handles multipart via ctx.request.files
+      const uploadedFiles = ctx.request.files?.files;
+      if (!uploadedFiles) return ctx.badRequest({ success: false, message: 'No files provided' });
+
+      const filesArray = Array.isArray(uploadedFiles) ? uploadedFiles : [uploadedFiles];
+
+      // Upload each file via Strapi's upload plugin
+      const uploadResults = [];
+      for (const file of filesArray) {
+        const result = await strapi.plugins.upload.services.upload.upload({
+          data: { ref: 'api::advert.advert', refId: id, field: 'attachments' },
+          files: file,
         });
+        uploadResults.push(...(Array.isArray(result) ? result : [result]));
       }
-      
-      // Verify advert meets design upload criteria
-      if (!advert.isPaid) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Cannot upload designs for unpaid adverts'
-        });
-      }
-      
-      if (advert.isClosed) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Cannot upload designs for closed/completed adverts'
-        });
-      }
-      
-      if (advert.isCanceled) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Cannot upload designs for canceled adverts'
-        });
-      }
-      
-      if (!advert.isActive) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Cannot upload designs for inactive adverts'
-        });
-      }
-      
-      console.log(`📤 Uploading design files for advert #${id} - ${advert.reference_number}`);
-      
-      // Get files from request
-      const files = ctx.request.files;
-      
-      if (!files || Object.keys(files).length === 0) {
-        return ctx.badRequest({
-          success: false,
-          message: 'No files provided for upload'
-        });
-      }
-      
-      // Upload files using Strapi's upload service
-      const uploadedFiles = [];
-      const errors = [];
-      
-      for (const fileKey in files) {
-        const file = files[fileKey];
-        
-        try {
-          const uploadResult = await strapi.plugins.upload.services.upload.upload({
-            data: {
-              refId: id,
-              ref: 'api::advert.advert',
-              field: 'attachments'
-            },
-            files: file
-          });
-          
-          uploadedFiles.push(...uploadResult);
-          console.log(`✅ Uploaded: ${file.name}`);
-          
-        } catch (uploadError) {
-          console.error(`❌ Error uploading file ${file.name}:`, uploadError);
-          errors.push({
-            filename: file.name,
-            error: uploadError.message
-          });
-        }
-      }
-      
-      console.log(`✅ Successfully uploaded ${uploadedFiles.length} file(s)`);
-      
+
       return ctx.send({
-        success: true,
-        message: `Successfully uploaded ${uploadedFiles.length} file(s)`,
-        advert_id: id,
-        reference_number: advert.reference_number,
-        files: uploadedFiles,
-        errors: errors.length > 0 ? errors : undefined
+        success:      true,
+        message:      `${uploadResults.length} file(s) uploaded successfully`,
+        uploadedFiles: uploadResults.map(f => ({ id: f.id, name: f.name, url: f.url, size: f.size })),
+        advertId:     id,
+        reference:    advert.reference_number,
       });
-      
+
     } catch (error) {
-      console.error('❌ Error uploading design files:', error);
-      return ctx.internalServerError({
-        success: false,
-        message: 'Failed to upload design files',
-        error: error.message
-      });
+      console.error('❌ uploadDesignFiles:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
     }
   },
-  
+
   /**
-   * Mark design work as complete
+   * Mark design work as complete (sets isApproved = true).
    * POST /api/design-house/adverts/:id/complete
+   * Body: { notes?: string, designerEmail?: string }
    */
   async markDesignComplete(ctx) {
     try {
       const { id } = ctx.params;
-      const { notes, designerEmail } = ctx.request.body;
-      
-      if (!id) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Advert ID is required'
-        });
-      }
-      
-      console.log(`✅ Marking design complete for advert #${id}`);
-      
-      // Find the advert
+      if (!id) return ctx.badRequest({ success: false, message: 'Advert ID is required' });
+
+      const { notes, designerEmail } = ctx.request.body || {};
+
       const advert = await strapi.entityService.findOne('api::advert.advert', id, {
-        fields: ['id', 'reference_number', 'advert_title', 'isPaid', 'isClosed', 'isApproved']
+        fields: ['id', 'reference_number', 'advert_title', 'isClosed', 'isApproved'],
       });
-      
-      if (!advert) {
-        return ctx.notFound({
-          success: false,
-          message: `Advert with ID ${id} not found`
-        });
-      }
-      
-      if (advert.isClosed) {
-        return ctx.badRequest({
-          success: false,
-          message: 'Advert is already closed/completed'
-        });
-      }
-      
-      // Look up designer by email if provided
+
+      if (!advert) return ctx.notFound({ success: false, message: `Advert ${id} not found` });
+      if (advert.isClosed) return ctx.badRequest({ success: false, message: 'Advert is already closed' });
+
+      // Optionally resolve designer
       let designerUserId = null;
       if (designerEmail) {
-        console.log('🔍 Looking up designer by email:', designerEmail);
-        try {
-          const users = await strapi.entityService.findMany('api::vgams-user.vgams-user', {
-            filters: { email: designerEmail },
-            fields: ['id', 'name', 'email'],
-            limit: 1
-          });
-          
-          if (users && users.length > 0) {
-            designerUserId = users[0].id;
-            console.log('✅ Found designer:', { id: designerUserId, email: users[0].email });
-          }
-        } catch (err) {
-          console.error('❌ Error looking up designer:', err);
-        }
+        const users = await strapi.entityService.findMany('api::vgams-user.vgams-user', {
+          filters: { email: designerEmail },
+          fields:  ['id', 'name', 'email'],
+          limit:   1,
+        });
+        if (users?.length > 0) designerUserId = users[0].id;
       }
-      
-      // Update advert - mark design work as completed/approved
-      const updatedAdvert = await strapi.entityService.update('api::advert.advert', id, {
-        data: {
-          isApproved: true
-        }
+
+      // Mark design as approved
+      await strapi.entityService.update('api::advert.advert', id, {
+        data: { isApproved: true },
       });
-      
-      // Optionally create a comment/log entry
-      if (notes) {
+
+      // Log a comment if notes were provided
+      if (notes?.trim()) {
         try {
           await strapi.entityService.create('api::comment.comment', {
             data: {
-              content: `Design work completed. ${notes}`,
-              advert: id,
-              user: designerUserId
-            }
+              content: `Design approved. ${notes}`,
+              advert:  id,
+              ...(designerUserId ? { user: designerUserId } : {}),
+            },
           });
-          console.log('✅ Comment created for design completion');
-        } catch (commentError) {
-          console.error('❌ Error creating comment:', commentError);
+        } catch (commentErr) {
+          console.warn('⚠️ Could not create design-complete comment:', commentErr.message);
         }
       }
-      
-      console.log(`✅ Design marked complete for ${advert.reference_number}`);
-      
+
       return ctx.send({
-        success: true,
-        message: 'Design work marked as complete',
-        advert_id: id,
-        reference_number: advert.reference_number,
-        advert_title: advert.advert_title,
-        isApproved: true
+        success:          true,
+        message:          'Design marked as approved',
+        advertId:         id,
+        referenceNumber:  advert.reference_number,
+        isApproved:       true,
       });
-      
+
     } catch (error) {
-      console.error('❌ Error marking design complete:', error);
-      return ctx.internalServerError({
-        success: false,
-        message: 'Failed to mark design complete',
-        error: error.message
-      });
+      console.error('❌ markDesignComplete:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
     }
   },
-  
+
   /**
-   * Get design statistics
-   * GET /api/design-house/stats
+   * Get design statistics.
+   * POST /api/design-house/stats
+   * Body: { startDate?: 'YYYY-MM-DD', endDate?: 'YYYY-MM-DD' }
    */
   async getDesignStats(ctx) {
     try {
-      console.log('📊 Fetching design house statistics');
-      
-      const now = new Date();
-      const todayStart = now.toISOString().split('T')[0];
-      const todayEnd = now.toISOString().split('T')[0];
-      
-      // Active projects (matching all criteria)
-      const activeAdverts = await strapi.entityService.findMany('api::advert.advert', {
-        filters: {
-          isPaid: true,
-          isClosed: false,
-          isActive: true,
-          isCanceled: false,
-          $and: [
-            { start_date: { $lte: todayEnd } },
-            { end_date: { $gte: todayStart } }
-          ]
-        },
-        fields: ['id']
-      });
-      
-      // Ready to upload (not yet approved/started design work)
-      const readyToUpload = await strapi.entityService.findMany('api::advert.advert', {
-        filters: {
-          isPaid: true,
-          isClosed: false,
-          isActive: true,
-          isCanceled: false,
-          isApproved: false,
-          $and: [
-            { start_date: { $lte: todayEnd } },
-            { end_date: { $gte: todayStart } }
-          ]
-        },
-        fields: ['id']
-      });
-      
-      // Completed designs (isApproved = true)
-      const completedDesigns = await strapi.entityService.findMany('api::advert.advert', {
-        filters: {
-          isPaid: true,
-          isApproved: true,
-          $and: [
-            { start_date: { $lte: todayEnd } },
-            { end_date: { $gte: todayStart } }
-          ]
-        },
-        fields: ['id']
-      });
-      
-      // Count total files across all adverts
-      const advertsWithFiles = await strapi.entityService.findMany('api::advert.advert', {
-        filters: {
-          isPaid: true,
-          isClosed: false,
-          isActive: true,
-          isCanceled: false
-        },
-        populate: {
-          attachments: {
-            fields: ['id']
-          }
-        },
-        limit: -1
-      });
-      
-      let totalFiles = 0;
-      advertsWithFiles.forEach(advert => {
-        totalFiles += (advert.attachments || []).length;
-      });
-      
-      const stats = {
-        activeProjects: activeAdverts.length,
-        readyToUpload: readyToUpload.length,
-        completedDesigns: completedDesigns.length,
-        totalFiles: totalFiles,
-        lastUpdated: new Date().toISOString()
+      const body       = ctx.request.body || {};
+      const today      = new Date().toISOString().split('T')[0];
+      const startDate  = body.startDate || today;
+      const endDate    = body.endDate   || today;
+
+      const dateFilter = {
+        $and: [
+          { start_date: { $lte: endDate   } },
+          { end_date:   { $gte: startDate } },
+        ],
       };
-      
-      console.log('✅ Design statistics:', stats);
-      
+
+      const baseFilter = { isPaid: true, isCanceled: false, ...dateFilter };
+
+      // Parallel queries for counts
+      const [allAdverts, approvedAdverts, scheduledAdverts, advertsForFiles] = await Promise.all([
+        strapi.entityService.findMany('api::advert.advert', {
+          filters: baseFilter,
+          fields:  ['id', 'start_date', 'end_date', 'isApproved', 'isScheduled'],
+          limit:   -1,
+        }),
+        strapi.entityService.findMany('api::advert.advert', {
+          filters: { ...baseFilter, isApproved: true },
+          fields:  ['id'],
+          limit:   -1,
+        }),
+        strapi.entityService.findMany('api::advert.advert', {
+          filters: { isPaid: true, isCanceled: false, isScheduled: true },
+          fields:  ['id'],
+          limit:   -1,
+        }),
+        strapi.entityService.findMany('api::advert.advert', {
+          filters:  { isPaid: true, isCanceled: false },
+          populate: { attachments: { fields: ['id'] } },
+          fields:   ['id'],
+          limit:    -1,
+        }),
+      ]);
+
+      const runningNow = allAdverts.filter(a => a.start_date <= today && a.end_date >= today).length;
+      const upcoming   = allAdverts.filter(a => a.start_date > today).length;
+      const totalFiles = advertsForFiles.reduce((s, a) => s + (a.attachments?.length || 0), 0);
+
       return ctx.send({
         success: true,
-        statistics: stats
+        statistics: {
+          running:          runningNow,
+          upcoming,
+          pendingDesign:    allAdverts.filter(a => !a.isApproved).length,
+          designApproved:   approvedAdverts.length,
+          readyToSchedule:  allAdverts.filter(a => a.isApproved && !a.isScheduled).length,
+          scheduled:        scheduledAdverts.length,
+          totalFiles,
+          lastUpdated:      new Date().toISOString(),
+        },
       });
-      
+
     } catch (error) {
-      console.error('❌ Error fetching design stats:', error);
-      return ctx.internalServerError({
-        success: false,
-        message: 'Failed to fetch design statistics',
-        error: error.message
-      });
+      console.error('❌ getDesignStats:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
     }
   },
-  
-  /**
-   * Debug endpoint to check database and schema
-   * GET /api/design-house/debug
-   */
-  async debug(ctx) {
-    try {
-      console.log('🔍 Design House Debug Endpoint');
-      
-      // Check a few adverts
-      const sampleAdverts = await strapi.entityService.findMany('api::advert.advert', {
-        fields: [
-          'id',
-          'reference_number',
-          'advert_title',
-          'start_date',
-          'end_date',
-          'isActive',
-          'isPaid',
-          'isClosed',
-          'isCanceled',
-          'isApproved'
-        ],
-        limit: 5
-      });
-      
-      // Check if any advert meets the criteria
-      const testAdvert = sampleAdverts[0];
-      let meetsCriteria = false;
-      if (testAdvert) {
-        meetsCriteria = 
-          testAdvert.isPaid === true &&
-          testAdvert.isActive === true &&
-          testAdvert.isClosed === false &&
-          testAdvert.isCanceled === false;
-      }
-      
-      // Test date parsing
-      const testDate = new Date();
-      const todayFormatted = testDate.toISOString().split('T')[0];
-      
-      return ctx.send({
-        success: true,
-        debug: {
-          timestamp: new Date().toISOString(),
-          todayFormatted: todayFormatted,
-          sampleAdverts: sampleAdverts,
-          testAdvertMeetsCriteria: meetsCriteria,
-          testAdvertDetails: testAdvert ? {
-            id: testAdvert.id,
-            ref: testAdvert.reference_number,
-            isPaid: testAdvert.isPaid,
-            isPaidType: typeof testAdvert.isPaid,
-            isActive: testAdvert.isActive,
-            isActiveType: typeof testAdvert.isActive,
-            isClosed: testAdvert.isClosed,
-            isCanceled: testAdvert.isCanceled
-          } : null
-        }
-      });
-      
-    } catch (error) {
-      console.error('❌ Error in debug endpoint:', error);
-      return ctx.internalServerError({
-        success: false,
-        message: 'Debug failed',
-        error: error.message
-      });
-    }
-  }
 };
