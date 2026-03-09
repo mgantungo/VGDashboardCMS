@@ -8,7 +8,7 @@
 //   BC_USERNAME   = your_bc_username
 //   BC_PASSWORD   = your_bc_password
 // ─────────────────────────────────────────────────────────────────────────────
-const BC_BASE_URL = process.env.BC_BASE_URL || '';
+const BC_BASE_URL = process.env.EXTERNAL_API_BC_BASE_URL || '';
 const BC_USERNAME = process.env.BC_USERNAME || '';
 const BC_PASSWORD = process.env.BC_PASSWORD || '';
 
