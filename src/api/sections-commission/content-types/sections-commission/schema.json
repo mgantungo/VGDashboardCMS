@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sections_commissions",
+  "info": {
+    "singularName": "sections-commission",
+    "pluralName": "sections-commissions",
+    "displayName": "Sections Commission"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    }
+  }
+}

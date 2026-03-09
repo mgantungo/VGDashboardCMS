@@ -1830,6 +1830,36 @@ export interface ApiRevenueStreamRevenueStream
   };
 }
 
+export interface ApiSectionsCommissionSectionsCommission
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'sections_commissions';
+  info: {
+    displayName: 'Sections Commission';
+    pluralName: 'sections-commissions';
+    singularName: 'sections-commission';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    code: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sections-commission.sections-commission'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiStaffTableStaffTable extends Struct.CollectionTypeSchema {
   collectionName: 'staff_tables';
   info: {
@@ -2670,6 +2700,7 @@ declare module '@strapi/strapi' {
       'api::rate-card.rate-card': ApiRateCardRateCard;
       'api::region.region': ApiRegionRegion;
       'api::revenue-stream.revenue-stream': ApiRevenueStreamRevenueStream;
+      'api::sections-commission.sections-commission': ApiSectionsCommissionSectionsCommission;
       'api::staff-table.staff-table': ApiStaffTableStaffTable;
       'api::sub-county.sub-county': ApiSubCountySubCounty;
       'api::systemuser.systemuser': ApiSystemuserSystemuser;
