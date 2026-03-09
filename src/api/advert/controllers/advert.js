@@ -71,6 +71,7 @@ const transformAdvert = (a) => ({
   contactPerson:  a.contact_person  || null,
   contactNumber:  a.contact_number  || null,
   contactEmail:   a.contact_email   || null,
+  marketSector:   a.market_sector   || null,
 
   // ── Boolean flags ──────────────────────────────────────────────────────
   isActive:    a.isActive,
@@ -261,6 +262,8 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
           contact_person:      data.contactPerson || null,
           contact_number:      data.contactNumber || data.phone || null,
           contact_email:       data.contactEmail  || data.email || null,
+          market_sector:       data.marketSector  || null,
+          section_commission: 'ADV',
           status:              data.status || 'draft',
           publishing_dates:    publishingDates,
         }
@@ -430,7 +433,8 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         'advert_title', 'ad_size', 'ad_type', 'frequency',
         'start_date', 'end_date', 'special_instructions', 'publish_onweb',
         'office_location', 'client_reference_no',
-        'contact_person', 'contact_number', 'contact_email'
+        'contact_person', 'contact_number', 'contact_email',
+        'market_sector'
       ];
       const updateData = {};
       allowedFields.forEach(field => { if (data[field] !== undefined) updateData[field] = data[field]; });
