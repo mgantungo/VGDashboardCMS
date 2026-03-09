@@ -68,5 +68,24 @@ module.exports = {
       console.error('Error:', error.message);
       return ctx.badRequest('Failed to populate market sectors', { error: error.message });
     }
+  },
+  //Get all market sectors from the collection
+  async getMarketSectors(ctx) {
+    try {
+      // Fetch all market sectors from the database
+      const marketSectors = await strapi.entityService.findMany('api::market-sector.market-sector', {
+        fields: ['code', 'name'], // Only return code and name fields
+        sort: { name: 'ASC' } // Optional: sort by name alphabetically
+      });
+
+      return ctx.send({
+        message: 'Market sectors retrieved successfully',
+        data: marketSectors
+      });
+
+    } catch (error) {
+      console.error('Error:', error.message);
+      return ctx.badRequest('Failed to retrieve market sectors', { error: error.message });
+    }
   }
 };
