@@ -353,6 +353,18 @@ module.exports = {
         middlewares: [],
         description: 'Get Clients List'
       }
+    },
+    // ── Market ───────────────────────────────────────────────────────────
+    {
+      method: 'POST',
+      path: '/market-sectors/populate',
+      handler: 'market-sector.populateBCMarketSectors',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+        description: 'Get MarketSector List'
+      }
     }
   ]
 };
