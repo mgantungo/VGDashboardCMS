@@ -542,6 +542,7 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+    section_commission: Schema.Attribute.String;
     special_instructions: Schema.Attribute.Text;
     start_date: Schema.Attribute.Date & Schema.Attribute.Required;
     status: Schema.Attribute.Enumeration<

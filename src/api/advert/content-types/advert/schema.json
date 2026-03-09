@@ -226,6 +226,9 @@
     },
     "market_sector": {
       "type": "string"
+    },
+    "section_commission": {
+      "type": "string"
     }
   }
 }
