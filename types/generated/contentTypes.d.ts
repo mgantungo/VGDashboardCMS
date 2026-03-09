@@ -475,6 +475,7 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
     >;
     attachments: Schema.Attribute.Media<'images' | 'files' | 'videos', true>;
     base_price: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    bc_reference_number: Schema.Attribute.String;
     client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
     client_reference_no: Schema.Attribute.String;
     comments: Schema.Attribute.Relation<'oneToMany', 'api::comment.comment'>;
@@ -519,6 +520,7 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
       'api::advert.advert'
     > &
       Schema.Attribute.Private;
+    market_sector: Schema.Attribute.String;
     office_location: Schema.Attribute.String;
     payment_method: Schema.Attribute.Enumeration<
       ['cash', 'credit', 'pdc', 'bank_transfer', 'mobile_money']
@@ -1280,6 +1282,36 @@ export interface ApiInvoiceInvoice extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiMarketSectorMarketSector
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'market_sectors';
+  info: {
+    displayName: 'CIO Market Sector';
+    pluralName: 'market-sectors';
+    singularName: 'market-sector';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    code: Schema.Attribute.String & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::market-sector.market-sector'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiOfficeLocationOfficeLocation
   extends Struct.CollectionTypeSchema {
   collectionName: 'office_locations';
@@ -2026,7 +2058,7 @@ export interface ApiVgamsUserVgamsUser extends Struct.CollectionTypeSchema {
     role: Schema.Attribute.Enumeration<
       [
         'booking_clerk',
-        'editor',
+        'sub_editor',
         'advertising_manager',
         'design_house',
         'finance_team',
@@ -2623,6 +2655,7 @@ declare module '@strapi/strapi' {
       'api::district.district': ApiDistrictDistrict;
       'api::enumeration-area.enumeration-area': ApiEnumerationAreaEnumerationArea;
       'api::invoice.invoice': ApiInvoiceInvoice;
+      'api::market-sector.market-sector': ApiMarketSectorMarketSector;
       'api::office-location.office-location': ApiOfficeLocationOfficeLocation;
       'api::office.office': ApiOfficeOffice;
       'api::page.page': ApiPagePage;

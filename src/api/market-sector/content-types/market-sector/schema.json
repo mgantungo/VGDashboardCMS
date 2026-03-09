@@ -1,0 +1,23 @@
+{
+  "kind": "collectionType",
+  "collectionName": "market_sectors",
+  "info": {
+    "singularName": "market-sector",
+    "pluralName": "market-sectors",
+    "displayName": "CIO Market Sector"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

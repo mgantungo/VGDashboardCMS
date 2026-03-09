@@ -37,7 +37,7 @@
       "default": "booking_clerk",
       "enum": [
         "booking_clerk",
-        "editor",
+        "sub_editor",
         "advertising_manager",
         "design_house",
         "finance_team",
