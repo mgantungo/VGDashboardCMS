@@ -377,6 +377,15 @@ module.exports = {
         middlewares: [],
         description: 'Get Section commission List'
       }
-    }    
+    },
+    {
+      method: 'GET',
+      path: '/market-sectors',
+      handler: 'market-sector.getMarketSectors',
+      config: {
+        auth: false,
+        description: 'Get Market sector data'
+      }
+    }
   ]
 };
