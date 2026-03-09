@@ -476,6 +476,9 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
     attachments: Schema.Attribute.Media<'images' | 'files' | 'videos', true>;
     base_price: Schema.Attribute.Decimal & Schema.Attribute.Required;
     bc_reference_number: Schema.Attribute.String;
+    bc_share_success: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
     client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
     client_reference_no: Schema.Attribute.String;
     comments: Schema.Attribute.Relation<'oneToMany', 'api::comment.comment'>;
@@ -1834,7 +1837,7 @@ export interface ApiSectionsCommissionSectionsCommission
   extends Struct.CollectionTypeSchema {
   collectionName: 'sections_commissions';
   info: {
-    displayName: 'Sections Commission';
+    displayName: 'CIO Sections Commission';
     pluralName: 'sections-commissions';
     singularName: 'sections-commission';
   };

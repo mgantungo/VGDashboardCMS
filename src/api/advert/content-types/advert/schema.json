@@ -229,6 +229,11 @@
     },
     "section_commission": {
       "type": "string"
+    },
+    "bc_share_success": {
+      "type": "boolean",
+      "required": true,
+      "default": false
     }
   }
 }
