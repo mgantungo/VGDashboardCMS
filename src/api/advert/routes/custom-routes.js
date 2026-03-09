@@ -365,6 +365,18 @@ module.exports = {
         middlewares: [],
         description: 'Get MarketSector List'
       }
-    }
+    },
+    // ── Market ───────────────────────────────────────────────────────────
+    {
+      method: 'POST',
+      path: '/sections-commission/populate',
+      handler: 'sections-commission.populateBCSectionsCommission',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+        description: 'Get Section commission List'
+      }
+    }    
   ]
 };
