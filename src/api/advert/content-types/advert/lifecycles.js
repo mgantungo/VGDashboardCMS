@@ -19,17 +19,22 @@ function authHeader() {
   return 'Basic ' + Buffer.from(`${BC_USERNAME}:${BC_PASSWORD}`).toString('base64');
 }
 
-/** Enhanced fetch wrapper — logs complete request/response details */
+/** Shared fetch wrapper — returns parsed JSON or throws with BC error detail */
 async function bcFetch(url, body, stepName = 'API Call') {
   const requestBody = JSON.stringify(body, null, 2);
   
-  // Log the complete request
-  strapi.log.info(`[BC Lifecycle] 🔵 ${stepName} - REQUEST TO: ${url}`);
-  strapi.log.info(`[BC Lifecycle] 🔵 ${stepName} - REQUEST HEADERS:`, {
-    'Content-Type': 'application/json',
-    'Authorization': 'Basic [HIDDEN]'
-  });
-  strapi.log.info(`[BC Lifecycle] 🔵 ${stepName} - REQUEST BODY:`, requestBody);
+  // Log the complete request with clear delimiters
+  console.log('\n');
+  console.log('🔵 ===================================================');
+  console.log(`🔵 ${stepName} - REQUEST`);
+  console.log('🔵 ===================================================');
+  console.log(`🔵 ENDPOINT: POST ${url}`);
+  console.log('🔵 AUTHORIZATION: Basic Auth (credentials hidden)');
+  console.log('🔵 CONTENT-TYPE: application/json');
+  console.log('🔵 EXPECTED PAYLOAD FORMAT:');
+  console.log('🔵 ---------------------------------------------------');
+  console.log(requestBody);
+  console.log('🔵 ===================================================\n');
 
   const startTime = Date.now();
   
@@ -46,18 +51,28 @@ async function bcFetch(url, body, stepName = 'API Call') {
     const responseTime = Date.now() - startTime;
     const text = await res.text();
 
-    // Log response status and headers
-    strapi.log.info(`[BC Lifecycle] 🟢 ${stepName} - RESPONSE STATUS: ${res.status} ${res.statusText} (${responseTime}ms)`);
-    strapi.log.info(`[BC Lifecycle] 🟢 ${stepName} - RESPONSE HEADERS:`, Object.fromEntries(res.headers.entries()));
+    // Log the complete response with clear delimiters
+    console.log('\n');
+    console.log('🟢 ===================================================');
+    console.log(`🟢 ${stepName} - RESPONSE (${responseTime}ms)`);
+    console.log('🟢 ===================================================');
+    console.log(`🟢 STATUS: ${res.status} ${res.statusText}`);
+    console.log('🟢 RESPONSE BODY:');
+    console.log('🟢 ---------------------------------------------------');
+    
+    // Try to pretty print JSON response
+    try {
+      const jsonResponse = JSON.parse(text);
+      console.log(JSON.stringify(jsonResponse, null, 2));
+    } catch {
+      console.log(text);
+    }
+    
+    console.log('🟢 ===================================================\n');
 
     if (!res.ok) {
-      // Log error response body
-      strapi.log.error(`[BC Lifecycle] 🔴 ${stepName} - ERROR RESPONSE BODY:`, text);
       throw new Error(`BC HTTP ${res.status} @ ${url} — ${text}`);
     }
-
-    // Log successful response body
-    strapi.log.info(`[BC Lifecycle] 🟢 ${stepName} - RESPONSE BODY:`, text);
 
     try {
       return JSON.parse(text);
@@ -66,7 +81,12 @@ async function bcFetch(url, body, stepName = 'API Call') {
     }
   } catch (error) {
     // Log any network or other errors
-    strapi.log.error(`[BC Lifecycle] 🔴 ${stepName} - FETCH ERROR:`, error.message);
+    console.log('\n');
+    console.log('🔴 ===================================================');
+    console.log(`🔴 ${stepName} - ERROR`);
+    console.log('🔴 ===================================================');
+    console.log('🔴 ERROR:', error.message);
+    console.log('🔴 ===================================================\n');
     throw error;
   }
 }
@@ -87,38 +107,63 @@ function countDates(publishingDates) {
 /**
  * Maps advert data to the BC CreateSalesOrder payload and POSTs it.
  * Returns the BC sales order number (e.g. "B-SO-216545N").
+ * 
+ * Expected POST to: /salesOrders
+ * Expected Payload Format:
+ * {
+ *   "sellToCustomerNo": "C04873",
+ *   "orderDate": "2026-02-01",
+ *   "salespersonCode": "419",
+ *   "postingDescription": "40YRS OF NRM LIBERATION DAY SUPPLEMENT- LUKONGE COTTON CO.LTD",
+ *   "locationCode": "HQTRS",
+ *   "postingDate": "2026-02-01",
+ *   "shortcutDimension1Code": "C16",
+ *   "shortcutDimension2Code": "AD",
+ *   "externalDocumentN0": "677279",
+ *   "marketSector": "RET",
+ *   "sectionCommCategory": "SUP"
+ * }
  */
 async function createSalesOrder(advert) {
   const client       = advert.client             || {};
   const salesPersons = advert.vgams_sales_persons || [];
 
+  // Log source data being used for mapping
+  console.log('\n');
+  console.log('📋 ===================================================');
+  console.log('📋 STEP 1: Create Sales Order - Source Data Mapping');
+  console.log('📋 ===================================================');
+  console.log('📋 MAPPING RULES:');
+  console.log('📋   sellToCustomerNo        ← client.bc_no');
+  console.log('📋   orderDate               ← advert.start_date');
+  console.log('📋   salespersonCode         ← vgams_sales_persons[0].bc_code');
+  console.log('📋   postingDescription      ← "<advert_title> - <client.company_name>"');
+  console.log('📋   locationCode            ← advert.office_location');
+  console.log('📋   postingDate             ← advert.start_date');
+  console.log('📋   shortcutDimension1Code  ← advert.cost_stream');
+  console.log('📋   shortcutDimension2Code  ← advert.revenue_stream');
+  console.log('📋   externalDocumentN0      ← advert.client_reference_no');
+  console.log('📋   marketSector            ← advert.market_sector');
+  console.log('📋   sectionCommCategory     ← advert.section_commission');
+  console.log('📋 ---------------------------------------------------');
+  console.log('📋 SOURCE VALUES:');
+  console.log('📋   client.bc_no:', client.bc_no || '(empty)');
+  console.log('📋   advert.start_date:', advert.start_date || '(empty)');
+  console.log('📋   salesperson.bc_code:', salesPersons[0]?.bc_code || '(empty)');
+  console.log('📋   advert.advert_title:', advert.advert_title || '(empty)');
+  console.log('📋   client.company_name:', client.company_name || '(empty)');
+  console.log('📋   advert.office_location:', advert.office_location || '(empty)');
+  console.log('📋   advert.cost_stream:', advert.cost_stream || '(empty)');
+  console.log('📋   advert.revenue_stream:', advert.revenue_stream || '(empty)');
+  console.log('📋   advert.client_reference_no:', advert.client_reference_no || '(empty)');
+  console.log('📋   advert.market_sector:', advert.market_sector || '(empty)');
+  console.log('📋   advert.section_commission:', advert.section_commission || '(empty)');
+  console.log('📋 ===================================================\n');
+
   // Use the first sales person's BC code
   const salespersonCode = salesPersons.length > 0
     ? (salesPersons[0].bc_code || '')
     : '';
-
-  // Log the complete advert data being used for mapping
-  strapi.log.info('[BC Lifecycle] 📋 Source advert data for Sales Order:', JSON.stringify({
-    advert_id: advert.id,
-    advert_title: advert.advert_title,
-    client: {
-      id: client.id,
-      bc_no: client.bc_no,
-      company_name: client.company_name
-    },
-    start_date: advert.start_date,
-    sales_person: {
-      id: salesPersons[0]?.id,
-      bc_code: salesPersons[0]?.bc_code,
-      name: salesPersons[0]?.name
-    },
-    office_location: advert.office_location,
-    cost_stream: advert.cost_stream,
-    revenue_stream: advert.revenue_stream,
-    client_reference_no: advert.client_reference_no,
-    market_sector: advert.market_sector,
-    section_commission: advert.section_commission
-  }, null, 2));
 
   const payload = {
     sellToCustomerNo:       client.bc_no                  || '',
@@ -134,41 +179,92 @@ async function createSalesOrder(advert) {
     sectionCommCategory:    advert.section_commission     || '',
   };
 
-  const response = await bcFetch(`${BC_BASE_URL}/salesOrders`, payload, 'Create Sales Order');
+  console.log('\n');
+  console.log('📤 ===================================================');
+  console.log('📤 STEP 1: POST to Create Sales Order');
+  console.log('📤 ===================================================');
+  console.log('📤 ENDPOINT: POST /salesOrders');
+  console.log('📤 FULL URL:', `${BC_BASE_URL}/salesOrders`);
+  console.log('📤 ---------------------------------------------------');
+  console.log('📤 GENERATED PAYLOAD (mapped from source data):');
+  console.log(JSON.stringify(payload, null, 2));
+  console.log('📤 ===================================================\n');
 
+  const response = await bcFetch(`${BC_BASE_URL}/salesOrders`, payload, 'STEP 1: Create Sales Order');
+  
+  // Log extracted order number
+  const orderNumber = response.number || response.orderNumber || response.no || response.No || null;
+  console.log('\n');
+  console.log('📌 ===================================================');
+  console.log('📌 STEP 1 - Extracted Order Number from Response');
+  console.log('📌 ===================================================');
+  console.log('📌 ORDER NUMBER:', orderNumber || 'NOT FOUND');
+  console.log('📌 This will be used as: bc_reference_number');
+  console.log('📌 ===================================================\n');
+  
   return response;
 }
 
 // ─── Step 2: Create Sales Order Line ─────────────────────────────────────────
 /**
  * Maps advert data to the BC CreateSalesOrderLine payload and POSTs it.
+ * 
+ * Expected POST to: /salesOrders('B-SO-216545N')/salesOrderLines
+ * Expected Payload Format:
+ * {
+ *   "lineNo": 10000,
+ *   "type": "Resource",
+ *   "no": "AD0003",
+ *   "description2": "Quarter page(16cm*3col)FC",
+ *   "unitOfMeasureCode": "ADS",
+ *   "quantity": 1,
+ *   "unitPrice": 3150000,
+ *   "lineDiscountPercentange": 20.63492
+ * }
  */
 async function createSalesOrderLine(advert, salesOrderNumber) {
   const rateCard     = advert.rate_card || {};
   const numberOfDays = countDates(advert.publishing_dates);
 
-  // Log the publishing_dates to see what's being counted
-  strapi.log.info('[BC Lifecycle] 📋 Publishing dates for line item:', {
-    raw_publishing_dates: advert.publishing_dates,
-    counted_days: numberOfDays,
-    date_array: Array.isArray(advert.publishing_dates) ? advert.publishing_dates : 
-                (typeof advert.publishing_dates === 'string' ? JSON.parse(advert.publishing_dates) : null)
+  // Log source data for line item
+  console.log('\n');
+  console.log('📋 ===================================================');
+  console.log('📋 STEP 2: Create Sales Order Line - Source Data Mapping');
+  console.log('📋 ===================================================');
+  console.log('📋 MAPPING RULES:');
+  console.log('📋   lineNo                  ← advert.id');
+  console.log('📋   type                    ← "Resource" (fixed)');
+  console.log('📋   no                      ← rate_card.bc_resource_code');
+  console.log('📋   description2            ← advert.ad_size');
+  console.log('📋   unitOfMeasureCode       ← "ADS" (fixed)');
+  console.log('📋   quantity                ← count of publishing_dates');
+  console.log('📋   unitPrice               ← advert.base_price');
+  console.log('📋   lineDiscountPercentange ← advert.discount');
+  console.log('📋 ---------------------------------------------------');
+  console.log('📋 SOURCE VALUES:');
+  console.log('📋   advert.id:', advert.id);
+  console.log('📋   rate_card.bc_resource_code:', rateCard.bc_resource_code || '(empty)');
+  console.log('📋   advert.ad_size:', advert.ad_size || '(empty)');
+  console.log('📋   publishing_dates:', {
+    raw: advert.publishing_dates,
+    count: numberOfDays,
+    type: typeof advert.publishing_dates,
+    isArray: Array.isArray(advert.publishing_dates)
   });
-
-  // Log the complete rate card data
-  strapi.log.info('[BC Lifecycle] 📋 Rate card data for line item:', {
-    rate_card_id: rateCard.id,
-    bc_resource_code: rateCard.bc_resource_code,
-    rate_card_name: rateCard.name
-  });
+  console.log('📋   advert.base_price:', advert.base_price);
+  console.log('📋   advert.discount:', advert.discount);
+  console.log('📋 ===================================================\n');
 
   const resourceNo = rateCard.bc_resource_code || '';
 
   if (!resourceNo) {
-    strapi.log.warn(
-      `[BC Lifecycle] ⚠️ rate_card.bc_resource_code is empty for advert ${advert.id}. ` +
-      `The BC line "no" field will be blank — BC may reject this.`
-    );
+    console.log('\n');
+    console.log('⚠️ ===================================================');
+    console.log('⚠️ WARNING: rate_card.bc_resource_code is empty');
+    console.log('⚠️ ===================================================');
+    console.log('⚠️ This field maps to "no" in the payload');
+    console.log('⚠️ BC may reject the request if this is empty');
+    console.log('⚠️ ===================================================\n');
   }
 
   const payload = {
@@ -184,7 +280,18 @@ async function createSalesOrderLine(advert, salesOrderNumber) {
 
   const url = `${BC_BASE_URL}/salesOrders('${encodeURIComponent(salesOrderNumber)}')/salesOrderLines`;
   
-  const response = await bcFetch(url, payload, 'Create Sales Order Line');
+  console.log('\n');
+  console.log('📤 ===================================================');
+  console.log('📤 STEP 2: POST to Create Sales Order Line');
+  console.log('📤 ===================================================');
+  console.log('📤 ENDPOINT: POST /salesOrders(\'{salesOrderNumber}\')/salesOrderLines');
+  console.log('📤 FULL URL:', url);
+  console.log('📤 ---------------------------------------------------');
+  console.log('📤 GENERATED PAYLOAD (mapped from source data):');
+  console.log(JSON.stringify(payload, null, 2));
+  console.log('📤 ===================================================\n');
+
+  const response = await bcFetch(url, payload, 'STEP 2: Create Sales Order Line');
 
   return response;
 }
@@ -205,20 +312,41 @@ module.exports = {
     const { result } = event;
 
     // Log the initial creation data
-    strapi.log.info('[BC Lifecycle] 🆕 New advert created with data:', JSON.stringify(result, null, 2));
+    console.log('\n');
+    console.log('🚀 ===================================================');
+    console.log('🚀 NEW ADVERT CREATED - STARTING BC SYNC');
+    console.log('🚀 ===================================================');
+    console.log('🚀 Advert ID:', result.id);
+    console.log('🚀 Reference Number:', result.reference_number);
+    console.log('🚀 Title:', result.advert_title);
+    console.log('🚀 Status:', result.status);
+    console.log('🚀 ===================================================\n');
 
     // ── Guard: skip if BC is not configured ────────────────────────────────
     if (!BC_BASE_URL || !BC_USERNAME || !BC_PASSWORD) {
-      strapi.log.warn('[BC Lifecycle] ⚠️ BC credentials not configured — skipping BC sync.');
+      console.log('\n');
+      console.log('⚠️ ===================================================');
+      console.log('⚠️ BC CREDENTIALS NOT CONFIGURED');
+      console.log('⚠️ ===================================================');
+      console.log('⚠️ BC_BASE_URL:', BC_BASE_URL ? '✅ Set' : '❌ Missing');
+      console.log('⚠️ BC_USERNAME:', BC_USERNAME ? '✅ Set' : '❌ Missing');
+      console.log('⚠️ BC_PASSWORD:', BC_PASSWORD ? '✅ Set' : '❌ Missing');
+      console.log('⚠️ ===================================================\n');
+      
+      strapi.log.warn('[BC Lifecycle] BC credentials not configured — skipping BC sync.');
       return;
     }
 
     try {
-      strapi.log.info(`[BC Lifecycle] 🚀 Advert created (id: ${result.id}). Starting BC sync…`);
+      console.log('\n');
+      console.log('🔍 ===================================================');
+      console.log('🔍 FETCHING ADVERT WITH RELATIONS');
+      console.log('🔍 ===================================================');
+      console.log('🔍 Advert ID:', result.id);
+      console.log('🔍 Populating: client, rate_card, vgams_sales_persons');
+      console.log('🔍 ===================================================\n');
 
       // ── 1. Re-fetch with all required relations ──────────────────────────
-      strapi.log.info(`[BC Lifecycle] 🔍 Fetching advert ${result.id} with relations...`);
-      
       const advert = await strapi.entityService.findOne(
         'api::advert.advert',
         result.id,
@@ -232,69 +360,68 @@ module.exports = {
       );
 
       if (!advert) {
-        strapi.log.error(`[BC Lifecycle] ❌ Could not re-fetch advert ${result.id} — aborting.`);
+        console.log('\n');
+        console.log('❌ ===================================================');
+        console.log('❌ COULD NOT RE-FETCH ADVERT');
+        console.log('❌ ===================================================');
+        console.log('❌ Advert ID:', result.id);
+        console.log('❌ ===================================================\n');
+        
+        strapi.log.error(`[BC Lifecycle] Could not re-fetch advert ${result.id} — aborting.`);
         return;
       }
 
       // Log the complete fetched data with relations
-      strapi.log.info('[BC Lifecycle] 📦 Complete fetched advert data:', JSON.stringify({
-        id: advert.id,
-        reference_number: advert.reference_number,
-        bc_reference_number: advert.bc_reference_number,
-        advert_title: advert.advert_title,
-        client: advert.client ? {
-          id: advert.client.id,
-          bc_no: advert.client.bc_no,
-          company_name: advert.client.company_name,
-          email: advert.client.email
-        } : null,
-        rate_card: advert.rate_card ? {
-          id: advert.rate_card.id,
-          bc_resource_code: advert.rate_card.bc_resource_code,
-          name: advert.rate_card.name,
-          rate: advert.rate_card.rate
-        } : null,
-        vgams_sales_persons: advert.vgams_sales_persons?.map(sp => ({
-          id: sp.id,
-          bc_code: sp.bc_code,
-          name: sp.name,
-          email: sp.email
-        })),
-        ad_size: advert.ad_size,
-        ad_type: advert.ad_type,
-        frequency: advert.frequency,
-        start_date: advert.start_date,
-        end_date: advert.end_date,
-        base_price: advert.base_price,
-        surcharge: advert.surcharge,
-        discount: advert.discount,
-        total_amount: advert.total_amount,
-        payment_method: advert.payment_method,
-        publishing_dates: advert.publishing_dates,
-        office_location: advert.office_location,
-        client_reference_no: advert.client_reference_no,
-        contact_person: advert.contact_person,
-        contact_number: advert.contact_number,
-        contact_email: advert.contact_email,
-        market_sector: advert.market_sector,
-        section_commission: advert.section_commission,
-        cost_stream: advert.cost_stream,
-        revenue_stream: advert.revenue_stream,
-        bc_share_success: advert.bc_share_success,
-        status: advert.status
-      }, null, 2));
+      console.log('\n');
+      console.log('📦 ===================================================');
+      console.log('📦 COMPLETE FETCHED ADVERT DATA');
+      console.log('📦 ===================================================');
+      console.log('📦 ID:', advert.id);
+      console.log('📦 Reference Number:', advert.reference_number);
+      console.log('📦 Title:', advert.advert_title);
+      console.log('📦 ---------------------------------------------------');
+      console.log('📦 CLIENT DATA:');
+      console.log(JSON.stringify(advert.client, null, 2));
+      console.log('📦 ---------------------------------------------------');
+      console.log('📦 RATE CARD DATA:');
+      console.log(JSON.stringify(advert.rate_card, null, 2));
+      console.log('📦 ---------------------------------------------------');
+      console.log('📦 SALES PERSONS DATA:');
+      console.log(JSON.stringify(advert.vgams_sales_persons, null, 2));
+      console.log('📦 ---------------------------------------------------');
+      console.log('📦 OTHER FIELDS:');
+      console.log('📦   ad_size:', advert.ad_size);
+      console.log('📦   ad_type:', advert.ad_type);
+      console.log('📦   start_date:', advert.start_date);
+      console.log('📦   end_date:', advert.end_date);
+      console.log('📦   base_price:', advert.base_price);
+      console.log('📦   discount:', advert.discount);
+      console.log('📦   publishing_dates:', advert.publishing_dates);
+      console.log('📦 ===================================================\n');
 
       // ── 2. Create BC Sales Order ─────────────────────────────────────────
-      strapi.log.info(`[BC Lifecycle] 📤 Step 1/3: Creating BC Sales Order...`);
+      console.log('\n');
+      console.log('📤 ===================================================');
+      console.log('📤 STEP 1/3: CREATING BC SALES ORDER');
+      console.log('📤 ===================================================');
+      console.log('📤 Expected Endpoint: POST /salesOrders');
+      console.log('📤 ===================================================\n');
+      
       const salesOrderResponse = await createSalesOrder(advert);
+      
       const salesOrderNumber = salesOrderResponse.number || 
                                salesOrderResponse.orderNumber || 
                                salesOrderResponse.no || 
                                salesOrderResponse.No || 
                                null;
 
-      strapi.log.info(`[BC Lifecycle] ✅ Step 1/3 Complete - Sales Order: ${salesOrderNumber}`);
-      strapi.log.info('[BC Lifecycle] 📥 Full Sales Order Response:', JSON.stringify(salesOrderResponse, null, 2));
+      console.log('\n');
+      console.log('✅ ===================================================');
+      console.log('✅ STEP 1/3 COMPLETE');
+      console.log('✅ ===================================================');
+      console.log('✅ Sales Order Number:', salesOrderNumber);
+      console.log('✅ This will be saved as bc_reference_number');
+      console.log('✅ ===================================================\n');
 
       if (!salesOrderNumber) {
         throw new Error(
@@ -303,47 +430,88 @@ module.exports = {
       }
 
       // ── 3. Create BC Sales Order Line ────────────────────────────────────
-      strapi.log.info(`[BC Lifecycle] 📤 Step 2/3: Creating Sales Order Line for Order: ${salesOrderNumber}...`);
+      console.log('\n');
+      console.log('📤 ===================================================');
+      console.log('📤 STEP 2/3: CREATING SALES ORDER LINE');
+      console.log('📤 ===================================================');
+      console.log(`📤 Expected Endpoint: POST /salesOrders('${salesOrderNumber}')/salesOrderLines`);
+      console.log('📤 ===================================================\n');
+      
       const lineResponse = await createSalesOrderLine(advert, salesOrderNumber);
       
-      strapi.log.info(`[BC Lifecycle] ✅ Step 2/3 Complete - Sales Order Line created`);
-      strapi.log.info('[BC Lifecycle] 📥 Full Sales Order Line Response:', JSON.stringify(lineResponse, null, 2));
+      console.log('\n');
+      console.log('✅ ===================================================');
+      console.log('✅ STEP 2/3 COMPLETE');
+      console.log('✅ ===================================================');
+      console.log('✅ Sales Order Line created successfully');
+      console.log('✅ ===================================================\n');
 
       // ── 4. Save BC order number and set bc_share_success to true ─────────
-      strapi.log.info(`[BC Lifecycle] 📤 Step 3/3: Updating Strapi advert with BC reference...`);
+      console.log('\n');
+      console.log('📤 ===================================================');
+      console.log('📤 STEP 3/3: UPDATING STRAPI ADVERT');
+      console.log('📤 ===================================================');
       
       const updateData = { 
         bc_reference_number: salesOrderNumber,
         bc_share_success: true
       };
       
-      strapi.log.info('[BC Lifecycle] 📝 Update data:', JSON.stringify(updateData, null, 2));
+      console.log('📤 Update Data:', JSON.stringify(updateData, null, 2));
+      console.log('📤 ===================================================\n');
       
       const updatedAdvert = await strapi.entityService.update('api::advert.advert', result.id, {
         data: updateData,
       });
 
-      strapi.log.info(`[BC Lifecycle] ✅ Step 3/3 Complete - Advert updated successfully`);
-      strapi.log.info(`[BC Lifecycle] 🎉 BC sync completed successfully for advert ${result.id}`);
-      strapi.log.info('[BC Lifecycle] 📋 Final advert state:', JSON.stringify({
-        id: updatedAdvert.id,
-        bc_reference_number: updatedAdvert.bc_reference_number,
-        bc_share_success: updatedAdvert.bc_share_success
-      }, null, 2));
+      console.log('\n');
+      console.log('✅ ===================================================');
+      console.log('✅ STEP 3/3 COMPLETE');
+      console.log('✅ ===================================================');
+      console.log('✅ Updated Advert:');
+      console.log('✅   ID:', updatedAdvert.id);
+      console.log('✅   bc_reference_number:', updatedAdvert.bc_reference_number);
+      console.log('✅   bc_share_success:', updatedAdvert.bc_share_success);
+      console.log('✅ ===================================================\n');
+
+      console.log('\n');
+      console.log('🎉 ===================================================');
+      console.log('🎉 BC SYNC COMPLETED SUCCESSFULLY');
+      console.log('🎉 ===================================================');
+      console.log('🎉 Advert ID:', result.id);
+      console.log('🎉 BC Reference:', salesOrderNumber);
+      console.log('🎉 bc_share_success: true');
+      console.log('🎉 ===================================================\n');
 
     } catch (error) {
-      // Never rethrow — BC errors must not affect the Strapi record
-      strapi.log.error('[BC Lifecycle] ❌ BC sync failed:', error.message || error);
-      strapi.log.error('[BC Lifecycle] ❌ Error stack:', error.stack);
+      console.log('\n');
+      console.log('❌ ===================================================');
+      console.log('❌ BC SYNC FAILED');
+      console.log('❌ ===================================================');
+      console.log('❌ Error:', error.message);
+      console.log('❌ Stack:', error.stack);
+      console.log('❌ ===================================================\n');
       
-      // Optionally set bc_share_success to false on failure
+      strapi.log.error('[BC Lifecycle] ✗ BC sync failed:', error.message || error);
+      
+      // Set bc_share_success to false on failure
       try {
         await strapi.entityService.update('api::advert.advert', result.id, {
           data: { bc_share_success: false }
         });
-        strapi.log.info('[BC Lifecycle] 📝 Set bc_share_success to false due to failure');
+        console.log('\n');
+        console.log('📝 ===================================================');
+        console.log('📝 Set bc_share_success to false due to failure');
+        console.log('📝 ===================================================\n');
       } catch (updateError) {
-        strapi.log.error('[BC Lifecycle] ❌ Failed to update bc_share_success:', updateError.message);
+        console.log('\n');
+        console.log('❌ ===================================================');
+        console.log('❌ Failed to update bc_share_success');
+        console.log('❌ ===================================================');
+        console.log('❌ Error:', updateError.message);
+        console.log('❌ ===================================================\n');
+        
+        strapi.log.error('[BC Lifecycle] ✗ Failed to update bc_share_success:', updateError.message);
       }
     }
   },
