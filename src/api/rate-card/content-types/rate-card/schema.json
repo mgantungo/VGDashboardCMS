@@ -17,7 +17,10 @@
       "target": "api::product.product",
       "inversedBy": "rate_cards"
     },
-    "no": {
+    "full_color_no": {
+      "type": "string"
+    },
+    "black_color_no": {
       "type": "string"
     },
     "base_unit_of_measure": {

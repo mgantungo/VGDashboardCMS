@@ -1742,6 +1742,7 @@ export interface ApiRateCardRateCard extends Struct.CollectionTypeSchema {
   attributes: {
     ad_type: Schema.Attribute.String & Schema.Attribute.Required;
     base_unit_of_measure: Schema.Attribute.String;
+    black_color_no: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1749,6 +1750,7 @@ export interface ApiRateCardRateCard extends Struct.CollectionTypeSchema {
     duration: Schema.Attribute.String;
     effective_date: Schema.Attribute.Date & Schema.Attribute.Required;
     expiry_date: Schema.Attribute.Date;
+    full_color_no: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1756,7 +1758,6 @@ export interface ApiRateCardRateCard extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     metadata: Schema.Attribute.JSON;
-    no: Schema.Attribute.String;
     price_bw: Schema.Attribute.Decimal;
     price_fc: Schema.Attribute.Decimal;
     product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
