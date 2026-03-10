@@ -222,9 +222,11 @@ async function createSalesOrder(advert) {
  *   "lineDiscountPercentange": 20.63492
  * }
  * 
- * IMPORTANT: The 'no' field is populated based on advert.ad_type:
- *   - If ad_type = "full_color"  → use rate_card.full_color_no
- *   - If ad_type = "black_white" → use rate_card.black_color_no
+ * IMPORTANT: 
+ *   - The 'no' field is populated based on advert.ad_type:
+ *       • full_color  → rate_card.full_color_no
+ *       • black_white → rate_card.black_color_no
+ *   - The 'unitOfMeasureCode' field comes from rate_card.base_unit_of_measure
  */
 async function createSalesOrderLine(advert, salesOrderNumber) {
   const rateCard     = advert.rate_card || {};
@@ -239,6 +241,9 @@ async function createSalesOrderLine(advert, salesOrderNumber) {
     resourceNo = rateCard.black_color_no || '';
   }
 
+  // Get unit of measure from rate card
+  const unitOfMeasure = rateCard.base_unit_of_measure || '';
+
   // Log source data for line item
   console.log('\n');
   console.log('📋 ===================================================');
@@ -251,7 +256,7 @@ async function createSalesOrderLine(advert, salesOrderNumber) {
   console.log('📋                              • full_color  → rate_card.full_color_no');
   console.log('📋                              • black_white → rate_card.black_color_no');
   console.log('📋   description2            ← advert.ad_size');
-  console.log('📋   unitOfMeasureCode       ← "ADS" (fixed)');
+  console.log('📋   unitOfMeasureCode       ← rate_card.base_unit_of_measure');
   console.log('📋   quantity                ← count of publishing_dates');
   console.log('📋   unitPrice               ← advert.base_price');
   console.log('📋   lineDiscountPercentange ← advert.discount');
@@ -262,6 +267,7 @@ async function createSalesOrderLine(advert, salesOrderNumber) {
   console.log('📋   rate_card.full_color_no:', rateCard.full_color_no || '(empty)');
   console.log('📋   rate_card.black_color_no:', rateCard.black_color_no || '(empty)');
   console.log('📋   SELECTED resourceNo:', resourceNo || '(empty - will cause BC error)');
+  console.log('📋   rate_card.base_unit_of_measure:', unitOfMeasure || '(empty - will cause BC error)');
   console.log('📋   advert.ad_size:', advert.ad_size || '(empty)');
   console.log('📋   publishing_dates:', {
     raw: advert.publishing_dates,
@@ -294,12 +300,31 @@ async function createSalesOrderLine(advert, salesOrderNumber) {
     );
   }
 
+  if (!unitOfMeasure) {
+    console.log('\n');
+    console.log('⚠️ ===================================================');
+    console.log('⚠️ CRITICAL WARNING: Unit of Measure is empty');
+    console.log('⚠️ ===================================================');
+    console.log('⚠️ This field maps to "unitOfMeasureCode" in the payload');
+    console.log('⚠️ BC will REJECT this request if empty');
+    console.log('⚠️');
+    console.log('⚠️ Expected field: base_unit_of_measure on rate card');
+    console.log('⚠️ Rate Card ID:', rateCard.id);
+    console.log('⚠️ Please ensure the rate card has base_unit_of_measure set');
+    console.log('⚠️ ===================================================\n');
+    
+    strapi.log.warn(
+      `[BC Lifecycle] base_unit_of_measure is empty for advert ${advert.id}. ` +
+      `BC will likely reject this request.`
+    );
+  }
+
   const payload = {
     lineNo:                  advert.id,         // Strapi advert ID as BC line number
     type:                    'Resource',
     no:                      resourceNo,
     description2:            advert.ad_size     || '',
-    unitOfMeasureCode:       'ADS',             // always fixed
+    unitOfMeasureCode:       unitOfMeasure,     // From rate_card.base_unit_of_measure
     quantity:                numberOfDays,
     unitPrice:               advert.base_price  ?? 0,
     lineDiscountPercentange: advert.discount     ?? 0,
