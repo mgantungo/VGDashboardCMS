@@ -221,10 +221,23 @@ async function createSalesOrder(advert) {
  *   "unitPrice": 3150000,
  *   "lineDiscountPercentange": 20.63492
  * }
+ * 
+ * IMPORTANT: The 'no' field is populated based on advert.ad_type:
+ *   - If ad_type = "full_color"  → use rate_card.full_color_no
+ *   - If ad_type = "black_white" → use rate_card.black_color_no
  */
 async function createSalesOrderLine(advert, salesOrderNumber) {
   const rateCard     = advert.rate_card || {};
   const numberOfDays = countDates(advert.publishing_dates);
+  const adType = advert.ad_type || 'full_color'; // Default to full_color if not set
+
+  // Determine which resource code to use based on ad_type
+  let resourceNo = '';
+  if (adType === 'full_color') {
+    resourceNo = rateCard.full_color_no || '';
+  } else if (adType === 'black_white') {
+    resourceNo = rateCard.black_color_no || '';
+  }
 
   // Log source data for line item
   console.log('\n');
@@ -234,7 +247,9 @@ async function createSalesOrderLine(advert, salesOrderNumber) {
   console.log('📋 MAPPING RULES:');
   console.log('📋   lineNo                  ← advert.id');
   console.log('📋   type                    ← "Resource" (fixed)');
-  console.log('📋   no                      ← rate_card.bc_resource_code');
+  console.log('📋   no                      ← Based on advert.ad_type:');
+  console.log('📋                              • full_color  → rate_card.full_color_no');
+  console.log('📋                              • black_white → rate_card.black_color_no');
   console.log('📋   description2            ← advert.ad_size');
   console.log('📋   unitOfMeasureCode       ← "ADS" (fixed)');
   console.log('📋   quantity                ← count of publishing_dates');
@@ -243,7 +258,10 @@ async function createSalesOrderLine(advert, salesOrderNumber) {
   console.log('📋 ---------------------------------------------------');
   console.log('📋 SOURCE VALUES:');
   console.log('📋   advert.id:', advert.id);
-  console.log('📋   rate_card.bc_resource_code:', rateCard.bc_resource_code || '(empty)');
+  console.log('📋   advert.ad_type:', adType);
+  console.log('📋   rate_card.full_color_no:', rateCard.full_color_no || '(empty)');
+  console.log('📋   rate_card.black_color_no:', rateCard.black_color_no || '(empty)');
+  console.log('📋   SELECTED resourceNo:', resourceNo || '(empty - will cause BC error)');
   console.log('📋   advert.ad_size:', advert.ad_size || '(empty)');
   console.log('📋   publishing_dates:', {
     raw: advert.publishing_dates,
@@ -255,16 +273,25 @@ async function createSalesOrderLine(advert, salesOrderNumber) {
   console.log('📋   advert.discount:', advert.discount);
   console.log('📋 ===================================================\n');
 
-  const resourceNo = rateCard.bc_resource_code || '';
-
   if (!resourceNo) {
     console.log('\n');
     console.log('⚠️ ===================================================');
-    console.log('⚠️ WARNING: rate_card.bc_resource_code is empty');
+    console.log('⚠️ CRITICAL WARNING: Resource Number (no) is empty');
     console.log('⚠️ ===================================================');
     console.log('⚠️ This field maps to "no" in the payload');
-    console.log('⚠️ BC may reject the request if this is empty');
+    console.log('⚠️ BC will REJECT this request if empty');
+    console.log('⚠️');
+    console.log(`⚠️ Advert ad_type: ${adType}`);
+    console.log(`⚠️ Expected field: ${adType === 'full_color' ? 'full_color_no' : 'black_color_no'} on rate card`);
+    console.log('⚠️ Rate Card ID:', rateCard.id);
+    console.log('⚠️ Please ensure the rate card has the correct value set');
     console.log('⚠️ ===================================================\n');
+    
+    strapi.log.warn(
+      `[BC Lifecycle] Resource number is empty for advert ${advert.id}. ` +
+      `ad_type: ${adType}, expected field: ${adType === 'full_color' ? 'full_color_no' : 'black_color_no'}. ` +
+      `BC will likely reject this request.`
+    );
   }
 
   const payload = {
@@ -319,6 +346,7 @@ module.exports = {
     console.log('🚀 Advert ID:', result.id);
     console.log('🚀 Reference Number:', result.reference_number);
     console.log('🚀 Title:', result.advert_title);
+    console.log('🚀 Ad Type:', result.ad_type);
     console.log('🚀 Status:', result.status);
     console.log('🚀 ===================================================\n');
 
@@ -379,6 +407,7 @@ module.exports = {
       console.log('📦 ID:', advert.id);
       console.log('📦 Reference Number:', advert.reference_number);
       console.log('📦 Title:', advert.advert_title);
+      console.log('📦 Ad Type:', advert.ad_type);
       console.log('📦 ---------------------------------------------------');
       console.log('📦 CLIENT DATA:');
       console.log(JSON.stringify(advert.client, null, 2));
@@ -391,7 +420,6 @@ module.exports = {
       console.log('📦 ---------------------------------------------------');
       console.log('📦 OTHER FIELDS:');
       console.log('📦   ad_size:', advert.ad_size);
-      console.log('📦   ad_type:', advert.ad_type);
       console.log('📦   start_date:', advert.start_date);
       console.log('📦   end_date:', advert.end_date);
       console.log('📦   base_price:', advert.base_price);
