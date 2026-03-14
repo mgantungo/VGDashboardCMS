@@ -7,6 +7,10 @@ module.exports = {
   // GET /api/finance/accounts-payable-receivable
   async getAccountsPayableReceivable(ctx) {
     if (!validateApiKey(ctx)) return;
+    //AP/AR entries
+    const {startDate, endDate} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -42,6 +46,11 @@ module.exports = {
   // GET /api/finance/asset-depreciation
   async getAssetDepreciation(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Asset depreciation schedules
+    const {startDate, endDate} = ctx.request.body;
+
+    
+    
     ctx.send({
       data: [
         {
@@ -83,6 +92,12 @@ module.exports = {
   // GET /api/finance/bad-debt-ratios
   async getBadDebtRatios(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Bad debt ratios by quarter 
+    const {startDate, endDate} = ctx.request.body;
+
+    
+    
+    
     ctx.send({
       data: [
         { date: '2023-12-31', quarter: 'Q4', creditSales: 42000, badDebts: 3550, badDebtRatioPercentage: 8.45 },
@@ -96,6 +111,9 @@ module.exports = {
   // GET /api/finance/budget-variance
   async getBudgetVariance(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Budget vs actual variance
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       data: [
         { G_L_Account_No: '40001', G_L_Account_Name: 'Salaries & Wages', actual: 85000000, budget: 80000000, department: 'HR', variancePercent: -6.25 },
@@ -109,6 +127,10 @@ module.exports = {
   // GET /api/finance/capital-expenditure
   async getCapitalExpenditure(ctx) {
     if (!validateApiKey(ctx)) return;
+    //CapEx transactions
+    const {startDate, endDate} = ctx.request.body;
+    
+    
     ctx.send({
       data: [
         {
@@ -136,6 +158,10 @@ module.exports = {
   // GET /api/finance/collection-efficiency
   async getCollectionEfficiency(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Collection efficiency
+    const {startDate, endDate} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         { date: '2023-12-31', quarter: 'Q4', totalReceivables: 150000, collectedAmount: 120000, collectionEfficiencyPercentage: 80.0 },
@@ -148,6 +174,9 @@ module.exports = {
   // GET /api/finance/daily-sales-outstanding
   async getDailySalesOutstanding(ctx) {
     if (!validateApiKey(ctx)) return;
+    //DSO metrics
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       data: [
         { date: '2023-12-31', totalReceivables: 150000, totalCreditSales: 600000, dso: 91.25 },
@@ -160,6 +189,10 @@ module.exports = {
   // GET /api/finance/expense-categorization
   async getExpenseCategorization(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Categorized expenses
+    const {startDate, endDate} = ctx.request.body;
+    
+    
     ctx.send({
       totalAmount: 2290329118,
       categories: [
@@ -200,6 +233,11 @@ module.exports = {
   // GET /api/finance/forecasting
   async getFinanceForecasting(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Financial forecasts
+    const {startDate, endDate} = ctx.request.body;
+    
+    
+    
     ctx.send({
       data: [
         {
@@ -231,6 +269,11 @@ module.exports = {
   // GET /api/finance/general-ledger
   async getGeneralLedger(ctx) {
     if (!validateApiKey(ctx)) return;
+    //GL reconciliation
+    const {startDate, endDate} = ctx.request.body;
+    
+    
+    
     ctx.send({
       data: [
         {
@@ -260,6 +303,11 @@ module.exports = {
   // GET /api/finance/invoice-metrics
   async getInvoiceMetrics(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Invoice processing KPIs
+    const {startDate, endDate} = ctx.request.body;
+    
+    
+    
     ctx.send({
       data: [
         {
@@ -283,6 +331,10 @@ module.exports = {
   // GET /api/finance/pipeline-metrics
   async getPipelineMetrics(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Data pipeline health
+    const {startDate, endDate} = ctx.request.body;
+    
+    
     ctx.send({
       data: [
         {
@@ -316,6 +368,10 @@ module.exports = {
   // GET /api/finance/reporting-accuracy
   async getReportingAccuracy(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Report accuracy summary eg "Income Statements"
+    const {reportCategory} = ctx.request.body;
+
+    /*
     ctx.send({
       summary: [
         { report_category: 'Income Statements', no_of_reports: 15, no_of_modified_reports: 6, accuracyRate: 60 },
@@ -323,11 +379,21 @@ module.exports = {
         { report_category: 'Cash Flow Statements', no_of_reports: 8, no_of_modified_reports: 1, accuracyRate: 87.5 },
       ],
     });
+    */
+    
+    ctx.send({
+      summary: [
+        { report_category: 'Income Statements', no_of_reports: 15, no_of_modified_reports: 6, accuracyRate: 60 }
+      ],
+    });
   },
 
   // GET /api/finance/statement-variance
   async getStatementVariance(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Financial statement variance
+    const {startDate, endDate} = ctx.request.body;
+      
     ctx.send({
       data: [
         {
@@ -359,6 +425,9 @@ module.exports = {
   // GET /api/finance/system-integration-health
   async getSystemIntegrationHealth(ctx) {
     if (!validateApiKey(ctx)) return;
+    //ERP/CRM integration health
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       data: [
         {
@@ -392,6 +461,9 @@ module.exports = {
   // GET /api/finance/tax-provisioning
   async getTaxProvisioning(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Tax provisioning data
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       data: [
         {
@@ -420,6 +492,9 @@ module.exports = {
   // GET /api/finance/total-asset-value
   async getTotalAssetValue(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Total asset value
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       data: [
         {
@@ -440,6 +515,9 @@ module.exports = {
   // GET /api/finance/close-metrics
   async getFinanceCloseMetrics(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Finance close entries
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       data: [
         {
@@ -463,6 +541,9 @@ module.exports = {
   // GET /api/finance/audit-trail
   async getAuditTrail(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Audit trail analysis
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       data: [
         {
@@ -487,6 +568,10 @@ module.exports = {
   // GET /api/finance/regional-pl
   async getRegionalPL(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Regional P&L breakdown
+    const {startDate, endDate} = ctx.request.body;
+    
+    
     ctx.send({
       data: [
         {
