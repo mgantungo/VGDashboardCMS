@@ -7,6 +7,10 @@ module.exports = {
   // GET /api/it/server-infrastructure
   async getServerInfrastructure(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Server load & resource usage
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -52,6 +56,10 @@ module.exports = {
   // GET /api/it/storage-utilization
   async getStorageUtilization(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Storage capacity & usage
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -85,6 +93,10 @@ module.exports = {
   // GET /api/it/cybersecurity
   async getCybersecurity(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Security incidents & posture
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -130,6 +142,10 @@ module.exports = {
   // GET /api/it/patch-compliance
   async getPatchCompliance(ctx) {
     if (!validateApiKey(ctx)) return;
+    //System patch compliance
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -176,6 +192,10 @@ module.exports = {
   // GET /api/it/system-health
   async getSystemHealth(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Overall system health scores
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -213,6 +233,10 @@ module.exports = {
   // GET /api/it/infrastructure-costs
   async getInfrastructureCosts(ctx) {
     if (!validateApiKey(ctx)) return;
+    //IT infrastructure costs
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -256,6 +280,10 @@ module.exports = {
   // GET /api/it/ticket-sla
   async getTicketSLA(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Help desk tickets & SLA
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -315,6 +343,10 @@ module.exports = {
   // GET /api/it/user-satisfaction
   async getUserSatisfaction(ctx) {
     if (!validateApiKey(ctx)) return;
+    //IT satisfaction surveys
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -358,6 +390,10 @@ module.exports = {
   // GET /api/it/asset-inventory
   async getAssetInventory(ctx) {
     if (!validateApiKey(ctx)) return;
+    //IT asset inventory
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -410,6 +446,10 @@ module.exports = {
   // GET /api/it/cpu-performance
   async getCpuPerformance(ctx) {
     if (!validateApiKey(ctx)) return;
+    //CPU performance details
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
