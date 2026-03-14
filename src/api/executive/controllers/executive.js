@@ -7,6 +7,11 @@ module.exports = {
   // GET /api/executive/ceo-analytics
   async getCeoAnalytics(ctx) {
     if (!validateApiKey(ctx)) return;
+    //CEO-level KPI dashboard 
+    const {startDate, endDate} = ctx.request.body;
+
+    
+    
     ctx.send({
       success: true,
       kpis: {
@@ -41,6 +46,9 @@ module.exports = {
   // GET /api/executive/risk-cases
   async getRiskCases(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Risk exposure & case summary
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       success: true,
       kpis: {
@@ -61,6 +69,10 @@ module.exports = {
   // GET /api/executive/retention
   async getRetention(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Employee retention metrics  eg  {"year": 2025, "month": "Aug"}
+    const {year, month} = ctx.request.body;
+    
+    
     ctx.send({
       success: true,
       kpis: {
@@ -77,6 +89,9 @@ module.exports = {
   // GET /api/executive/compensation
   async getCompensation(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Compensation benchmarking
+    const {department} = ctx.request.body;
+    
     ctx.send({
       success: true,
       kpis: {
@@ -95,6 +110,9 @@ module.exports = {
   // GET /api/executive/company-kpis
   async getCompanyKPIs(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Company-wide weekly KPIs
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       results: {
         data: [
@@ -215,6 +233,9 @@ module.exports = {
   // GET /api/executive/compliance
   async getCompliance(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Audits, policies & tasks  eg  HR
+    const {department} = ctx.request.body;
+    
     ctx.send({
       audits: {
         message: '1 audit(s) found',
@@ -311,6 +332,10 @@ module.exports = {
   // GET /api/executive/control-effectiveness
   async getControlEffectiveness(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Internal control effectiveness eg IT
+    const {department} = ctx.request.body;
+    
+    
     ctx.send({
       summary: {
         total_controls: 14,
@@ -395,6 +420,10 @@ module.exports = {
   // GET /api/executive/cost-optimization
   async getCostOptimization(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Internal control effectiveness eg Finance & Accounting
+    const {department} = ctx.request.body;
+
+    
     ctx.send({
       summary: [
         { department: 'Finance', budget: 1523450, actualSpend: 1401200, legalSpend: 3400, variancePercent: 8.0 },
@@ -410,6 +439,9 @@ module.exports = {
   // GET /api/executive/finance-health
   async getFinanceHealth(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Company-wide weekly KPIs
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       summary: {
         totalRecords: 200,
@@ -480,6 +512,9 @@ module.exports = {
   // GET /api/executive/liquidity-ratios
   async getLiquidityRatios(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Liquidity ratio trends
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       summary: {
         totalRecords: 200,
@@ -546,6 +581,9 @@ module.exports = {
   // GET /api/executive/market-share
   async getMarketShare(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Market share by region & BU 
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       data: [
         {
@@ -587,6 +625,9 @@ module.exports = {
   // GET /api/executive/risk-heatmap
   async getRiskHeatmap(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Risk heat map
+    const {department} = ctx.request.body;
+    
     ctx.send([
       {
         riskId: 'R001',
@@ -630,6 +671,9 @@ module.exports = {
   // GET /api/executive/roi-analysis
   async getROIAnalysis(ctx) {
     if (!validateApiKey(ctx)) return;
+    //ROI & automation analysis
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       summary: {
         totalRecords: 200,
@@ -675,6 +719,10 @@ module.exports = {
   // GET /api/executive/strategic-initiatives
   async getStrategicInitiatives(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Strategic initiative tracking
+    const {startDate, endDate} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
