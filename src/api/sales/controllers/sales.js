@@ -6,7 +6,11 @@ module.exports = {
 
   // GET /api/sales/revenue-attribution
   async getRevenueAttribution(ctx) {
+    //Revenue by segment & rep
     if (!validateApiKey(ctx)) return;
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -77,6 +81,10 @@ module.exports = {
   // GET /api/sales/client-lifetime-value
   async getClientLifetimeValue(ctx) {
     if (!validateApiKey(ctx)) return;
+    //CLV & churn risk
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -129,6 +137,9 @@ module.exports = {
   // GET /api/sales/campaign-roi
   async getCampaignROI(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Campaign ROI metrics
+    const {start_date, end_date} = ctx.request.body;
+    
     ctx.send({
       data: [
         {
@@ -189,6 +200,10 @@ module.exports = {
   // GET /api/sales/territory-performance
   async getTerritoryPerformance(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Sales territory performance"
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -244,6 +259,10 @@ module.exports = {
   // GET /api/sales/lead-efficiency
   async getLeadEfficiency(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Lead funnel efficiency
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -299,6 +318,10 @@ module.exports = {
   // GET /api/sales/conversion-funnels
   async getConversionFunnels(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Conversion funnel stages
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -328,6 +351,10 @@ module.exports = {
   // GET /api/sales/click-through-rate
   async getClickThroughRate(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Ad CTR & engagement"
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -382,6 +409,10 @@ module.exports = {
   // GET /api/sales/rate-card-utilization
   async getRateCardUtilization(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Ad rate card utilization
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -433,6 +464,10 @@ module.exports = {
   // GET /api/sales/impression-share
   async getImpressionShare(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Market impression share
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -471,6 +506,10 @@ module.exports = {
   // GET /api/sales/ab-test-results
   async getABTestResults(ctx) {
     if (!validateApiKey(ctx)) return;
+    //A/B test results
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -500,6 +539,10 @@ module.exports = {
   // GET /api/sales/campaign-attribution
   async getCampaignAttribution(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Multi-touch attribution"
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -546,6 +589,10 @@ module.exports = {
   // GET /api/sales/brand-lift
   async getBrandLift(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Brand lift studies
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -583,6 +630,10 @@ module.exports = {
   // GET /api/sales/contract-value-trends
   async getContractValueTrends(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Contract value trends
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -631,6 +682,10 @@ module.exports = {
   // GET /api/sales/supervisor-analytics
   async getSupervisorAnalytics(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Sales supervisor analytics
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
