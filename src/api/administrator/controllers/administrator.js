@@ -7,6 +7,10 @@ module.exports = {
   // GET /api/administrator/meetings
   async getMeetings(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Meeting analysis & attendance
+    const {startDate, endDate} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -45,6 +49,9 @@ module.exports = {
   // GET /api/administrator/process-throughput
   async getProcessThroughput(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Task process throughput 
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       data: [
         {
@@ -84,6 +91,10 @@ module.exports = {
   // GET /api/administrator/rvs-analytics
   async getRvsAnalytics(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Resources, Venues & Suppliers 
+    const {department} = ctx.request.body;  
+    //eg Operations
+    
     ctx.send({
       resources: {
         totalResources: 120,
@@ -124,6 +135,9 @@ module.exports = {
   // GET /api/administrator/schedule-efficiency
   async getScheduleEfficiency(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Schedule efficiency & task progress
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       progressTasks: [
         {
@@ -171,6 +185,9 @@ module.exports = {
   // GET /api/administrator/task-completion
   async getTaskCompletion(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Task completion rate
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       dateRange: {
         startDate: '2025-01-01',
@@ -212,6 +229,9 @@ module.exports = {
   // GET /api/administrator/visitor-patterns
   async getVisitorPatterns(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Visitor pattern analytics
+    const {startDate, endDate} = ctx.request.body;
+    
     ctx.send({
       totalVisitors: 300,
       filters: {
@@ -258,6 +278,10 @@ module.exports = {
   // GET /api/administrator/wait-time
   async getWaitTime(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Visitor wait time analytics
+    const {startDate, endDate} = ctx.request.body;
+    
+    
     ctx.send({
       totalVisitors: 120,
       filters: {
