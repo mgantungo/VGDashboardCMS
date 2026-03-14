@@ -7,6 +7,10 @@ module.exports = {
   // GET /api/operations/delivery-timelines
   async getDeliveryTimelines(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Print delivery timelines
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -65,6 +69,10 @@ module.exports = {
   // GET /api/operations/fuel-consumption
   async getFuelConsumption(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Vehicle & machine fuel usage
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -110,6 +118,10 @@ module.exports = {
   // GET /api/operations/job-scheduling
   async getJobScheduling(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Press job scheduling
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -168,6 +180,10 @@ module.exports = {
   // GET /api/operations/parts-utilization
   async getPartsUtilization(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Maintenance parts usage
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -227,6 +243,10 @@ module.exports = {
   // GET /api/operations/route-efficiency
   async getRouteEfficiency(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Distribution route efficiency
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -287,6 +307,10 @@ module.exports = {
   // GET /api/operations/setup-time
   async getSetupTimeOptimization(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Machine setup time optimization
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -338,6 +362,10 @@ module.exports = {
   // GET /api/operations/signal-quality
   async getSignalQuality(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Broadcast signal quality
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -383,6 +411,10 @@ module.exports = {
   // GET /api/operations/ticket-resolution
   async getTicketResolution(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Maintenance ticket resolution
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -442,6 +474,10 @@ module.exports = {
   // GET /api/operations/updown-time
   async getUpDownTimeLogs(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Machine uptime/downtime logs
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -496,6 +532,10 @@ module.exports = {
   // GET /api/operations/material-waste
   async getMaterialWaste(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Material waste analysis
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -535,6 +575,10 @@ module.exports = {
   // GET /api/operations/machine-oee
   async getMachineOEE(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Overall Equipment Effectiveness
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
@@ -578,6 +622,10 @@ module.exports = {
   // GET /api/operations/production-yield
   async getProductionYield(ctx) {
     if (!validateApiKey(ctx)) return;
+    //Production yield metrics
+    const {start_date, end_date} = ctx.request.body;
+
+    
     ctx.send({
       data: [
         {
