@@ -5,7 +5,7 @@ module.exports = {
     {
       method: 'POST',
       path: '/vgad-auth/login',
-      handler: 'auth.login',
+      handler: 'vgad-auth.login',
       config: { auth: false },
     },
   ],
