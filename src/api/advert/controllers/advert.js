@@ -311,7 +311,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       return {
         success: true,
         data:    full,   // raw — create callers use a different response shape
-        message: data.status === 'draft' ? 'Draft saved successfully' : 'Advert submitted for review'
+        message: data.status === 'draft' ? 'Advert saved successfully' : 'Advert submitted for review'
       };
 
     } catch (err) {
