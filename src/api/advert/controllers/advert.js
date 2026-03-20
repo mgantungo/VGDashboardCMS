@@ -4,7 +4,7 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared helpers (defined outside the controller)
+// Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -155,7 +155,7 @@ const transformAdvert = (a) => ({
 // Controller
 // ─────────────────────────────────────────────────────────────────────────────
 
-module.exports = {
+module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
 
   // ── CREATE  (POST /adverts) ───────────────────────────────────────────────
   async create(ctx) {
@@ -289,73 +289,29 @@ module.exports = {
         }
       }
 
-      // ── Sync with Business Central ────────────────────────────────────────
-      let bcSyncResult = { success: false, bcReference: null, error: null };
-      
-      const bcSyncService = strapi.service('api::advert.bc-sync');
-      
-      if (bcSyncService && bcSyncService.isConfigured()) {
-        console.log('🔄 Starting BC sync for advert:', advert.id);
-        bcSyncResult = await bcSyncService.syncAdvert(advert.id);
-        
-        if (bcSyncResult.success) {
-          console.log('✅ BC sync successful. Reference:', bcSyncResult.bcReference);
-        } else {
-          console.log('❌ BC sync failed:', bcSyncResult.error);
-        }
-      } else {
-        console.log('⚠️ BC not configured, skipping sync');
-      }
-
       // ── Fetch full advert and return ──────────────────────────────────────
       const full = await strapi.entityService.findOne('api::advert.advert', advert.id, {
         populate: {
           vgams_user:          { fields: ['id', 'name', 'email', 'role'] },
-          vgams_sales_persons: { fields: ['id', 'name', 'email', 'bc_code'] },
+          vgams_sales_persons: { fields: ['id', 'name', 'email'] },
           client:              { fields: ['id', 'company_name', 'contact_person', 'email', 'phone', 'bc_no'] },
           product:             { fields: ['id', 'product_name', 'product_id'] },
-          rate_card:           { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw', 'full_color_no', 'black_color_no', 'base_unit_of_measure'] },
+          rate_card:           { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw'] },
           attachments:         true
         }
       });
 
       console.log('📋 Created advert summary:', {
-        id: full.id, 
-        reference: full.reference_number, 
-        bc_reference: full.bc_reference_number,
-        bc_sync_success: full.bc_share_success,
-        title: full.advert_title,
-        client: full.client?.company_name, 
-        status: full.status
+        id: full.id, reference: full.reference_number, title: full.advert_title,
+        client: full.client?.company_name, status: full.status,
+        revenue_stream: full.revenue_stream ?? 'N/A', cost_stream: full.cost_stream ?? 'N/A',
+        attachments: full.attachments?.length || 0
       });
-
-      // ── Return response with BC reference ─────────────────────────────────
-      const responseData = {
-        id: full.id,
-        reference: full.reference_number,
-        bc_reference: full.bc_reference_number,
-        bc_sync_success: full.bc_share_success,
-        advertTitle: full.advert_title,
-        clientName: full.client?.company_name,
-        status: full.status
-      };
-
-      let message;
-      if (data.status === 'draft') {
-        message = bcSyncResult.success 
-          ? 'Draft saved and synced with Business Central' 
-          : (bcSyncService?.isConfigured() ? 'Draft saved but BC sync failed' : 'Draft saved (BC not configured)');
-      } else {
-        message = bcSyncResult.success 
-          ? 'Advert submitted and synced with Business Central' 
-          : (bcSyncService?.isConfigured() ? 'Advert submitted but BC sync failed' : 'Advert submitted (BC not configured)');
-      }
 
       return {
         success: true,
-        data: responseData,
-        message: message,
-        bcSync: bcSyncResult
+        data:    full,   // raw — create callers use a different response shape
+        message: data.status === 'draft' ? 'Advert saved successfully' : 'Advert submitted for review'
       };
 
     } catch (err) {
@@ -512,7 +468,7 @@ module.exports = {
     }
   },
 
-  // ── DATE RANGE ADVERTS  (GET /adverts/date-range) ─────────────────────────
+  // ── DATE RANGE ADVERTS  (GET /adverts-by-date-range) ─────────────────────
   async getDateRangeAdverts(ctx) {
     try {
       const { query } = ctx;
@@ -590,54 +546,6 @@ module.exports = {
       console.error('❌ Error fetching date range adverts:', err.message, err.details);
       return ctx.internalServerError(`Failed to fetch adverts: ${err.message}`);
     }
-  },
-
-  // ── RETRY BC SYNC (POST /adverts/:id/retry-bc-sync) ───────────────────────
-  async retryBcSync(ctx) {
-    try {
-      const { id } = ctx.params;
-      const { vgamsUserId } = ctx.request.body;
-
-      console.log('🔄 Retrying BC sync for advert:', id);
-
-      // Verify user has permission
-      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
-        populate: ['vgams_user']
-      });
-
-      if (!advert) {
-        return ctx.notFound('Advert not found');
-      }
-
-      if (advert.vgams_user?.id !== parseInt(vgamsUserId)) {
-        return ctx.forbidden('You can only retry sync for your own adverts');
-      }
-
-      // Retry BC sync
-      const bcSyncService = strapi.service('api::advert.bc-sync');
-      
-      if (!bcSyncService || !bcSyncService.isConfigured()) {
-        return ctx.badRequest('BC sync service not configured');
-      }
-      
-      const result = await bcSyncService.retrySync(id);
-
-      if (result.success) {
-        return {
-          success: true,
-          message: 'BC sync retry successful',
-          data: {
-            bc_reference: result.bcReference,
-            bc_sync_success: true
-          }
-        };
-      } else {
-        return ctx.internalServerError(`BC sync retry failed: ${result.error}`);
-      }
-
-    } catch (err) {
-      console.error('❌ Error retrying BC sync:', err.message);
-      return ctx.internalServerError(`Failed to retry BC sync: ${err.message}`);
-    }
   }
-};
+
+}));
