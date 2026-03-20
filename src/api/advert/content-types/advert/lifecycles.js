@@ -177,6 +177,8 @@ async function createSalesOrder(advert) {
     externalDocumentN0:     advert.client_reference_no    || '',
     marketSector:           advert.market_sector          || '',
     sectionCommCategory:    advert.section_commission     || '',
+    advertBooking:          true,
+    advertReferenceNo:      advert.reference_number
   };
 
   console.log('\n');
