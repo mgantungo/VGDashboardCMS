@@ -386,6 +386,15 @@ module.exports = {
         auth: false,
         description: 'Get Market sector data'
       }
-    }
+    },        
+    {
+      method: 'POST',
+      path: '/adverts/bc-status',
+      handler: 'advert.getBcSyncStatusByReference',
+      config: {
+        auth: false,
+        description: 'Get BC sync status by reference'
+      },
+    },
   ]
 };
