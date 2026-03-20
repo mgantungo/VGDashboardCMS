@@ -388,13 +388,13 @@ module.exports = {
       }
     },        
     {
-      method: 'POST',
-      path: '/adverts/bc-status',
-      handler: 'advert.getBcSyncStatusByReference',
+      method: 'GET',
+      path: '/adverts/bc-status/:reference',
+      handler: 'advert.getBcSyncStatusByReferenceParam',
       config: {
-        auth: false,
-        description: 'Get BC sync status by reference'
+        policies: [],
+        middlewares: [],
       },
-    },
+    }
   ]
 };
