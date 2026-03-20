@@ -1,7 +1,7 @@
 // src/api/advert/controllers/advert.js
 'use strict';
 
-//const { createCoreController } = require('@strapi/strapi').factories;
+const { createCoreController } = require('@strapi/strapi').factories;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared helpers (defined outside the controller)
