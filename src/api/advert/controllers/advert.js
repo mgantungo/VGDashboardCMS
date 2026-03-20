@@ -39,6 +39,7 @@ const transformAdvert = (a) => ({
   // ── Identity ───────────────────────────────────────────────────────────
   id:        a.id,
   reference: a.reference_number,
+  bcReference: a.bc_reference_number,
 
   // ── Advert details ─────────────────────────────────────────────────────
   advertTitle:   a.advert_title,
