@@ -549,58 +549,42 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
   }
   ,
 
-  // ── GET BC SYNC STATUS BY REFERENCE (POST /adverts/bc-status) ───────────────
-async getBcSyncStatusByReference(ctx) {
-  try {
-    const { reference } = ctx.request.body;
-    
-    console.log('🔍 Looking up BC sync status for reference:', reference);
-    
-    if (!reference) {
-      return ctx.badRequest('Reference number is required');
-    }
-    
-    // Find the advert by reference_number
-    const advert = await strapi.entityService.findOne('api::advert.advert', null, {
-      filters: { reference_number: reference },
-      populate: {
-        client: { fields: ['company_name'] }
+  async getBcSyncStatusByReferenceParam(ctx) {
+    try {
+      const { reference } = ctx.params;
+      
+      if (!reference) {
+        return ctx.badRequest('Reference number is required');
       }
-    });
-    
-    if (!advert) {
-      console.log('❌ Advert not found with reference:', reference);
-      return ctx.notFound(`Advert with reference ${reference} not found`);
+      
+      const advert = await strapi.entityService.findOne('api::advert.advert', null, {
+        filters: { reference_number: reference },
+        populate: {
+          client: { fields: ['company_name'] }
+        }
+      });
+      
+      if (!advert) {
+        return ctx.notFound(`Advert with reference ${reference} not found`);
+      }
+      
+      return {
+        success: true,
+        data: {
+          id: advert.id,
+          reference: advert.reference_number,
+          bc_reference_number: advert.bc_reference_number || null,
+          bc_share_success: advert.bc_share_success === true,
+          status: advert.status,
+          clientName: advert.client?.company_name || null,
+          advertTitle: advert.advert_title
+        }
+      };
+      
+    } catch (err) {
+      console.error('❌ Error fetching BC sync status:', err.message);
+      return ctx.internalServerError(`Failed to fetch BC sync status: ${err.message}`);
     }
-    
-    console.log('✅ Advert found:', {
-      id: advert.id,
-      reference: advert.reference_number,
-      bc_reference: advert.bc_reference_number,
-      bc_share_success: advert.bc_share_success
-    });
-    
-    // Return the BC sync status
-    return {
-      success: true,
-      data: {
-        id: advert.id,
-        reference: advert.reference_number,
-        bc_reference_number: advert.bc_reference_number || null,
-        bc_share_success: advert.bc_share_success === true,
-        status: advert.status,
-        clientName: advert.client?.company_name || null,
-        advertTitle: advert.advert_title
-      },
-      message: advert.bc_share_success 
-        ? 'Advert successfully synced with Business Central' 
-        : (advert.bc_reference_number ? 'BC sync in progress' : 'BC sync not yet completed')
-    };
-    
-  } catch (err) {
-    console.error('❌ Error fetching BC sync status:', err.message);
-    return ctx.internalServerError(`Failed to fetch BC sync status: ${err.message}`);
   }
-}
 
 }));
