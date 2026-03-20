@@ -1,9 +1,161 @@
 // src/api/advert/controllers/advert.js
 'use strict';
 
-const { createCoreController } = require('@strapi/strapi').factories;
+//const { createCoreController } = require('@strapi/strapi').factories;
 
-module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared helpers (defined outside the controller)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Normalise a raw Strapi attachment object into a clean, consistent shape.
+ * URL paths are kept relative — the consuming client prepends its own base URL.
+ */
+const normaliseAttachment = (f) => {
+  if (!f) return null;
+  return {
+    id:           f.id,
+    name:         f.name,
+    mime:         f.mime,
+    size:         f.size,
+    url:          f.url   || null,                            // relative path
+    thumbnailUrl: f.formats?.thumbnail?.url || null,          // relative path or null
+    uploadedAt:   f.createdAt
+  };
+};
+
+/**
+ * Map a raw Strapi advert record (as returned by entityService) to the
+ * camelCase shape consumed by every frontend client.
+ *
+ * Convention used throughout:
+ *   - All scalar fields → camelCase aliases
+ *   - Relations kept as-is (already clean objects from populate)
+ *   - `createdBy`  ← vgams_user  (the booking clerk who created the advert)
+ *   - `salesAgents` ← vgams_sales_persons
+ *   - `attachments` → array of normaliseAttachment() objects (never null)
+ */
+const transformAdvert = (a) => ({
+  // ── Identity ───────────────────────────────────────────────────────────
+  id:        a.id,
+  reference: a.reference_number,
+  bcReference: a.bc_reference_number,
+
+  // ── Advert details ─────────────────────────────────────────────────────
+  advertTitle:   a.advert_title,
+  adSize:        a.ad_size,
+  adType:        a.ad_type,
+  frequency:     a.frequency,
+  publishOnWeb:  a.publish_onweb,
+
+  // ── Schedule ───────────────────────────────────────────────────────────
+  startDate:      a.start_date,
+  endDate:        a.end_date,
+  publishingDates: Array.isArray(a.publishing_dates) ? a.publishing_dates : [],
+
+  // ── Pricing ────────────────────────────────────────────────────────────
+  basePrice:   a.base_price,
+  surcharge:   a.surcharge,
+  discount:    a.discount    || 0,
+  totalAmount: a.total_amount,
+
+  // ── Payment & workflow ─────────────────────────────────────────────────
+  paymentMethod:       a.payment_method,
+  specialInstructions: a.special_instructions,
+  status:              a.status,
+
+  // ── Denormalised strings (stored at create-time) ───────────────────────
+  revenueStream:  a.revenue_stream      || null,
+  costStream:     a.cost_stream         || null,
+  officeLocation: a.office_location     || null,
+  clientRefNo:    a.client_reference_no || null,
+  contactPerson:  a.contact_person  || null,
+  contactNumber:  a.contact_number  || null,
+  contactEmail:   a.contact_email   || null,
+  marketSector:   a.market_sector   || null,
+
+  // ── Boolean flags ──────────────────────────────────────────────────────
+  isActive:    a.isActive,
+  isPaid:      a.isPaid,
+  isScheduled: a.isScheduled,
+  isApproved:  a.isApproved,
+  isCanceled:  a.isCanceled,
+  hasRun:      a.hasRun,
+  isClosed:    a.isClosed,
+
+  // ── Timestamps ─────────────────────────────────────────────────────────
+  createdAt:  a.createdAt,
+  updatedAt:  a.updatedAt,
+
+  // ── Relations ──────────────────────────────────────────────────────────
+  // The booking clerk / user who created this advert
+  createdBy: a.vgams_user
+    ? { id: a.vgams_user.id, name: a.vgams_user.name, email: a.vgams_user.email, role: a.vgams_user.role }
+    : null,
+
+  // Sales person(s) assigned
+  salesAgents: (a.vgams_sales_persons || []).map(s => ({
+    id: s.id, name: s.name, email: s.email
+  })),
+
+  // Client
+  client: a.client
+    ? {
+        id:             a.client.id,
+        name:           a.client.company_name,
+        contactPerson:  a.client.contact_person || null,
+        email:          a.client.email          || null,
+        phone:          a.client.phone          || null,
+        address:        a.client.address        || null,
+        bcNo:           a.client.bc_no          || null
+      }
+    : null,
+
+  // Convenience alias used in the table
+  clientName: a.client?.company_name || null,
+
+  // Product
+  product: a.product
+    ? {
+        id:          a.product.id,
+        name:        a.product.product_name,
+        productId:   a.product.product_id   || null,
+        description: a.product.description  || null,
+        circulation: a.product.circulation  || null,
+        category:    a.product.category
+          ? {
+              id:          a.product.category.id,
+              name:        a.product.category.category_name,
+              type:        a.product.category.category_type,
+              description: a.product.category.description || null
+            }
+          : null
+      }
+    : null,
+
+  // Rate card
+  rateCard: a.rate_card
+    ? {
+        id:                 a.rate_card.id,
+        adType:             a.rate_card.ad_type,
+        sizeDimension:      a.rate_card.size_dimension,
+        priceFc:            a.rate_card.price_fc,
+        priceBw:            a.rate_card.price_bw,
+        surchargePercentage: a.rate_card.surcharge_percentage || null
+      }
+    : null,
+
+  // Attachments — null-safe, normalised, URLs remain relative
+  attachments: (Array.isArray(a.attachments) ? a.attachments : [])
+    .filter(Boolean)
+    .map(normaliseAttachment)
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Controller
+// ─────────────────────────────────────────────────────────────────────────────
+
+module.exports = {
 
   // ── CREATE  (POST /adverts) ───────────────────────────────────────────────
   async create(ctx) {
@@ -44,7 +196,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       if (!existingClient) return ctx.badRequest('Selected client does not exist.');
       console.log('✅ Client verified:', { id: existingClient.id, name: existingClient.company_name });
 
-      // ── Revenue & Cost stream codes ───────────────────────────────────────
+      // ── Revenue & Cost stream codes (looked up once, stored as strings) ───
       let revenueStreamCode = null;
       let costStreamCode    = null;
 
@@ -82,7 +234,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       const publishingDates = [...datesSet].sort();
       console.log('📅 Publishing dates:', publishingDates);
 
-      // ── Create Advert ──────────────────────────────────────────────────────
+      // ── Create ────────────────────────────────────────────────────────────
       const advert = await strapi.entityService.create('api::advert.advert', {
         data: {
           advert_title:        data.advertTitle,
@@ -140,10 +292,9 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       // ── Sync with Business Central ────────────────────────────────────────
       let bcSyncResult = { success: false, bcReference: null, error: null };
       
-      // Get the BC sync service
       const bcSyncService = strapi.service('api::advert.bc-sync');
       
-      if (bcSyncService.isConfigured()) {
+      if (bcSyncService && bcSyncService.isConfigured()) {
         console.log('🔄 Starting BC sync for advert:', advert.id);
         bcSyncResult = await bcSyncService.syncAdvert(advert.id);
         
@@ -154,11 +305,9 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         }
       } else {
         console.log('⚠️ BC not configured, skipping sync');
-        const configStatus = bcSyncService.getConfigStatus();
-        console.log('BC Config Status:', configStatus);
       }
 
-      // ── Fetch final advert with all data ──────────────────────────────────
+      // ── Fetch full advert and return ──────────────────────────────────────
       const full = await strapi.entityService.findOne('api::advert.advert', advert.id, {
         populate: {
           vgams_user:          { fields: ['id', 'name', 'email', 'role'] },
@@ -191,16 +340,15 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         status: full.status
       };
 
-      // Determine message based on sync status
       let message;
       if (data.status === 'draft') {
         message = bcSyncResult.success 
           ? 'Draft saved and synced with Business Central' 
-          : (bcSyncService.isConfigured() ? 'Draft saved but BC sync failed' : 'Draft saved (BC not configured)');
+          : (bcSyncService?.isConfigured() ? 'Draft saved but BC sync failed' : 'Draft saved (BC not configured)');
       } else {
         message = bcSyncResult.success 
           ? 'Advert submitted and synced with Business Central' 
-          : (bcSyncService.isConfigured() ? 'Advert submitted but BC sync failed' : 'Advert submitted (BC not configured)');
+          : (bcSyncService?.isConfigured() ? 'Advert submitted but BC sync failed' : 'Advert submitted (BC not configured)');
       }
 
       return {
@@ -213,50 +361,6 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
     } catch (err) {
       console.error('❌ Error creating advert:', err.message, err.stack);
       return ctx.internalServerError(`Failed to create advert: ${err.message}`);
-    }
-  },
-
-  // ── RETRY BC SYNC (POST /adverts/:id/retry-bc-sync) ───────────────────────
-  async retryBcSync(ctx) {
-    try {
-      const { id } = ctx.params;
-      const { vgamsUserId } = ctx.request.body;
-
-      console.log('🔄 Retrying BC sync for advert:', id);
-
-      // Verify user has permission
-      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
-        populate: ['vgams_user']
-      });
-
-      if (!advert) {
-        return ctx.notFound('Advert not found');
-      }
-
-      if (advert.vgams_user?.id !== parseInt(vgamsUserId)) {
-        return ctx.forbidden('You can only retry sync for your own adverts');
-      }
-
-      // Retry BC sync
-      const bcSyncService = strapi.service('api::advert.bc-sync');
-      const result = await bcSyncService.retrySync(id);
-
-      if (result.success) {
-        return {
-          success: true,
-          message: 'BC sync retry successful',
-          data: {
-            bc_reference: result.bcReference,
-            bc_sync_success: true
-          }
-        };
-      } else {
-        return ctx.internalServerError(`BC sync retry failed: ${result.error}`);
-      }
-
-    } catch (err) {
-      console.error('❌ Error retrying BC sync:', err.message);
-      return ctx.internalServerError(`Failed to retry BC sync: ${err.message}`);
     }
   },
 
@@ -295,7 +399,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
 
       return {
         success: true,
-        data:    adverts.map(advert => this.transformAdvert(advert)),
+        data:    adverts.map(transformAdvert),
         count:   adverts.length,
         user: { id: vgamsUser.id, name: vgamsUser.name, email: vgamsUser.email, role: vgamsUser.role }
       };
@@ -323,6 +427,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
           },
           rate_card:   { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw', 'surcharge_percentage'] },
           attachments: true
+          // workflow_history and comments: re-enable once schema confirmed
         }
       });
 
@@ -331,16 +436,19 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         return ctx.notFound('Advert not found');
       }
 
+      // findOne adds a few extra fields not relevant to list views
       const result = {
-        ...this.transformAdvert(advert),
+        ...transformAdvert(advert),
         publishedAt: advert.publishedAt,
+        // preserve the raw relation names some edit-form consumers still read
         vgams_user:          advert.vgams_user,
         vgams_sales_persons: advert.vgams_sales_persons
       };
 
       console.log('✅ Advert fetched:', {
         id: result.id, reference: result.reference, title: result.advertTitle,
-        status: result.status
+        status: result.status, revenueStream: result.revenueStream ?? 'N/A',
+        costStream: result.costStream ?? 'N/A', productCategory: result.product?.category?.type || 'N/A'
       });
 
       return { success: true, data: result };
@@ -404,91 +512,132 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
     }
   },
 
-  // ── Helper: Transform advert to camelCase ─────────────────────────────────
-  transformAdvert(a) {
-    const normaliseAttachment = (f) => {
-      if (!f) return null;
-      return {
-        id: f.id,
-        name: f.name,
-        mime: f.mime,
-        size: f.size,
-        url: f.url || null,
-        thumbnailUrl: f.formats?.thumbnail?.url || null,
-        uploadedAt: f.createdAt
-      };
-    };
+  // ── DATE RANGE ADVERTS  (GET /adverts/date-range) ─────────────────────────
+  async getDateRangeAdverts(ctx) {
+    try {
+      const { query } = ctx;
+      console.log('📅 Date range query received:', query);
 
-    return {
-      id: a.id,
-      reference: a.reference_number,
-      bcReference: a.bc_reference_number,
-      advertTitle: a.advert_title,
-      adSize: a.ad_size,
-      adType: a.ad_type,
-      frequency: a.frequency,
-      publishOnWeb: a.publish_onweb,
-      startDate: a.start_date,
-      endDate: a.end_date,
-      publishingDates: Array.isArray(a.publishing_dates) ? a.publishing_dates : [],
-      basePrice: a.base_price,
-      surcharge: a.surcharge,
-      discount: a.discount || 0,
-      totalAmount: a.total_amount,
-      paymentMethod: a.payment_method,
-      specialInstructions: a.special_instructions,
-      status: a.status,
-      revenueStream: a.revenue_stream || null,
-      costStream: a.cost_stream || null,
-      officeLocation: a.office_location || null,
-      clientRefNo: a.client_reference_no || null,
-      contactPerson: a.contact_person || null,
-      contactNumber: a.contact_number || null,
-      contactEmail: a.contact_email || null,
-      marketSector: a.market_sector || null,
-      isActive: a.isActive,
-      isPaid: a.isPaid,
-      isScheduled: a.isScheduled,
-      isApproved: a.isApproved,
-      isCanceled: a.isCanceled,
-      hasRun: a.hasRun,
-      isClosed: a.isClosed,
-      createdAt: a.createdAt,
-      updatedAt: a.updatedAt,
-      createdBy: a.vgams_user ? { id: a.vgams_user.id, name: a.vgams_user.name, email: a.vgams_user.email, role: a.vgams_user.role } : null,
-      salesAgents: (a.vgams_sales_persons || []).map(s => ({ id: s.id, name: s.name, email: s.email })),
-      client: a.client ? {
-        id: a.client.id,
-        name: a.client.company_name,
-        contactPerson: a.client.contact_person || null,
-        email: a.client.email || null,
-        phone: a.client.phone || null,
-        address: a.client.address || null,
-        bcNo: a.client.bc_no || null
-      } : null,
-      clientName: a.client?.company_name || null,
-      product: a.product ? {
-        id: a.product.id,
-        name: a.product.product_name,
-        productId: a.product.product_id || null,
-        description: a.product.description || null,
-        circulation: a.product.circulation || null,
-        category: a.product.category ? {
-          id: a.product.category.id,
-          name: a.product.category.category_name,
-          type: a.product.category.category_type,
-          description: a.product.category.description || null
-        } : null
-      } : null,
-      rateCard: a.rate_card ? {
-        id: a.rate_card.id,
-        adType: a.rate_card.ad_type,
-        sizeDimension: a.rate_card.size_dimension,
-        priceFc: a.rate_card.price_fc,
-        priceBw: a.rate_card.price_bw,
-        surchargePercentage: a.rate_card.surcharge_percentage || null
-      } : null,
-      attachments: (Array.isArray(a.attachments) ? a.attachments : []).filter(Boolean).map(normaliseAttachment)
-    };
+      const startDate = query.startDate ? new Date(query.startDate) : new Date();
+      const endDate   = query.endDate   ? new Date(query.endDate)   : new Date();
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+
+      if (startDate > endDate) return ctx.badRequest('Start date must be before end date');
+
+      console.log('📅 Fetching adverts for date range:', {
+        startDate: startDate.toISOString(), endDate: endDate.toISOString()
+      });
+
+      const filters = {
+        createdAt: { $gte: startDate.toISOString(), $lte: endDate.toISOString() },
+        ...(query.userId    && { vgams_user: { id: parseInt(query.userId) } }),
+        ...(query.status    && { status: query.status }),
+        ...(query.clientId  && { client:  { id: parseInt(query.clientId) } }),
+        ...(query.productId && { product: { id: parseInt(query.productId) } })
+      };
+
+      console.log('🔍 Filters applied:', JSON.stringify(filters, null, 2));
+
+      const adverts = await strapi.entityService.findMany('api::advert.advert', {
+        filters,
+        populate: {
+          vgams_user:          { fields: ['id', 'name', 'email', 'role'] },
+          vgams_sales_persons: { fields: ['id', 'name', 'email'] },
+          client:              { fields: ['id', 'company_name', 'contact_person', 'email', 'phone'] },
+          product:             { fields: ['id', 'product_name', 'product_id'] },
+          rate_card:           { fields: ['id', 'size_dimension', 'ad_type', 'price_fc', 'price_bw'] },
+          attachments:         true   // full media object so thumbnail formats are available
+        },
+        sort:  query.sort  || 'createdAt:desc',
+        limit: query.limit || 1000,
+        start: query.start || 0
+      });
+
+      // ── Transform: produce clean camelCase output ─────────────────────────
+      // All field renaming and normalisation happens here so every consumer
+      // receives the same shape and never needs to remap snake_case aliases.
+      const data = adverts.map(transformAdvert);
+
+      // ── Statistics ────────────────────────────────────────────────────────
+      const totalAmount   = data.reduce((s, a) => s + (parseFloat(a.totalAmount) || 0), 0);
+      const totalDiscount = data.reduce((s, a) => s + (parseFloat(a.discount)    || 0), 0);
+
+      const uniqueUsers = Array.from(
+        data.reduce((map, a) => {
+          if (a.createdBy) map.set(a.createdBy.id, a.createdBy);
+          return map;
+        }, new Map()).values()
+      );
+
+      console.log('✅ Found adverts:', data.length);
+
+      return {
+        success:    true,
+        data,
+        count:      data.length,
+        statistics: {
+          totalAmount,
+          totalDiscount,
+          averageAmount: data.length > 0 ? totalAmount / data.length : 0,
+          uniqueUsers:   uniqueUsers.length
+        },
+        dateRange: { start: startDate, end: endDate },
+        users:     uniqueUsers
+      };
+
+    } catch (err) {
+      console.error('❌ Error fetching date range adverts:', err.message, err.details);
+      return ctx.internalServerError(`Failed to fetch adverts: ${err.message}`);
+    }
+  },
+
+  // ── RETRY BC SYNC (POST /adverts/:id/retry-bc-sync) ───────────────────────
+  async retryBcSync(ctx) {
+    try {
+      const { id } = ctx.params;
+      const { vgamsUserId } = ctx.request.body;
+
+      console.log('🔄 Retrying BC sync for advert:', id);
+
+      // Verify user has permission
+      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
+        populate: ['vgams_user']
+      });
+
+      if (!advert) {
+        return ctx.notFound('Advert not found');
+      }
+
+      if (advert.vgams_user?.id !== parseInt(vgamsUserId)) {
+        return ctx.forbidden('You can only retry sync for your own adverts');
+      }
+
+      // Retry BC sync
+      const bcSyncService = strapi.service('api::advert.bc-sync');
+      
+      if (!bcSyncService || !bcSyncService.isConfigured()) {
+        return ctx.badRequest('BC sync service not configured');
+      }
+      
+      const result = await bcSyncService.retrySync(id);
+
+      if (result.success) {
+        return {
+          success: true,
+          message: 'BC sync retry successful',
+          data: {
+            bc_reference: result.bcReference,
+            bc_sync_success: true
+          }
+        };
+      } else {
+        return ctx.internalServerError(`BC sync retry failed: ${result.error}`);
+      }
+
+    } catch (err) {
+      console.error('❌ Error retrying BC sync:', err.message);
+      return ctx.internalServerError(`Failed to retry BC sync: ${err.message}`);
+    }
   }
-}));
+};
