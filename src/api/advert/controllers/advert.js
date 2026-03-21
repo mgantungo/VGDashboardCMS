@@ -557,10 +557,15 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         return ctx.badRequest('Reference number is required');
       }
       
+      // Corrected findOne syntax for Strapi 5
       const advert = await strapi.entityService.findOne('api::advert.advert', null, {
-        filters: { reference_number: reference },
+        filters: { 
+          reference_number: { $eq: reference }  // Explicit filter syntax
+        },
         populate: {
-          client: { fields: ['company_name'] }
+          client: { 
+            fields: ['company_name'] 
+          }
         }
       });
       
@@ -583,6 +588,7 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       
     } catch (err) {
       console.error('❌ Error fetching BC sync status:', err.message);
+      console.error('Stack:', err.stack);
       return ctx.internalServerError(`Failed to fetch BC sync status: ${err.message}`);
     }
   }
