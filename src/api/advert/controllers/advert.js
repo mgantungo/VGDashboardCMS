@@ -549,48 +549,52 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
   }
   ,
 
-  async getBcSyncStatusByReferenceParam(ctx) {
-    try {
-      const { reference } = ctx.params;
-      
-      if (!reference) {
-        return ctx.badRequest('Reference number is required');
-      }
-      
-      // Corrected findOne syntax for Strapi 5
-      const advert = await strapi.entityService.findOne('api::advert.advert', null, {
-        filters: { 
-          reference_number: { $eq: reference }  // Explicit filter syntax
-        },
-        populate: {
-          client: { 
-            fields: ['company_name'] 
+    async getBcSyncStatusByReferenceParam(ctx) {
+      try {
+        const { reference } = ctx.params;
+        
+        if (!reference) {
+          return ctx.badRequest('Reference number is required');
+        }
+        
+        // Using Document Service API
+        const entries = await strapi.documents('api::advert.advert').findMany({
+          filters: {
+            reference_number: {
+              $eq: reference
+            }
+          },
+          populate: {
+            client: {
+              fields: ['company_name']
+            }
+          },
+          status: 'published' // or remove if you want to include drafts
+        });
+        
+        const advert = entries[0];
+        
+        if (!advert) {
+          return ctx.notFound(`Advert with reference ${reference} not found`);
+        }
+        
+        return {
+          success: true,
+          data: {
+            id: advert.id,
+            reference: advert.reference_number,
+            bc_reference_number: advert.bc_reference_number || null,
+            bc_share_success: advert.bc_share_success === true,
+            status: advert.status,
+            clientName: advert.client?.company_name || null,
+            advertTitle: advert.advert_title
           }
-        }
-      });
-      
-      if (!advert) {
-        return ctx.notFound(`Advert with reference ${reference} not found`);
+        };
+        
+      } catch (err) {
+        console.error('❌ Error fetching BC sync status:', err.message);
+        return ctx.internalServerError(`Failed to fetch BC sync status: ${err.message}`);
       }
-      
-      return {
-        success: true,
-        data: {
-          id: advert.id,
-          reference: advert.reference_number,
-          bc_reference_number: advert.bc_reference_number || null,
-          bc_share_success: advert.bc_share_success === true,
-          status: advert.status,
-          clientName: advert.client?.company_name || null,
-          advertTitle: advert.advert_title
-        }
-      };
-      
-    } catch (err) {
-      console.error('❌ Error fetching BC sync status:', err.message);
-      console.error('Stack:', err.stack);
-      return ctx.internalServerError(`Failed to fetch BC sync status: ${err.message}`);
     }
-  }
 
 }));
