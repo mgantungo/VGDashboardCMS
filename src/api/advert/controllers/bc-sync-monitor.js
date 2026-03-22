@@ -2,22 +2,20 @@
 
 /**
  * bc-sync-monitor controller
- * Simple endpoints for checking and updating payment status from Business Central
- * Only updates isPaid flag
+ * Handles automatic payment updates from Business Central
+ * Creates invoice and payment records when invoice exists in BC
  */
 
 module.exports = {
-  
+
   /**
    * Get adverts that need payment status check
    * Returns adverts with bc_reference_number where isPaid = false
-   * Optionally filtered by date range
    */
   async getAdvertsForPaymentCheck(ctx) {
     try {
       const { daysBack = 2, limit = 100 } = ctx.query;
       
-      // Calculate date range if daysBack provided
       let startDate = null;
       if (daysBack) {
         startDate = new Date();
@@ -25,7 +23,6 @@ module.exports = {
         startDate.setHours(0, 0, 0, 0);
       }
       
-      // Build where clause
       const whereClause = {
         bc_reference_number: {
           $notNull: true,
@@ -34,17 +31,15 @@ module.exports = {
         isPaid: false
       };
       
-      // Add date filter if specified
       if (startDate) {
         whereClause.createdAt = {
           $gte: startDate
         };
       }
       
-      // Fetch adverts
       const adverts = await strapi.db.query('api::advert.advert').findMany({
         where: whereClause,
-        select: ['id', 'bc_reference_number', 'advert_title', 'isPaid', 'createdAt'],
+        select: ['id', 'bc_reference_number', 'advert_title', 'isPaid', 'createdAt', 'total_amount', 'client', 'reference_number', 'vgams_user'],
         orderBy: { createdAt: 'asc' },
         limit: parseInt(limit)
       });
@@ -64,15 +59,14 @@ module.exports = {
   },
   
   /**
-   * Update advert payment status after checking BC
-   * Only updates isPaid flag
+   * Update advert payment status from Business Central
+   * Creates invoice and payment records when invoice exists
    */
   async updatePaymentStatus(ctx) {
     try {
       const { id } = ctx.params;
-      const { isPaid } = ctx.request.body;
+      const { isPaid, invoiceData } = ctx.request.body;
       
-      // Validate required fields
       if (isPaid === undefined) {
         return ctx.badRequest('isPaid is required');
       }
@@ -80,14 +74,18 @@ module.exports = {
       // Check if advert exists
       const existingAdvert = await strapi.db.query('api::advert.advert').findOne({
         where: { id: parseInt(id) },
-        select: ['id', 'bc_reference_number', 'isPaid']
+        populate: {
+          client: true,
+          invoice: true,
+          vgams_user: true
+        }
       });
       
       if (!existingAdvert) {
         return ctx.notFound(`Advert with id ${id} not found`);
       }
       
-      // Only update if status is changing
+      // Only update if status is changing to paid
       if (existingAdvert.isPaid === isPaid) {
         return {
           data: {
@@ -99,24 +97,48 @@ module.exports = {
         };
       }
       
-      // Update isPaid only
+      // If marking as paid (invoice exists in BC), create invoice and payment records
+      let invoiceRecord = null;
+      let paymentRecord = null;
+      
+      if (isPaid === true && existingAdvert.isPaid === false) {
+        // Create or update invoice record from BC data
+        invoiceRecord = await upsertInvoiceFromBC(existingAdvert, invoiceData);
+        
+        // Create payment record
+        paymentRecord = await createPaymentFromBC(existingAdvert, invoiceData, invoiceRecord);
+        
+        strapi.log.info(`✅ BC Invoice processed for advert ${id}: Invoice ${invoiceRecord?.invoice_number}, Payment ${paymentRecord?.id}`);
+      }
+      
+      // Update advert - mark as paid
+      const updateData = {
+        isPaid: isPaid,
+        lastPaymentCheckAt: new Date()
+      };
+      
+      if (isPaid === true) {
+        updateData.paid_at = new Date();
+        updateData.isActive = true;
+        if (existingAdvert.status === 'draft') {
+          updateData.status = 'published';
+        }
+      }
+      
       const updatedAdvert = await strapi.db.query('api::advert.advert').update({
         where: { id: parseInt(id) },
-        data: {
-          isPaid: isPaid,
-          lastPaymentCheckAt: new Date(),
-          // If marking as paid, also set paidAt timestamp
-          ...(isPaid === true ? { paidAt: new Date() } : {})
-        }
+        data: updateData
       });
       
       return {
         data: {
           id: updatedAdvert.id,
           bc_reference_number: updatedAdvert.bc_reference_number,
-          isPaid: updatedAdvert.isPaid
+          isPaid: updatedAdvert.isPaid,
+          invoice: invoiceRecord,
+          payment: paymentRecord
         },
-        message: isPaid ? 'Payment confirmed' : 'Payment status updated'
+        message: isPaid ? 'Invoice confirmed - Advert marked as paid' : 'Payment status updated'
       };
     } catch (error) {
       strapi.log.error('Error updating payment status:', error);
@@ -126,7 +148,6 @@ module.exports = {
   
   /**
    * Bulk update multiple adverts payment status
-   * Only updates isPaid flag for multiple adverts at once
    */
   async bulkUpdatePaymentStatus(ctx) {
     try {
@@ -141,42 +162,54 @@ module.exports = {
       
       for (const update of updates) {
         try {
-          const { id, isPaid } = update;
+          const { id, isPaid, invoiceData } = update;
           
           if (!id || isPaid === undefined) {
             throw new Error('Missing required fields: id and isPaid');
           }
           
-          // Check if advert exists
+          // Process each advert
           const existingAdvert = await strapi.db.query('api::advert.advert').findOne({
             where: { id: parseInt(id) },
-            select: ['id', 'bc_reference_number', 'isPaid']
+            populate: { client: true, vgams_user: true }
           });
           
           if (!existingAdvert) {
             throw new Error(`Advert ${id} not found`);
           }
           
-          // Only update if status is changing
           if (existingAdvert.isPaid === isPaid) {
             results.push({
               id,
               success: true,
-              isPaid: existingAdvert.isPaid,
               changed: false,
+              isPaid: existingAdvert.isPaid,
               bc_reference: existingAdvert.bc_reference_number
             });
             continue;
           }
           
-          // Update isPaid
+          let invoiceRecord = null;
+          let paymentRecord = null;
+          
+          if (isPaid === true && existingAdvert.isPaid === false) {
+            invoiceRecord = await upsertInvoiceFromBC(existingAdvert, invoiceData);
+            paymentRecord = await createPaymentFromBC(existingAdvert, invoiceData, invoiceRecord);
+          }
+          
+          const updateData = {
+            isPaid: isPaid,
+            lastPaymentCheckAt: new Date()
+          };
+          
+          if (isPaid === true) {
+            updateData.paid_at = new Date();
+            updateData.isActive = true;
+          }
+          
           const updated = await strapi.db.query('api::advert.advert').update({
             where: { id: parseInt(id) },
-            data: {
-              isPaid: isPaid,
-              lastPaymentCheckAt: new Date(),
-              ...(isPaid === true ? { paidAt: new Date() } : {})
-            }
+            data: updateData
           });
           
           results.push({
@@ -184,7 +217,9 @@ module.exports = {
             success: true,
             changed: true,
             isPaid: updated.isPaid,
-            bc_reference: existingAdvert.bc_reference_number
+            bc_reference: existingAdvert.bc_reference_number,
+            invoice: invoiceRecord,
+            payment: paymentRecord
           });
           
         } catch (error) {
@@ -216,7 +251,6 @@ module.exports = {
   
   /**
    * Check payment status by BC reference number
-   * Simple endpoint to verify if an advert is paid by its BC reference
    */
   async checkPaymentByBcReference(ctx) {
     try {
@@ -224,7 +258,10 @@ module.exports = {
       
       const advert = await strapi.db.query('api::advert.advert').findOne({
         where: { bc_reference_number: reference },
-        select: ['id', 'bc_reference_number', 'isPaid', 'paidAt']
+        populate: {
+          invoice: true,
+          payments: true
+        }
       });
       
       if (!advert) {
@@ -233,9 +270,12 @@ module.exports = {
       
       return {
         data: {
+          id: advert.id,
           bc_reference_number: advert.bc_reference_number,
           isPaid: advert.isPaid,
-          paidAt: advert.paidAt
+          paidAt: advert.paid_at,
+          invoice: advert.invoice,
+          payments: advert.payments
         }
       };
     } catch (error) {
@@ -244,3 +284,66 @@ module.exports = {
     }
   }
 };
+
+/**
+ * Helper: Create or update invoice record from BC data
+ */
+async function upsertInvoiceFromBC(advert, invoiceData) {
+  try {
+    // Check if invoice already exists
+    const existingInvoice = await strapi.db.query('api::invoice.invoice').findOne({
+      where: { advert: advert.id }
+    });
+    
+    const invoicePayload = {
+      advert: advert.id,
+      client: advert.client?.id || null,
+      invoice_number: invoiceData?.invoiceNo || `BC-${advert.bc_reference_number}`,
+      invoice_date: invoiceData?.postingDate || new Date().toISOString().split('T')[0],
+      due_date: invoiceData?.dueDate || new Date().toISOString().split('T')[0],
+      total_amount: parseFloat(invoiceData?.amountIncludingVAT || advert.total_amount),
+      amount_paid: parseFloat(invoiceData?.amountIncludingVAT || advert.total_amount),
+      balance: 0,
+      payment_status: 'paid',
+      currency: 'UGX'
+    };
+    
+    if (existingInvoice) {
+      return await strapi.db.query('api::invoice.invoice').update({
+        where: { id: existingInvoice.id },
+        data: invoicePayload
+      });
+    } else {
+      return await strapi.db.query('api::invoice.invoice').create({
+        data: invoicePayload
+      });
+    }
+  } catch (error) {
+    strapi.log.error('Error upserting invoice:', error);
+    throw error;
+  }
+}
+
+/**
+ * Helper: Create payment record from BC data
+ */
+async function createPaymentFromBC(advert, invoiceData, invoiceRecord) {
+  try {
+    const paymentPayload = {
+      invoice: invoiceRecord?.id || null,
+      payment_date: invoiceData?.postingDate || new Date().toISOString().split('T')[0],
+      amount: parseFloat(invoiceData?.amountIncludingVAT || advert.total_amount),
+      payment_method: 'bank_transfer',
+      reference_number: invoiceData?.invoiceNo || `BC-${advert.bc_reference_number}`,
+      notes: `Payment from Business Central - Invoice ${invoiceData?.invoiceNo}`,
+      vgams_user: advert.vgams_user?.id || null
+    };
+    
+    return await strapi.db.query('api::payment.payment').create({
+      data: paymentPayload
+    });
+  } catch (error) {
+    strapi.log.error('Error creating payment record:', error);
+    throw error;
+  }
+}
