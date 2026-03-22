@@ -5,6 +5,37 @@ const BCInvoiceMonitor = require('./index');
 const logger = require('./logger');
 const StrapiClient = require('./strapi-client');
 
+async function testByBcReference(bcReference) {
+  const monitor = new BCInvoiceMonitor();
+  const strapiClient = new StrapiClient();
+  
+  try {
+    logger.info(`Testing with BC reference: ${bcReference}`);
+    
+    // First find the advert by BC reference
+    const advert = await strapiClient.checkPaymentByBcReference(bcReference);
+    
+    if (!advert) {
+      throw new Error(`No advert found with BC reference: ${bcReference}`);
+    }
+    
+    logger.info(`Advert found: ${advert.id} - BC Ref: ${advert.bc_reference_number}`);
+    logger.info(`Current isPaid: ${advert.isPaid}`);
+    
+    // Now check BC invoice status
+    const invoiceStatus = await monitor.bcClient.checkInvoiceStatus(bcReference);
+    
+    logger.info('=' .repeat(50));
+    logger.info('Invoice Status:');
+    logger.info(JSON.stringify(invoiceStatus, null, 2));
+    logger.info('=' .repeat(50));
+    
+  } catch (error) {
+    logger.error('Test failed:', error);
+    process.exit(1);
+  }
+}
+
 async function testSingleAdvert(advertId) {
   const monitor = new BCInvoiceMonitor();
   const strapiClient = new StrapiClient();
@@ -12,7 +43,7 @@ async function testSingleAdvert(advertId) {
   try {
     logger.info(`Testing with advert ID: ${advertId}`);
     
-    // Get advert details
+    // Get advert details using the correct endpoint
     const response = await strapiClient.client.get(`/api/adverts/${advertId}`);
     const advert = response.data.data;
     
@@ -157,7 +188,12 @@ switch (command) {
       console.error('Usage: node test.js advert <advert-id>');
       process.exit(1);
     }
-    testSingleAdvert(advertId);
+    // Check if it's a number (Strapi ID) or BC reference
+    if (/^\d+$/.test(advertId)) {
+      testSingleAdvert(advertId);
+    } else {
+      testByBcReference(advertId);
+    }
     break;
     
   case 'bc':
@@ -194,7 +230,7 @@ switch (command) {
 Usage:
   npm run monitor:bc:test -- bc          - Test Business Central connection
   npm run monitor:bc:test -- strapi      - Test Strapi connection
-  npm run monitor:bc:test -- advert <id> - Test with specific advert ID
+  npm run monitor:bc:test -- advert <id> - Test with advert ID (number) or BC reference
   npm run monitor:bc:test -- bulk        - Test bulk update
   npm run monitor:bc:test -- lookup      - Test BC reference lookup
   npm run monitor:bc:test -- all         - Run all tests
@@ -202,7 +238,8 @@ Usage:
 Examples:
   npm run monitor:bc:test -- bc
   npm run monitor:bc:test -- strapi
-  npm run monitor:bc:test -- advert 123
+  npm run monitor:bc:test -- advert 123          (Strapi ID)
+  npm run monitor:bc:test -- advert B-SO-216559N (BC Reference)
   npm run monitor:bc:test -- bulk
   npm run monitor:bc:test -- all
 
