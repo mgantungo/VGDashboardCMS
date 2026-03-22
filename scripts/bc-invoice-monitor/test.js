@@ -1,10 +1,13 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
 const BCInvoiceMonitor = require('./index');
 const logger = require('./logger');
-const StrapiClient = require('./strapi-client'); // Fixed: removed destructuring
+const StrapiClient = require('./strapi-client');
 
 async function testSingleAdvert(advertId) {
   const monitor = new BCInvoiceMonitor();
-  const strapiClient = new StrapiClient(); // Fixed: removed destructuring
+  const strapiClient = new StrapiClient();
   
   try {
     logger.info(`Testing with advert ID: ${advertId}`);
@@ -52,7 +55,6 @@ async function testBCConnection() {
 }
 
 async function testStrapiConnection() {
-  const StrapiClient = require('./strapi-client'); // Fixed: removed destructuring
   const strapiClient = new StrapiClient();
   
   try {
