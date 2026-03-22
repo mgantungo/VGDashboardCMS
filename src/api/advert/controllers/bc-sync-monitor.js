@@ -1,12 +1,12 @@
 'use strict';
 
 /**
- * bc-payment-monitor controller
+ * bc-sync-monitor controller
  * Simple endpoints for checking and updating payment status from Business Central
  * Only updates isPaid flag
  */
 
-module.exports ={
+module.exports = {
   
   /**
    * Get adverts that need payment status check
