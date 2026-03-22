@@ -50,6 +50,7 @@ class BCInvoiceMonitor {
   
   /**
    * Process a single advert
+   * If invoice exists in BC, mark as paid and create invoice/payment records
    */
   async processAdvert(advert) {
     const advertId = advert.id;
@@ -65,39 +66,47 @@ class BCInvoiceMonitor {
     logger.info(`Processing advert ${advertId}: "${advertTitle}" (BC: ${bcReferenceNumber})`);
     
     try {
-      // Check invoice status in Business Central
+      // Check if invoice exists in Business Central
       const invoiceStatus = await this.bcClient.checkInvoiceStatus(bcReferenceNumber);
       
       if (invoiceStatus.exists) {
-        logger.info(`Invoice found for ${bcReferenceNumber}: ${invoiceStatus.invoiceNo} - Paid: ${invoiceStatus.isClosed}`);
+        logger.info(`✅ Invoice found for ${bcReferenceNumber}: ${invoiceStatus.invoiceNo}`);
         
         if (!this.dryRun) {
-          // Only update isPaid based on BC invoice status
-          await this.strapiClient.updateAdvertPayment(advertId, invoiceStatus.isClosed);
+          // Update advert as paid - invoice exists means payment is confirmed
+          await this.strapiClient.updateAdvertPayment(
+            advertId,
+            true,  // isPaid = true
+            true,  // isClosed = true
+            {
+              invoiceNo: invoiceStatus.invoiceNo,
+              amount: invoiceStatus.amount,
+              amountIncludingVAT: invoiceStatus.amountIncludingVAT,
+              remainingAmount: invoiceStatus.remainingAmount,
+              dueDate: invoiceStatus.dueDate,
+              postingDate: invoiceStatus.postingDate,
+              orderNumber: bcReferenceNumber
+            }
+          );
           
-          if (invoiceStatus.isClosed && !advert.isPaid) {
-            logger.info(`💰 Payment confirmed for advert ${advertId}`);
-          }
+          logger.info(`💰 Advert ${advertId} marked as paid - Invoice: ${invoiceStatus.invoiceNo}`);
         } else {
-          logger.info(`[DRY RUN] Would update advert ${advertId} isPaid=${invoiceStatus.isClosed}`);
+          logger.info(`[DRY RUN] Would mark advert ${advertId} as paid`);
         }
         
         this.stats.successful++;
-        if (invoiceStatus.isClosed) {
-          this.stats.paid++;
-        } else {
-          this.stats.pending++;
-        }
+        this.stats.paid++;
         
         return {
           success: true,
           advertId,
           bcReferenceNumber,
-          isPaid: invoiceStatus.isClosed,
-          invoiceNo: invoiceStatus.invoiceNo
+          isPaid: true,
+          invoiceNo: invoiceStatus.invoiceNo,
+          amount: invoiceStatus.amountIncludingVAT
         };
       } else {
-        // No invoice yet, just log
+        // No invoice yet
         logger.info(`⏳ No invoice yet for advert ${advertId}`);
         this.stats.successful++;
         this.stats.pending++;
