@@ -50,12 +50,15 @@ class BCInvoiceMonitor {
   
   /**
    * Process a single advert
-   * If invoice exists in BC, mark as paid and create invoice/payment records
+   * Handles different payment methods:
+   * - Cash: Only mark as paid if invoice is closed
+   * - Credit/PDC/Bank Transfer/Mobile Money: Mark as paid as soon as invoice exists
    */
   async processAdvert(advert) {
     const advertId = advert.id;
     const bcReferenceNumber = advert.bc_reference_number;
     const advertTitle = advert.advert_title || 'Untitled';
+    const paymentMethod = advert.payment_method || 'cash';
     
     if (!bcReferenceNumber) {
       logger.warn(`Advert ${advertId} has no BC reference number, skipping`);
@@ -63,7 +66,7 @@ class BCInvoiceMonitor {
       return { success: false, reason: 'no_bc_reference', advertId };
     }
     
-    logger.info(`Processing advert ${advertId}: "${advertTitle}" (BC: ${bcReferenceNumber})`);
+    logger.info(`Processing advert ${advertId}: "${advertTitle}" (BC: ${bcReferenceNumber}, Payment Method: ${paymentMethod})`);
     
     try {
       // Check if invoice exists in Business Central
@@ -72,8 +75,27 @@ class BCInvoiceMonitor {
       if (invoiceStatus.exists) {
         logger.info(`✅ Invoice found for ${bcReferenceNumber}: ${invoiceStatus.invoiceNo}`);
         
-        if (!this.dryRun) {
-          // Update advert as paid - invoice exists means payment is confirmed
+        // Determine if payment should be considered confirmed based on payment method
+        let shouldMarkPaid = false;
+        let reason = '';
+        
+        if (paymentMethod === 'cash') {
+          // For cash payments, check if invoice is closed (paid in BC)
+          if (invoiceStatus.isClosed === true) {
+            shouldMarkPaid = true;
+            reason = 'Cash payment - invoice closed';
+          } else {
+            logger.info(`⏳ Cash payment - Invoice exists but not closed yet for ${bcReferenceNumber}`);
+            shouldMarkPaid = false;
+          }
+        } else {
+          // For credit, pdc, bank_transfer, mobile_money - invoice existence is enough
+          shouldMarkPaid = true;
+          reason = `${paymentMethod} payment - invoice exists`;
+        }
+        
+        if (shouldMarkPaid && !this.dryRun) {
+          // Update advert as paid with full BC data
           await this.strapiClient.updateAdvertPayment(
             advertId,
             true,  // isPaid = true
@@ -85,26 +107,54 @@ class BCInvoiceMonitor {
               remainingAmount: invoiceStatus.remainingAmount,
               dueDate: invoiceStatus.dueDate,
               postingDate: invoiceStatus.postingDate,
-              orderNumber: bcReferenceNumber
+              orderNumber: bcReferenceNumber,
+              paymentMethod: paymentMethod,
+              isClosed: invoiceStatus.isClosed
             }
           );
           
-          logger.info(`💰 Advert ${advertId} marked as paid - Invoice: ${invoiceStatus.invoiceNo}`);
+          logger.info(`💰 Advert ${advertId} marked as paid - ${reason}`);
+          this.stats.successful++;
+          this.stats.paid++;
+          
+          return {
+            success: true,
+            advertId,
+            bcReferenceNumber,
+            isPaid: true,
+            invoiceNo: invoiceStatus.invoiceNo,
+            amount: invoiceStatus.amountIncludingVAT,
+            reason: reason
+          };
+        } else if (shouldMarkPaid && this.dryRun) {
+          logger.info(`[DRY RUN] Would mark advert ${advertId} as paid - ${reason}`);
+          this.stats.successful++;
+          this.stats.paid++;
+          
+          return {
+            success: true,
+            advertId,
+            bcReferenceNumber,
+            isPaid: true,
+            dryRun: true,
+            reason: reason
+          };
         } else {
-          logger.info(`[DRY RUN] Would mark advert ${advertId} as paid`);
+          // Invoice exists but not ready to mark as paid (e.g., cash payment not closed)
+          logger.info(`⏳ Invoice exists but not ready to mark as paid: ${reason || 'Cash payment pending closure'}`);
+          this.stats.successful++;
+          this.stats.pending++;
+          
+          return {
+            success: true,
+            advertId,
+            bcReferenceNumber,
+            isPaid: false,
+            hasInvoice: true,
+            invoiceNo: invoiceStatus.invoiceNo,
+            reason: 'Waiting for payment closure'
+          };
         }
-        
-        this.stats.successful++;
-        this.stats.paid++;
-        
-        return {
-          success: true,
-          advertId,
-          bcReferenceNumber,
-          isPaid: true,
-          invoiceNo: invoiceStatus.invoiceNo,
-          amount: invoiceStatus.amountIncludingVAT
-        };
       } else {
         // No invoice yet
         logger.info(`⏳ No invoice yet for advert ${advertId}`);
