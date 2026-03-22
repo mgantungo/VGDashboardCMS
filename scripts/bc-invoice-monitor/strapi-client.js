@@ -9,10 +9,10 @@ class StrapiClient {
     this.url = `http://${host}:${port}`;
     
     // Use the existing API_SECRET_KEY for authentication
-    this.apiSecret = process.env.API_SECRET_KEY;
+    this.apiSecret = process.env.BC_API_SECRET_KEY;
     
     if (!this.apiSecret) {
-      throw new Error('Missing API_SECRET_KEY in .env');
+      throw new Error('Missing BC_API_SECRET_KEY in .env');
     }
     
     this.client = axios.create({
