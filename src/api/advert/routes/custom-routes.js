@@ -400,7 +400,7 @@ module.exports = {
     // Get adverts that need payment check
     {
       method: 'GET',
-      path: '/adverts/check-payment',
+      path: '/bc/check-payment',
       handler: 'bc-sync-monitor.getAdvertsForPaymentCheck',
       config: {
         auth: false,
@@ -412,7 +412,7 @@ module.exports = {
     // Update single advert payment status
     {
       method: 'PUT',
-      path: '/adverts/:id/payment',
+      path: '/bc/:id/payment',
       handler: 'bc-sync-monitor.updatePaymentStatus',
       config: {
         auth: false,
@@ -427,7 +427,7 @@ module.exports = {
     // Bulk update multiple adverts payment status
     {
       method: 'POST',
-      path: '/adverts/bulk-payment',
+      path: '/bc/bulk-payment',
       handler: 'bc-sync-monitor.bulkUpdatePaymentStatus',
       config: {
         auth: false,
@@ -450,7 +450,7 @@ module.exports = {
     // Check payment status by BC reference number
     {
       method: 'GET',
-      path: '/adverts/payment/:reference',
+      path: '/bc/payment/:reference',
       handler: 'bc-sync-monitor.checkPaymentByBcReference',
       config: {
         auth: false,
