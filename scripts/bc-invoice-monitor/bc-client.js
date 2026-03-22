@@ -1,3 +1,6 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
 const axios = require('axios');
 const logger = require('./logger');
 
@@ -20,8 +23,25 @@ class BCClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      timeout: 30000, // 30 seconds timeout
+      timeout: 30000,
     });
+    
+    // Add response interceptor for logging
+    this.client.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response) {
+          logger.error('BC API Error:', {
+            status: error.response.status,
+            data: error.response.data,
+            url: error.config.url
+          });
+        }
+        return Promise.reject(error);
+      }
+    );
+    
+    logger.info('BC Client initialized', { baseURL: this.baseURL });
   }
   
   /**
@@ -29,7 +49,7 @@ class BCClient {
    */
   async checkInvoiceStatus(orderNumber) {
     try {
-      const endpoint = `/postedSalesInvoices('${orderNumber}')`;
+      const endpoint = `/postedSalesInvoices('${encodeURIComponent(orderNumber)}')`;
       logger.debug(`Checking BC invoice for order: ${orderNumber}`);
       
       const response = await this.client.get(endpoint);
@@ -46,6 +66,8 @@ class BCClient {
         dueDate: response.data.Due_Date,
         customerNo: response.data.Sell_to_Customer_No,
         customerName: response.data.Sell_to_Customer_Name,
+        documentDate: response.data.Document_Date,
+        paymentTerms: response.data.Payment_Terms_Code
       };
     } catch (error) {
       if (error.response && error.response.status === 404) {
@@ -56,35 +78,46 @@ class BCClient {
       logger.error(`Error checking invoice for ${orderNumber}:`, {
         message: error.message,
         status: error.response?.status,
-        data: error.response?.data,
+        data: error.response?.data
       });
       throw error;
     }
   }
   
   /**
-   * Get multiple invoice statuses in batch (if BC API supports batch)
+   * Check multiple invoices with concurrency control
    */
-  async checkMultipleInvoices(orderNumbers) {
-    // BC API might not support batch requests, so we'll do individual requests
-    // with concurrency control
+  async checkMultipleInvoices(orderNumbers, concurrency = 3) {
     const results = {};
-    const concurrency = 5;
+    const queue = [...orderNumbers];
     
-    for (let i = 0; i < orderNumbers.length; i += concurrency) {
-      const batch = orderNumbers.slice(i, i + concurrency);
-      const batchResults = await Promise.allSettled(
-        batch.map(orderNo => this.checkInvoiceStatus(orderNo))
-      );
+    const processBatch = async () => {
+      const promises = [];
+      for (let i = 0; i < concurrency && queue.length > 0; i++) {
+        const orderNo = queue.shift();
+        promises.push(
+          this.checkInvoiceStatus(orderNo)
+            .then(result => ({ orderNo, result }))
+            .catch(error => ({ orderNo, error: error.message }))
+        );
+      }
       
-      batch.forEach((orderNo, index) => {
-        const result = batchResults[index];
-        results[orderNo] = result.status === 'fulfilled' 
-          ? result.value 
-          : { exists: false, error: result.reason?.message };
+      const batchResults = await Promise.all(promises);
+      batchResults.forEach(({ orderNo, result, error }) => {
+        if (error) {
+          results[orderNo] = { exists: false, error };
+        } else {
+          results[orderNo] = result;
+        }
       });
-    }
+      
+      if (queue.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await processBatch();
+      }
+    };
     
+    await processBatch();
     return results;
   }
 }
