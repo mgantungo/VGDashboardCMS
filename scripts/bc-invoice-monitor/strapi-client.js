@@ -31,38 +31,21 @@ class StrapiClient {
   }
   
   /**
-   * Fetch pending adverts that need invoice checking
+   * Fetch adverts that need payment check
+   * Returns adverts with bc_reference_number where isPaid = false
    */
-  async fetchPendingAdverts(daysBack = 2, limit = 100) {
+  async fetchAdvertsForPaymentCheck(daysBack = 2, limit = 100) {
     try {
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysBack);
-      startDate.setHours(0, 0, 0, 0);
+      const response = await this.client.get('/adverts/check-payment', {
+        params: { daysBack, limit }
+      });
       
-      // Use camelCase field names (Strapi API format)
-      const params = {
-        'filters[bc_reference_number][$notNull]': true,
-        'filters[bc_reference_number][$ne]': '',
-        'filters[isPaid][$eq]': false,  // Changed from is_paid to isPaid
-        'filters[createdAt][$gte]': startDate.toISOString(),
-        'populate[invoice]': {
-          fields: ['id', 'invoice_number', 'is_paid']
-        },
-        'populate[client]': {
-          fields: ['name', 'client_code']
-        },
-        'sort[0]': 'createdAt:asc',
-        'pagination[pageSize]': limit,
-        'pagination[page]': 1
-      };
-      
-      const response = await this.client.get('/api/adverts', { params });
-      logger.info(`Fetched ${response.data.data.length} pending adverts`);
-      
+      logger.info(`Fetched ${response.data.data.length} adverts needing payment check`);
       return response.data.data;
     } catch (error) {
-      logger.error('Error fetching pending adverts:', {
+      logger.error('Error fetching adverts for payment check:', {
         message: error.message,
+        status: error.response?.status,
         response: error.response?.data
       });
       throw error;
@@ -70,29 +53,14 @@ class StrapiClient {
   }
   
   /**
-   * Update advert with invoice and payment status
+   * Update single advert payment status
+   * Only updates isPaid flag
    */
-  async updateAdvert(advertId, updateData) {
+  async updateAdvertPayment(advertId, isPaid) {
     try {
-      // Ensure field names are in camelCase for Strapi API
-      const formattedData = {};
+      const response = await this.client.put(`/adverts/${advertId}/payment`, { isPaid });
       
-      // Map snake_case to camelCase if needed
-      Object.keys(updateData).forEach(key => {
-        if (key === 'last_bc_check_at') {
-          formattedData.lastBcCheckAt = updateData[key];
-        } else if (key === 'paid_at') {
-          formattedData.paidAt = updateData[key];
-        } else {
-          formattedData[key] = updateData[key];
-        }
-      });
-      
-      const response = await this.client.put(`/api/adverts/${advertId}`, {
-        data: formattedData,
-      });
-      
-      logger.debug(`Updated advert ${advertId}`, formattedData);
+      logger.debug(`Updated advert ${advertId}: isPaid=${isPaid}`);
       return response.data;
     } catch (error) {
       logger.error(`Error updating advert ${advertId}:`, error.message);
@@ -101,73 +69,31 @@ class StrapiClient {
   }
   
   /**
-   * Create or update invoice record
+   * Bulk update multiple adverts payment status
    */
-  async upsertInvoice(advertId, invoiceData) {
+  async bulkUpdatePayment(updates) {
     try {
-      // Check if invoice already exists
-      const existingResponse = await this.client.get('/api/invoices', {
-        params: {
-          'filters[advert][id][$eq]': advertId,
-          'pagination[pageSize]': 1,
-        },
-      });
-      
-      const existingInvoice = existingResponse.data.data[0];
-      
-      const payload = {
-        data: {
-          advert: advertId,
-          invoice_number: invoiceData.invoiceNo,
-          amount: invoiceData.amount,
-          amount_including_vat: invoiceData.amountIncludingVAT,
-          remaining_amount: invoiceData.remainingAmount,
-          due_date: invoiceData.dueDate,
-          posting_date: invoiceData.postingDate,
-          is_paid: invoiceData.isClosed,
-          last_sync_at: new Date().toISOString(),
-          bc_reference: invoiceData.orderNumber
-        },
-      };
-      
-      if (existingInvoice) {
-        // Update existing invoice
-        const response = await this.client.put(
-          `/api/invoices/${existingInvoice.id}`,
-          payload
-        );
-        logger.debug(`Updated invoice for advert ${advertId}`);
-        return response.data;
-      } else {
-        // Create new invoice
-        const response = await this.client.post('/api/invoices', payload);
-        logger.debug(`Created invoice for advert ${advertId}`);
-        return response.data;
-      }
+      const response = await this.client.post('/adverts/bulk-payment', { updates });
+      return response.data;
     } catch (error) {
-      logger.error(`Error upserting invoice for advert ${advertId}:`, error.message);
+      logger.error('Error in bulk update:', error.message);
       throw error;
     }
   }
   
   /**
-   * Add workflow log entry
+   * Check payment status by BC reference number
    */
-  async addWorkflowLog(advertId, action, status, metadata = {}) {
+  async checkPaymentByBcReference(bcReference) {
     try {
-      const response = await this.client.post('/api/workflow-logs', {
-        data: {
-          advert: advertId,
-          action,
-          status,
-          metadata,
-          performed_at: new Date().toISOString(),
-        },
-      });
-      return response.data;
+      const response = await this.client.get(`/adverts/payment/${encodeURIComponent(bcReference)}`);
+      return response.data.data;
     } catch (error) {
-      logger.warn(`Error adding workflow log for advert ${advertId}:`, error.message);
-      // Don't throw - workflow logs are non-critical
+      if (error.response?.status === 404) {
+        return null;
+      }
+      logger.error(`Error checking payment for ${bcReference}:`, error.message);
+      throw error;
     }
   }
   
@@ -176,11 +102,12 @@ class StrapiClient {
    */
   async testConnection() {
     try {
-      // Simple query to test connection
-      const response = await this.client.get('/api/adverts', {
-        params: { 'pagination[pageSize]': 1 }
+      const response = await this.client.get('/adverts/check-payment', {
+        params: { daysBack: 30, limit: 1 }
       });
+      
       logger.info('Strapi connection successful');
+      logger.info(`Total adverts needing check: ${response.data.meta?.count || 0}`);
       return true;
     } catch (error) {
       logger.error('Strapi connection failed:', {
