@@ -39,10 +39,11 @@ class StrapiClient {
       startDate.setDate(startDate.getDate() - daysBack);
       startDate.setHours(0, 0, 0, 0);
       
+      // Use camelCase field names (Strapi API format)
       const params = {
         'filters[bc_reference_number][$notNull]': true,
         'filters[bc_reference_number][$ne]': '',
-        'filters[isPaid][$eq]': false,
+        'filters[isPaid][$eq]': false,  // Changed from is_paid to isPaid
         'filters[createdAt][$gte]': startDate.toISOString(),
         'populate[invoice]': {
           fields: ['id', 'invoice_number', 'is_paid']
@@ -73,11 +74,25 @@ class StrapiClient {
    */
   async updateAdvert(advertId, updateData) {
     try {
-      const response = await this.client.put(`/api/adverts/${advertId}`, {
-        data: updateData,
+      // Ensure field names are in camelCase for Strapi API
+      const formattedData = {};
+      
+      // Map snake_case to camelCase if needed
+      Object.keys(updateData).forEach(key => {
+        if (key === 'last_bc_check_at') {
+          formattedData.lastBcCheckAt = updateData[key];
+        } else if (key === 'paid_at') {
+          formattedData.paidAt = updateData[key];
+        } else {
+          formattedData[key] = updateData[key];
+        }
       });
       
-      logger.debug(`Updated advert ${advertId}`, updateData);
+      const response = await this.client.put(`/api/adverts/${advertId}`, {
+        data: formattedData,
+      });
+      
+      logger.debug(`Updated advert ${advertId}`, formattedData);
       return response.data;
     } catch (error) {
       logger.error(`Error updating advert ${advertId}:`, error.message);
@@ -161,6 +176,7 @@ class StrapiClient {
    */
   async testConnection() {
     try {
+      // Simple query to test connection
       const response = await this.client.get('/api/adverts', {
         params: { 'pagination[pageSize]': 1 }
       });
