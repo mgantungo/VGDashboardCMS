@@ -400,7 +400,7 @@ module.exports = {
     // Get adverts that need payment check
     {
       method: 'GET',
-      path: '/bc-check-payment',
+      path: '/adverts/check-payment',
       handler: 'bc-sync-monitor.getAdvertsForPaymentCheck',
       config: {
         auth: false,
