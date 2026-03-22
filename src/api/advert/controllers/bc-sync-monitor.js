@@ -3,7 +3,9 @@
 /**
  * bc-sync-monitor controller
  * Handles automatic payment updates from Business Central
- * Creates invoice and payment records when invoice exists in BC
+ * Creates invoice and payment records when invoice exists and conditions are met
+ * - Cash payments: Only when invoice is closed
+ * - Other payments: As soon as invoice exists
  */
 
 module.exports = {
@@ -37,10 +39,10 @@ module.exports = {
         };
       }
       
-      // Remove relations from select - only select direct fields
+      // Fetch adverts with direct fields only, populate relations separately
       const adverts = await strapi.db.query('api::advert.advert').findMany({
         where: whereClause,
-        select: ['id', 'bc_reference_number', 'advert_title', 'isPaid', 'createdAt', 'total_amount', 'reference_number'],
+        select: ['id', 'bc_reference_number', 'advert_title', 'isPaid', 'createdAt', 'total_amount', 'reference_number', 'payment_method'],
         populate: {
           client: {
             select: ['id', 'company_name']
@@ -69,7 +71,7 @@ module.exports = {
   
   /**
    * Update advert payment status from Business Central
-   * Creates invoice and payment records when invoice exists
+   * Creates invoice and payment records when conditions are met
    */
   async updatePaymentStatus(ctx) {
     try {
@@ -80,7 +82,7 @@ module.exports = {
         return ctx.badRequest('isPaid is required');
       }
       
-      // Check if advert exists - populate relations properly
+      // Check if advert exists with relations
       const existingAdvert = await strapi.db.query('api::advert.advert').findOne({
         where: { id: parseInt(id) },
         populate: {
@@ -106,7 +108,7 @@ module.exports = {
         };
       }
       
-      // If marking as paid (invoice exists in BC), create invoice and payment records
+      // If marking as paid, create invoice and payment records
       let invoiceRecord = null;
       let paymentRecord = null;
       
@@ -114,10 +116,18 @@ module.exports = {
         // Create or update invoice record from BC data
         invoiceRecord = await upsertInvoiceFromBC(existingAdvert, invoiceData);
         
-        // Create payment record
-        paymentRecord = await createPaymentFromBC(existingAdvert, invoiceData, invoiceRecord);
+        // Determine payment method and status from BC data
+        const paymentMethod = invoiceData?.paymentMethod || existingAdvert.payment_method || 'bank_transfer';
+        const isClosed = invoiceData?.isClosed || false;
         
-        strapi.log.info(`✅ BC Invoice processed for advert ${id}: Invoice ${invoiceRecord?.invoice_number}, Payment ${paymentRecord?.id}`);
+        // Only create payment record for cash if closed, for others always create
+        if (paymentMethod === 'cash' && !isClosed) {
+          strapi.log.info(`Cash payment not closed yet for advert ${id}, skipping payment record`);
+        } else {
+          paymentRecord = await createPaymentFromBC(existingAdvert, invoiceData, invoiceRecord, paymentMethod, isClosed);
+        }
+        
+        strapi.log.info(`✅ BC Invoice processed for advert ${id}: Invoice ${invoiceRecord?.invoice_number}, Payment ${paymentRecord?.id || 'pending'}, Method: ${paymentMethod}`);
       }
       
       // Update advert - mark as paid
@@ -203,7 +213,15 @@ module.exports = {
           
           if (isPaid === true && existingAdvert.isPaid === false) {
             invoiceRecord = await upsertInvoiceFromBC(existingAdvert, invoiceData);
-            paymentRecord = await createPaymentFromBC(existingAdvert, invoiceData, invoiceRecord);
+            
+            const paymentMethod = invoiceData?.paymentMethod || existingAdvert.payment_method || 'bank_transfer';
+            const isClosed = invoiceData?.isClosed || false;
+            
+            if (paymentMethod === 'cash' && !isClosed) {
+              strapi.log.info(`Cash payment not closed yet for advert ${id}, skipping payment record`);
+            } else {
+              paymentRecord = await createPaymentFromBC(existingAdvert, invoiceData, invoiceRecord, paymentMethod, isClosed);
+            }
           }
           
           const updateData = {
@@ -336,15 +354,15 @@ async function upsertInvoiceFromBC(advert, invoiceData) {
 /**
  * Helper: Create payment record from BC data
  */
-async function createPaymentFromBC(advert, invoiceData, invoiceRecord) {
+async function createPaymentFromBC(advert, invoiceData, invoiceRecord, paymentMethod, isClosed) {
   try {
     const paymentPayload = {
       invoice: invoiceRecord?.id || null,
       payment_date: invoiceData?.postingDate || new Date().toISOString().split('T')[0],
       amount: parseFloat(invoiceData?.amountIncludingVAT || advert.total_amount),
-      payment_method: 'bank_transfer',
+      payment_method: paymentMethod === 'cash' ? 'cash' : 'bank_transfer',
       reference_number: invoiceData?.invoiceNo || `BC-${advert.bc_reference_number}`,
-      notes: `Payment from Business Central - Invoice ${invoiceData?.invoiceNo}`,
+      notes: `Payment from Business Central - Invoice ${invoiceData?.invoiceNo} - Method: ${paymentMethod}${isClosed ? '' : ' (Pending)'}`,
       vgams_user: advert.vgams_user?.id || null
     };
     
