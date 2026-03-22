@@ -15,7 +15,7 @@
     "upgrade:dry": "npx @strapi/upgrade latest --dry",
     "import-billing-data": "node scripts/run-import.js",
     "monitor:bc": "node scripts/bc-invoice-monitor/index.js",
-    "monitor:bc:test": "node scripts/bc-invoice-monitor/index.js --dry-run",
+    "monitor:bc:dry": "DRY_RUN=true node scripts/bc-invoice-monitor/index.js",
     "monitor:bc:test": "node scripts/bc-invoice-monitor/test.js",
     "monitor:bc:logs": "tail -f logs/bc-monitor/combined.log",
     "monitor:bc:errors": "tail -f logs/bc-monitor/error.log"
