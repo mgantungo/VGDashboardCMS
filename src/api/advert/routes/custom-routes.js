@@ -396,7 +396,7 @@ module.exports = {
         middlewares: [],
       },
     },
-    //BC SYnc Monitor
+    // ── BC SYnc Monitor ───────────────────────────────────────────────────────────
     // Get adverts that need payment check
     {
       method: 'GET',
