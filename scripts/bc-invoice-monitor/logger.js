@@ -11,12 +11,44 @@ if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
+// Safe stringify to handle circular references
+function safeStringify(obj, indent = 0) {
+  const cache = new Set();
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (cache.has(value)) {
+        return '[Circular]';
+      }
+      cache.add(value);
+    }
+    // Don't stringify large objects
+    if (key === 'response' && value && typeof value === 'object') {
+      return {
+        status: value.status,
+        statusText: value.statusText,
+        data: value.data
+      };
+    }
+    if (key === 'request' && value && typeof value === 'object') {
+      return '[Request Object]';
+    }
+    return value;
+  }, indent);
+}
+
 // Configure log format
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.errors({ stack: true }),
   winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
-    const metaStr = Object.keys(meta).length ? JSON.stringify(meta) : '';
+    let metaStr = '';
+    if (Object.keys(meta).length) {
+      try {
+        metaStr = safeStringify(meta);
+      } catch (e) {
+        metaStr = '[Unable to stringify meta]';
+      }
+    }
     return `[${timestamp}] ${level.toUpperCase()} [${service || 'bc-monitor'}]: ${message} ${metaStr}`;
   })
 );
