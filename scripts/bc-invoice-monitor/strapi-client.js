@@ -3,21 +3,28 @@ const logger = require('./logger');
 
 class StrapiClient {
   constructor() {
-    this.url = process.env.STRAPI_URL || 'http://localhost:1337';
-    this.token = process.env.STRAPI_API_TOKEN;
+    // Build STRAPI_URL from existing HOST and PORT
+    const host = process.env.HOST || 'localhost';
+    const port = process.env.PORT || 1337;
+    this.url = `http://${host}:${port}`;
     
-    if (!this.token) {
-      throw new Error('Missing STRAPI_API_TOKEN in .env');
+    // Use the existing API_SECRET_KEY for authentication
+    this.apiSecret = process.env.API_SECRET_KEY;
+    
+    if (!this.apiSecret) {
+      throw new Error('Missing API_SECRET_KEY in .env');
     }
     
     this.client = axios.create({
       baseURL: this.url,
       headers: {
-        'Authorization': `Bearer ${this.token}`,
+        'Authorization': `Bearer ${this.apiSecret}`,
         'Content-Type': 'application/json',
       },
       timeout: 30000,
     });
+    
+    logger.info(`Strapi client initialized: ${this.url}`);
   }
   
   /**
@@ -44,6 +51,10 @@ class StrapiClient {
       return response.data.data;
     } catch (error) {
       logger.error('Error fetching pending adverts:', error.message);
+      if (error.response) {
+        logger.error('Response status:', error.response.status);
+        logger.error('Response data:', error.response.data);
+      }
       throw error;
     }
   }
@@ -132,6 +143,22 @@ class StrapiClient {
     } catch (error) {
       logger.warn(`Error adding workflow log for advert ${advertId}:`, error.message);
       // Don't throw - workflow logs are non-critical
+    }
+  }
+  
+  /**
+   * Test connection to Strapi
+   */
+  async testConnection() {
+    try {
+      const response = await this.client.get('/api/adverts', {
+        params: { 'pagination[pageSize]': 1 }
+      });
+      logger.info('Strapi connection successful');
+      return true;
+    } catch (error) {
+      logger.error('Strapi connection failed:', error.message);
+      return false;
     }
   }
 }
