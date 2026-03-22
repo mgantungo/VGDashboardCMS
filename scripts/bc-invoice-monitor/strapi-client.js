@@ -1,3 +1,6 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
 const axios = require('axios');
 const logger = require('./logger');
 
@@ -8,7 +11,7 @@ class StrapiClient {
     const port = process.env.PORT || 1337;
     this.url = `http://${host}:${port}`;
     
-    // Use the existing API_SECRET_KEY for authentication
+    // Use BC_API_SECRET_KEY for authentication
     this.apiSecret = process.env.BC_API_SECRET_KEY;
     
     if (!this.apiSecret) {
@@ -34,15 +37,22 @@ class StrapiClient {
     try {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - daysBack);
+      startDate.setHours(0, 0, 0, 0);
       
       const params = {
         'filters[bc_reference_number][$notNull]': true,
+        'filters[bc_reference_number][$ne]': '',
         'filters[isPaid][$eq]': false,
         'filters[createdAt][$gte]': startDate.toISOString(),
-        'populate[invoice][fields]': ['id', 'invoice_number', 'is_paid'],
-        'populate[client][fields]': ['name', 'client_code'],
+        'populate[invoice]': {
+          fields: ['id', 'invoice_number', 'is_paid']
+        },
+        'populate[client]': {
+          fields: ['name', 'client_code']
+        },
         'sort[0]': 'createdAt:asc',
         'pagination[pageSize]': limit,
+        'pagination[page]': 1
       };
       
       const response = await this.client.get('/api/adverts', { params });
@@ -50,11 +60,10 @@ class StrapiClient {
       
       return response.data.data;
     } catch (error) {
-      logger.error('Error fetching pending adverts:', error.message);
-      if (error.response) {
-        logger.error('Response status:', error.response.status);
-        logger.error('Response data:', error.response.data);
-      }
+      logger.error('Error fetching pending adverts:', {
+        message: error.message,
+        response: error.response?.data
+      });
       throw error;
     }
   }
@@ -102,6 +111,7 @@ class StrapiClient {
           posting_date: invoiceData.postingDate,
           is_paid: invoiceData.isClosed,
           last_sync_at: new Date().toISOString(),
+          bc_reference: invoiceData.orderNumber
         },
       };
       
@@ -157,7 +167,11 @@ class StrapiClient {
       logger.info('Strapi connection successful');
       return true;
     } catch (error) {
-      logger.error('Strapi connection failed:', error.message);
+      logger.error('Strapi connection failed:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       return false;
     }
   }
