@@ -1,10 +1,10 @@
 const BCInvoiceMonitor = require('./index');
 const logger = require('./logger');
+const StrapiClient = require('./strapi-client'); // Fixed: removed destructuring
 
 async function testSingleAdvert(advertId) {
   const monitor = new BCInvoiceMonitor();
-  const { StrapiClient } = require('./strapi-client');
-  const strapiClient = new StrapiClient();
+  const strapiClient = new StrapiClient(); // Fixed: removed destructuring
   
   try {
     logger.info(`Testing with advert ID: ${advertId}`);
@@ -52,7 +52,7 @@ async function testBCConnection() {
 }
 
 async function testStrapiConnection() {
-  const { StrapiClient } = require('./strapi-client');
+  const StrapiClient = require('./strapi-client'); // Fixed: removed destructuring
   const strapiClient = new StrapiClient();
   
   try {
