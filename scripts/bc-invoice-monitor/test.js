@@ -13,7 +13,7 @@ async function testSingleAdvert(advertId) {
     logger.info(`Testing with advert ID: ${advertId}`);
     
     // Get advert details
-    const response = await strapiClient.client.get(`/adverts/${advertId}`);
+    const response = await strapiClient.client.get(`/api/adverts/${advertId}`);
     const advert = response.data.data;
     
     if (!advert) {
