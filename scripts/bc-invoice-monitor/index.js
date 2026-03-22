@@ -13,7 +13,6 @@ class BCInvoiceMonitor {
     // Configuration from env with defaults
     this.daysBack = parseInt(process.env.MONITOR_DAYS_BACK) || 2;
     this.batchSize = parseInt(process.env.MONITOR_BATCH_SIZE) || 50;
-    this.logLevel = process.env.LOG_LEVEL || 'info';
     this.dryRun = process.env.DRY_RUN === 'true';
     
     // Statistics
@@ -54,13 +53,13 @@ class BCInvoiceMonitor {
    */
   async processAdvert(advert) {
     const advertId = advert.id;
-    const bcReferenceNumber = advert.attributes.bc_reference_number;
-    const advertTitle = advert.attributes.advert_title || 'Untitled';
+    const bcReferenceNumber = advert.bc_reference_number;
+    const advertTitle = advert.advert_title || 'Untitled';
     
     if (!bcReferenceNumber) {
       logger.warn(`Advert ${advertId} has no BC reference number, skipping`);
       this.stats.failed++;
-      return { success: false, reason: 'no_bc_reference' };
+      return { success: false, reason: 'no_bc_reference', advertId };
     }
     
     logger.info(`Processing advert ${advertId}: "${advertTitle}" (BC: ${bcReferenceNumber})`);
@@ -73,43 +72,14 @@ class BCInvoiceMonitor {
         logger.info(`Invoice found for ${bcReferenceNumber}: ${invoiceStatus.invoiceNo} - Paid: ${invoiceStatus.isClosed}`);
         
         if (!this.dryRun) {
-          // Update payment status
-          const updateData = {
-            last_bc_check_at: new Date().toISOString(),
-            isPaid: invoiceStatus.isClosed,
-            isClosed: invoiceStatus.isClosed,
-          };
+          // Only update isPaid based on BC invoice status
+          await this.strapiClient.updateAdvertPayment(advertId, invoiceStatus.isClosed);
           
-          if (invoiceStatus.isClosed && !advert.attributes.isPaid) {
-            updateData.paid_at = new Date().toISOString();
-            logger.info(`💰 Payment detected for advert ${advertId}`);
-          }
-          
-          // Update advert
-          await this.strapiClient.updateAdvert(advertId, updateData);
-          
-          // Create/update invoice record
-          await this.strapiClient.upsertInvoice(advertId, {
-            ...invoiceStatus,
-            orderNumber: bcReferenceNumber
-          });
-          
-          // Add workflow log if payment is completed
-          if (invoiceStatus.isClosed) {
-            await this.strapiClient.addWorkflowLog(
-              advertId,
-              'payment_received',
-              'completed',
-              {
-                invoice_no: invoiceStatus.invoiceNo,
-                amount: invoiceStatus.amountIncludingVAT,
-                bc_reference: bcReferenceNumber,
-                checked_at: new Date().toISOString()
-              }
-            );
+          if (invoiceStatus.isClosed && !advert.isPaid) {
+            logger.info(`💰 Payment confirmed for advert ${advertId}`);
           }
         } else {
-          logger.info(`[DRY RUN] Would update advert ${advertId} - Paid: ${invoiceStatus.isClosed}`);
+          logger.info(`[DRY RUN] Would update advert ${advertId} isPaid=${invoiceStatus.isClosed}`);
         }
         
         this.stats.successful++;
@@ -124,19 +94,10 @@ class BCInvoiceMonitor {
           advertId,
           bcReferenceNumber,
           isPaid: invoiceStatus.isClosed,
-          hasInvoice: true,
           invoiceNo: invoiceStatus.invoiceNo
         };
       } else {
-        // No invoice yet, just update check timestamp
-        if (!this.dryRun) {
-          await this.strapiClient.updateAdvert(advertId, {
-            last_bc_check_at: new Date().toISOString(),
-          });
-        } else {
-          logger.info(`[DRY RUN] Would update check timestamp for advert ${advertId}`);
-        }
-        
+        // No invoice yet, just log
         logger.info(`⏳ No invoice yet for advert ${advertId}`);
         this.stats.successful++;
         this.stats.pending++;
@@ -158,19 +119,6 @@ class BCInvoiceMonitor {
         error: error.message,
         timestamp: new Date().toISOString()
       });
-      
-      // Log failure in workflow
-      if (!this.dryRun) {
-        await this.strapiClient.addWorkflowLog(
-          advertId,
-          'bc_check_failed',
-          'failed',
-          { 
-            error: error.message, 
-            bc_reference: bcReferenceNumber
-          }
-        ).catch(e => logger.warn('Could not add failure log:', e.message));
-      }
       
       return {
         success: false,
@@ -197,18 +145,18 @@ class BCInvoiceMonitor {
         throw new Error('Cannot connect to Strapi API');
       }
       
-      // Fetch pending adverts
-      const adverts = await this.strapiClient.fetchPendingAdverts(
+      // Fetch adverts that need payment check
+      const adverts = await this.strapiClient.fetchAdvertsForPaymentCheck(
         this.daysBack,
         this.batchSize
       );
       
       if (adverts.length === 0) {
-        logger.info('✓ No pending adverts to process');
+        logger.info('✓ No adverts need payment check');
         return {
           success: true,
           processed: 0,
-          message: 'No pending adverts',
+          message: 'No adverts to process',
           stats: this.stats
         };
       }
