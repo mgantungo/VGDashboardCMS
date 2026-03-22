@@ -58,4 +58,22 @@ WantedBy=timers.target
 
 
 
+# How to start the systemd service
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Enable and start timer
+sudo systemctl enable --now bc-invoice-monitor.timer
+
+# Check status
+sudo systemctl status bc-invoice-monitor.timer
+
+# List all timers
+sudo systemctl list-timers | grep bc-invoice
+
+# View logs
+sudo journalctl -u bc-invoice-monitor.service -f
+
+
+
 
