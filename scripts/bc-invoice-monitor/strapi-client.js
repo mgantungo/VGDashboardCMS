@@ -36,7 +36,7 @@ class StrapiClient {
    */
   async fetchAdvertsForPaymentCheck(daysBack = 2, limit = 100) {
     try {
-      const response = await this.client.get('/api/adverts/check-payment', {
+      const response = await this.client.get('/api/bc/check-payment', {
         params: { daysBack, limit }
       });
       
@@ -58,7 +58,7 @@ class StrapiClient {
    */
   async updateAdvertPayment(advertId, isPaid) {
     try {
-      const response = await this.client.put(`/api/adverts/${advertId}/payment`, { isPaid });
+      const response = await this.client.put(`/api/bc/${advertId}/payment`, { isPaid });
       
       logger.debug(`Updated advert ${advertId}: isPaid=${isPaid}`);
       return response.data;
@@ -73,7 +73,7 @@ class StrapiClient {
    */
   async bulkUpdatePayment(updates) {
     try {
-      const response = await this.client.post('/api/adverts/bulk-payment', { updates });
+      const response = await this.client.post('/api/bc/bulk-payment', { updates });
       return response.data;
     } catch (error) {
       logger.error('Error in bulk update:', error.message);
@@ -86,7 +86,7 @@ class StrapiClient {
    */
   async checkPaymentByBcReference(bcReference) {
     try {
-      const response = await this.client.get(`/api/adverts/payment/${encodeURIComponent(bcReference)}`);
+      const response = await this.client.get(`/api/bc/payment/${encodeURIComponent(bcReference)}`);
       return response.data.data;
     } catch (error) {
       if (error.response?.status === 404) {
@@ -102,7 +102,7 @@ class StrapiClient {
    */
   async testConnection() {
     try {
-      const response = await this.client.get('/api/adverts/check-payment', {
+      const response = await this.client.get('/api/bc/check-payment', {
         params: { daysBack: 30, limit: 1 }
       });
       
