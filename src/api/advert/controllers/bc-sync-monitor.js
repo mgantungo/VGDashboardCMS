@@ -37,9 +37,18 @@ module.exports = {
         };
       }
       
+      // Remove relations from select - only select direct fields
       const adverts = await strapi.db.query('api::advert.advert').findMany({
         where: whereClause,
-        select: ['id', 'bc_reference_number', 'advert_title', 'isPaid', 'createdAt', 'total_amount', 'client', 'reference_number', 'vgams_user'],
+        select: ['id', 'bc_reference_number', 'advert_title', 'isPaid', 'createdAt', 'total_amount', 'reference_number'],
+        populate: {
+          client: {
+            select: ['id', 'company_name']
+          },
+          vgams_user: {
+            select: ['id', 'name', 'email']
+          }
+        },
         orderBy: { createdAt: 'asc' },
         limit: parseInt(limit)
       });
@@ -71,7 +80,7 @@ module.exports = {
         return ctx.badRequest('isPaid is required');
       }
       
-      // Check if advert exists
+      // Check if advert exists - populate relations properly
       const existingAdvert = await strapi.db.query('api::advert.advert').findOne({
         where: { id: parseInt(id) },
         populate: {
