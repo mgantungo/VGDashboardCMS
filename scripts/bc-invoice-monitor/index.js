@@ -6,8 +6,25 @@ class BCInvoiceMonitor {
   constructor() {
     this.bcClient = new BCClient();
     this.strapiClient = new StrapiClient();
+    
+    // Use existing env variables with fallbacks
     this.daysBack = parseInt(process.env.MONITOR_DAYS_BACK) || 2;
     this.batchSize = parseInt(process.env.MONITOR_BATCH_SIZE) || 50;
+    this.logLevel = process.env.LOG_LEVEL || 'info';
+    
+    // Validate configuration
+    this.validateConfig();
+  }
+  
+  validateConfig() {
+    const required = ['EXTERNAL_API_BC_BASE_URL', 'EXTERNAL_API_USERNAME', 'EXTERNAL_API_PASSWORD', 'API_SECRET_KEY'];
+    const missing = required.filter(key => !process.env[key]);
+    
+    if (missing.length > 0) {
+      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    }
+    
+    logger.info('Configuration validated successfully');
   }
   
   /**
@@ -113,6 +130,12 @@ class BCInvoiceMonitor {
     logger.info(`Configuration: ${this.daysBack} days back, batch size: ${this.batchSize}`);
     
     try {
+      // Test Strapi connection first
+      const isConnected = await this.strapiClient.testConnection();
+      if (!isConnected) {
+        throw new Error('Cannot connect to Strapi API');
+      }
+      
       // Fetch pending adverts
       const adverts = await this.strapiClient.fetchPendingAdverts(
         this.daysBack,
