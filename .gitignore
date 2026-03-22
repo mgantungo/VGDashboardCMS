@@ -92,7 +92,7 @@ public/uploads/*
 lib-cov
 lcov.info
 pids
-logs
+#logs
 results
 node_modules
 .node_history
