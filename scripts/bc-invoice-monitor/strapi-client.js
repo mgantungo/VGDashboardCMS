@@ -7,7 +7,7 @@ const logger = require('./logger');
 class StrapiClient {
   constructor() {
     // Build STRAPI_URL from existing HOST and PORT
-    const host = process.env.HOST || 'localhost';
+    const host = process.env.LOCALHOST || 'localhost';
     const port = process.env.PORT || 1337;
     this.url = `http://${host}:${port}`;
     
