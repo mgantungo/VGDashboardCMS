@@ -395,6 +395,68 @@ module.exports = {
         policies: [],
         middlewares: [],
       },
+    },
+    //BC SYnc Monitor
+    // Get adverts that need payment check
+    {
+      method: 'GET',
+      path: '/adverts/check-payment',
+      handler: 'bc-sync-monitor.getAdvertsForPaymentCheck',
+      config: {
+        auth: false,
+        description: 'Get adverts that need payment status check (isPaid=false with bc_reference_number)',
+        tags: ['Payment Monitor']
+      }
+    },
+    
+    // Update single advert payment status
+    {
+      method: 'PUT',
+      path: '/adverts/:id/payment',
+      handler: 'bc-sync-monitor.updatePaymentStatus',
+      config: {
+        auth: false,
+        description: 'Update advert payment status (only updates isPaid)',
+        tags: ['Payment Monitor'],
+        body: {
+          isPaid: { type: 'boolean', required: true, description: 'Payment status from Business Central' }
+        }
+      }
+    },
+    
+    // Bulk update multiple adverts payment status
+    {
+      method: 'POST',
+      path: '/adverts/bulk-payment',
+      handler: 'bc-sync-monitor.bulkUpdatePaymentStatus',
+      config: {
+        auth: false,
+        description: 'Bulk update payment status for multiple adverts',
+        tags: ['Payment Monitor'],
+        body: {
+          updates: {
+            type: 'array',
+            required: true,
+            description: 'Array of updates with id and isPaid',
+            items: {
+              id: { type: 'number', required: true },
+              isPaid: { type: 'boolean', required: true }
+            }
+          }
+        }
+      }
+    },
+    
+    // Check payment status by BC reference number
+    {
+      method: 'GET',
+      path: '/adverts/payment/:reference',
+      handler: 'bc-sync-monitor.checkPaymentByBcReference',
+      config: {
+        auth: false,
+        description: 'Check sync status by Business Central reference number',
+        tags: ['Payment Monitor']
+      }
     }
   ]
 };
