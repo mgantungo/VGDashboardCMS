@@ -4,8 +4,12 @@ const axios = require('axios');
 
 module.exports = {
   // Sync customers from Business Central to Strapi clients collection
+  // @param {boolean} insertNew - If true, insert new clients; if false, only check/validate without inserting
   async syncClientsFromBC(ctx) {
     const startTime = Date.now();
+    
+    // Get insertNew parameter from query string (default: true for backward compatibility)
+    const insertNew = ctx.query.insertNew !== 'false'; // Default to true unless explicitly 'false'
     
     try {
       // Get credentials from environment variables
@@ -42,7 +46,8 @@ module.exports = {
             inserted: 0,
             skipped: 0,
             errors: 0,
-            executionTimeMs: Date.now() - startTime
+            executionTimeMs: Date.now() - startTime,
+            insertMode: insertNew ? 'insert' : 'validate-only'
           }
         });
       }
@@ -55,7 +60,8 @@ module.exports = {
         skipped: 0,
         errors: 0,
         skippedDetails: [],
-        errorDetails: []
+        errorDetails: [],
+        wouldInsert: [] // For validation mode, track which records would be inserted
       };
 
       // Process each customer
@@ -119,24 +125,31 @@ module.exports = {
               reasons: ['Already exists in database']
             });
           } else {
-            // Create new client
-            const newClient = await strapi.db.query('api::client.client').create({
-              data: {
-                company_name: companyName,
-                bc_no: bcNo,
-                phone: phone,
-                contact_person: bcCustomer.Contact?.trim() || '',
-                address: bcCustomer.Address68302?.trim() || bcCustomer.Address_272351?.trim() || '',
-                is_active: true,
-                credit_approved: false,
-                credit_limit: bcCustomer.Balance_LCY || 0, // Using Balance_LCY as initial credit limit
-                payment_terms: 'cash', // Default value
-                // email is not provided by the API, so we skip it
-                // clientTin is not provided by the API
-              }
-            });
+            // Record that this would be inserted (for validation mode)
+            const newClientData = {
+              company_name: companyName,
+              bc_no: bcNo,
+              phone: phone,
+              contact_person: bcCustomer.Contact?.trim() || '',
+              address: bcCustomer.Address68302?.trim() || bcCustomer.Address_272351?.trim() || '',
+              is_active: true,
+              credit_approved: false,
+              credit_limit: bcCustomer.Balance_LCY || 0,
+              payment_terms: 'cash',
+            };
 
-            results.inserted++;
+            results.wouldInsert.push(newClientData);
+
+            // Only insert if insertNew is true
+            if (insertNew) {
+              const newClient = await strapi.db.query('api::client.client').create({
+                data: newClientData
+              });
+              results.inserted++;
+            } else {
+              // In validate-only mode, count as "would insert"
+              results.inserted++; // Count as would be inserted
+            }
           }
         } catch (itemError) {
           results.errors++;
@@ -151,23 +164,33 @@ module.exports = {
 
       const executionTime = Date.now() - startTime;
 
-      // Return comprehensive results
-      return ctx.send({
+      // Prepare response based on mode
+      const responseData = {
         success: true,
-        message: 'Clients sync completed',
+        message: insertNew ? 'Clients sync completed' : 'Clients validation completed (dry run)',
         summary: {
           fetched: results.fetched,
           inserted: results.inserted,
           skipped: results.skipped,
           errors: results.errors,
           executionTimeMs: executionTime,
-          executionTimeSeconds: Math.round(executionTime / 1000)
+          executionTimeSeconds: Math.round(executionTime / 1000),
+          insertMode: insertNew ? 'insert' : 'validate-only'
         },
         details: {
           skipped: results.skippedDetails,
           errors: results.errorDetails
         }
-      });
+      };
+
+      // Add wouldInsert details in validation mode
+      if (!insertNew && results.wouldInsert.length > 0) {
+        responseData.details.wouldInsert = results.wouldInsert;
+        responseData.summary.wouldInsertCount = results.wouldInsert.length;
+      }
+
+      // Return comprehensive results
+      return ctx.send(responseData);
 
     } catch (error) {
       console.error('Error syncing clients from Business Central:', error);
