@@ -2,6 +2,18 @@
 
 const axios = require('axios');
 
+/*
+Usage Examples:
+To actually insert new clients (default behavior):
+text
+POST /api/sync/clients
+or
+POST /api/sync/clients?insertNew=true
+To only validate without inserting (dry run):
+text
+POST /api/sync/clients?insertNew=false
+*/
+
 module.exports = {
   // Sync customers from Business Central to Strapi clients collection
   // @param {boolean} insertNew - If true, insert new clients; if false, only check/validate without inserting
