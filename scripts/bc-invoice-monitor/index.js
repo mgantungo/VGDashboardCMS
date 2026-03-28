@@ -11,7 +11,7 @@ class BCInvoiceMonitor {
     this.strapiClient = new StrapiClient();
     
     // Configuration from env with defaults
-    this.daysBack = parseInt(process.env.MONITOR_DAYS_BACK) || 2;
+    this.daysBack = parseInt(process.env.MONITOR_DAYS_BACK) || 30; //changed from 2 days to 30 days to provide for analytics
     this.batchSize = parseInt(process.env.MONITOR_BATCH_SIZE) || 50;
     this.dryRun = process.env.DRY_RUN === 'true';
     
