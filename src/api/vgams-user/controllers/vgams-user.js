@@ -98,7 +98,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Service-Key': SERVICE_KEY,
+            'X-Dev-Key': SERVICE_KEY,
           },
           body: JSON.stringify({ email, password }),
           signal: AbortSignal.timeout(10000), // 10s timeout
