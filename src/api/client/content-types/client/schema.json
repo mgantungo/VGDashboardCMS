@@ -27,6 +27,7 @@
     },
     "phone": {
       "type": "string",
+      "default": "0700000000",
       "required": true
     },
     "address": {

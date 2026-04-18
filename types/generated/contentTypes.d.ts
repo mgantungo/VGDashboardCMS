@@ -965,7 +965,9 @@ export interface ApiClientClient extends Struct.CollectionTypeSchema {
       ['cash', 'credit_7', 'credit_15', 'credit_30', 'pdc']
     > &
       Schema.Attribute.DefaultTo<'cash'>;
-    phone: Schema.Attribute.String & Schema.Attribute.Required;
+    phone: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'0700000000'>;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
