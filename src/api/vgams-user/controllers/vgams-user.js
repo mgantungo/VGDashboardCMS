@@ -6,8 +6,8 @@ const { createCoreController } = require('@strapi/strapi').factories;
 // ── Legacy dependency (kept for reference, no longer used for auth) ───────────
 // const bcrypt = require('bcryptjs');
 
-const AD_AUTH_URL = 'https://vg-one-id-auth.newvision.co.ug/api/auth/login';
-const DEV_API_KEY = process.env.AUTH_PROXY_DEV_KEY; // Add this to your Strapi .env
+const AD_AUTH_URL   = process.env.AD_AUTH_URL;
+const SERVICE_KEY   = process.env.AUTH_PROXY_SERVICE_KEY; 
 
 module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi }) => ({
   async initiateLogin(ctx) {
@@ -15,10 +15,10 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       let email, password;
 
       if (ctx.params?.email && ctx.params?.password) {
-        email = ctx.params.email;
+        email    = ctx.params.email;
         password = ctx.params.password;
       } else if (ctx.request.body?.email && ctx.request.body?.password) {
-        email = ctx.request.body.email;
+        email    = ctx.request.body.email;
         password = ctx.request.body.password;
       } else {
         return ctx.badRequest('Email and password are required');
@@ -27,11 +27,14 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       email = email.toLowerCase().trim();
       console.log('🔐 VGAMS Login requested for:', email);
 
-      // ── Step 1: Enforce @newvision.co.ug domain ────────────────────────────
+      // ── Step 1: Enforce allowed email domains ─────────────────────────────
+      const ALLOWED_DOMAINS = [
+        'newvision.co.ug'
+      ];
       const domain = email.split('@')[1];
-      if (domain !== 'newvision.co.ug') {
+      if (!ALLOWED_DOMAINS.includes(domain)) {
         console.log('🚫 Rejected domain:', domain);
-        return ctx.unauthorized('Only @newvision.co.ug email addresses are permitted.');
+        return ctx.unauthorized('Only company email addresses are permitted.');
       }
 
       // ── Step 2: Check user exists in Strapi DB ────────────────────────────
@@ -95,7 +98,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Dev-Key': DEV_API_KEY,
+            'X-Service-Key': SERVICE_KEY,
           },
           body: JSON.stringify({ email, password }),
           signal: AbortSignal.timeout(10000), // 10s timeout
@@ -107,11 +110,15 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         return ctx.internalServerError('Authentication service is temporarily unavailable. Please try again shortly.');
       }
 
-      console.log('📨 AD auth proxy response — status:', adResponse?.status);
+      console.log('📨 AD auth proxy response — authenticated:', adResponse?.authenticated, '| status:', adResponse?.status);
 
-      // ── Step 4: Handle AD auth result ────────────────────────────────────
-      if (!adResponse?.authenticated) {
-        const status   = adResponse?.status || 'UNKNOWN';
+      // ── Step 4: Handle AD auth result ─────────────────────────────────────
+      // Both fields must pass: authenticated === true AND status === 'SUCCESS'
+      const adAuthenticated = adResponse?.authenticated === true;
+      const adSuccess       = adResponse?.status === 'SUCCESS';
+
+      if (!adAuthenticated || !adSuccess) {
+        const status = adResponse?.status || 'UNKNOWN';
         const messages = {
           INVALID_CREDENTIALS: 'Incorrect password.',
           USER_NOT_FOUND:      'No Active Directory account found for this email.',
@@ -121,29 +128,29 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         };
 
         const message = messages[status] || adResponse?.message || 'Authentication failed.';
-        console.log(`⚠️  AD auth rejected [${status}]:`, email);
+        console.log(`⚠️  AD auth rejected [authenticated=${adAuthenticated}, status=${status}]:`, email);
         return ctx.unauthorized(message);
       }
 
-      console.log('✅ AD authentication successful for:', email);
+      console.log('✅ AD authentication successful for:', email, '[authenticated=true, status=SUCCESS]');
 
       // ── Step 5: Build role-mapped response ────────────────────────────────
       const roleDisplayNames = {
-        booking_clerk:        'Booking Clerk',
-        sub_editor:           'Sub-Editor',
-        advertising_manager:  'Advertising Manager',
-        design_house:         'Design House',
-        finance_team:         'Finance Team',
-        administrator:        'Administrator',
+        booking_clerk:       'Booking Clerk',
+        sub_editor:          'Sub-Editor',
+        advertising_manager: 'Advertising Manager',
+        design_house:        'Design House',
+        finance_team:        'Finance Team',
+        administrator:       'Administrator',
       };
 
       const roleRedirects = {
-        booking_clerk:        '/dashboard/booking',
-        sub_editor:           '/dashboard/review',
-        design_house:         '/dashboard/design',
-        finance_team:         '/dashboard/finance',
-        advertising_manager:  '/dashboard/approval',
-        administrator:        '/dashboard/admin',
+        booking_clerk:       '/dashboard/booking',
+        sub_editor:          '/dashboard/review',
+        design_house:        '/dashboard/design',
+        finance_team:        '/dashboard/finance',
+        advertising_manager: '/dashboard/approval',
+        administrator:       '/dashboard/admin',
       };
 
       const displayRole = roleDisplayNames[user.role] || user.role;
@@ -151,9 +158,12 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
 
       console.log('🎯 Login complete for:', email, '| Role:', displayRole, '| Redirect:', redirectTo);
 
+      // AD-enriched profile from the auth proxy response
+      const adUser = adResponse.user ?? {};
+
       return {
-        success:    true,
-        message:    'Login successful',
+        success: true,
+        message: 'Login successful',
         user: {
           id:          user.id,
           name:        user.name,
@@ -162,14 +172,14 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
           displayRole: displayRole,
           createdAt:   user.createdAt,
           updatedAt:   user.updatedAt,
-          // AD-enriched fields (available when AD returns a full user object)
-          adProfile: adResponse.user ? {
-            displayName: adResponse.user.displayName,
-            department:  adResponse.user.department,
-            jobTitle:    adResponse.user.jobTitle,
-            phone:       adResponse.user.phone,
-            groups:      adResponse.user.groups,
-          } : null,
+          // Fields returned by the AD auth proxy
+          adProfile: {
+            displayName:   adUser.displayName   ?? null,
+            department:    adUser.department    ?? null,
+            jobTitle:      adUser.jobTitle      ?? null,
+            phone:         adUser.phone         ?? null,
+            accountActive: adUser.accountStatus?.active ?? null,
+          },
         },
         redirectTo,
       };
