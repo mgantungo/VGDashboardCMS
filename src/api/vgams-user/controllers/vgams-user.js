@@ -3,6 +3,7 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const https = require('https');
+const url = require('url');
 
 // ── Legacy dependency (kept for reference, no longer used for auth) ───────────
 // const bcrypt = require('bcryptjs');
@@ -10,11 +11,56 @@ const https = require('https');
 const AD_AUTH_URL   = 'https://vg-one-id-auth.newvision.co.ug/api/auth/login';
 const SERVICE_KEY   = 'ee222c03986f8323764f8f47ae4c37634d55e5cc89bd541a14fb05343ff565e6';
 
-// Create custom agent to ignore SSL certificate errors for internal network
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: false,  // For internal network only - accepts self-signed certificates
-  keepAlive: true
-});
+// Helper function to make HTTPS request with self-signed certificate support
+function makeHttpsRequest(urlString, data) {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = url.parse(urlString);
+    const postData = JSON.stringify(data);
+    
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || 443,
+      path: parsedUrl.path,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Dev-Key': SERVICE_KEY,
+        'Content-Length': Buffer.byteLength(postData)
+      },
+      rejectUnauthorized: false, // Accept self-signed certificates
+      timeout: 10000 // 10 second timeout
+    };
+    
+    const req = https.request(options, (res) => {
+      let responseData = '';
+      
+      res.on('data', (chunk) => {
+        responseData += chunk;
+      });
+      
+      res.on('end', () => {
+        try {
+          const jsonResponse = JSON.parse(responseData);
+          resolve(jsonResponse);
+        } catch (e) {
+          reject(new Error('Failed to parse response JSON'));
+        }
+      });
+    });
+    
+    req.on('error', (error) => {
+      reject(error);
+    });
+    
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Request timeout'));
+    });
+    
+    req.write(postData);
+    req.end();
+  });
+}
 
 module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi }) => ({
   async initiateLogin(ctx) {
@@ -102,28 +148,8 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       
       let adResponse;
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const res = await fetch(AD_AUTH_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Dev-Key': SERVICE_KEY,
-          },
-          body: JSON.stringify({ email, password }),
-          signal: controller.signal,
-          agent: httpsAgent // Use the custom agent that ignores SSL errors
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!res.ok) {
-          console.error('❌ AD auth proxy returned error status:', res.status);
-          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-        }
-
-        adResponse = await res.json();
+        adResponse = await makeHttpsRequest(AD_AUTH_URL, { email, password });
+        console.log('✅ AD auth proxy response received');
       } catch (fetchError) {
         console.error('💥 AD auth proxy unreachable:', fetchError.message);
         console.error('💥 Error details:', fetchError.code || 'No error code');
