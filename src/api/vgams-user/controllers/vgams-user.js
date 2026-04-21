@@ -6,8 +6,8 @@ const { createCoreController } = require('@strapi/strapi').factories;
 // ── Legacy dependency (kept for reference, no longer used for auth) ───────────
 // const bcrypt = require('bcryptjs');
 
-const AD_AUTH_URL   = process.env.AD_AUTH_URL;
-const SERVICE_KEY   = process.env.AUTH_PROXY_SERVICE_KEY; 
+const AD_AUTH_URL   = 'https://vg-one-id-auth.newvision.co.ug/api/auth/login' ;//process.env.AD_AUTH_URL;
+const SERVICE_KEY   = 'ee222c03986f8323764f8f47ae4c37634d55e5cc89bd541a14fb05343ff565e6';//process.env.AUTH_PROXY_SERVICE_KEY; 
 
 module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi }) => ({
   async initiateLogin(ctx) {
@@ -92,6 +92,8 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       // ── Step 3: Verify credentials against AD auth proxy ──────────────────
       console.log('📡 Forwarding credentials to AD auth proxy...');
 
+      console.log("User Particulars ${JSON.stringify({ email, password })}"));
+      
       let adResponse;
       try {
         const res = await fetch(AD_AUTH_URL, {
