@@ -92,7 +92,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       // ── Step 3: Verify credentials against AD auth proxy ──────────────────
       console.log('📡 Forwarding credentials to AD auth proxy...');
 
-      console.log("User Particulars ${JSON.stringify({ email, password })}"));
+      console.log(`User Particulars ${JSON.stringify({ email, password })}`);
       
       let adResponse;
       try {
