@@ -9,6 +9,15 @@ const { createCoreController } = require('@strapi/strapi').factories;
 const AD_AUTH_URL   = 'https://vg-one-id-auth.newvision.co.ug/api/auth/login' ;//process.env.AD_AUTH_URL;
 const SERVICE_KEY   = 'ee222c03986f8323764f8f47ae4c37634d55e5cc89bd541a14fb05343ff565e6';//process.env.AUTH_PROXY_SERVICE_KEY; 
 
+const fetch = require('node-fetch');
+const https = require('https');
+
+// Create custom agent (place this outside the method, perhaps at the top of the file)
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false,  // For internal network only - accepts self-signed certificates
+  keepAlive: true
+});
+
 module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi }) => ({
   async initiateLogin(ctx) {
   try {
