@@ -28,6 +28,7 @@
     "bcryptjs": "^3.0.2",
     "ldapjs": "^3.0.7",
     "mysql2": "3.9.8",
+    "node-fetch": "^2.7.0",
     "nodemailer": "^7.0.10",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
