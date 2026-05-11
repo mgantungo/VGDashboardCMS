@@ -405,7 +405,118 @@ module.exports = {
           console.error('Error in inspectDimValuDS:', error.message);
           return ctx.badRequest(error.message);
         }
+      },
+
+ /**
+   * PATCH /api/rate-cards/:id/fields
+   * Selectively update one or more fields on a single rate card.
+   *
+   * Body:  { fields: { full_color_no: "AC0001", base_unit_of_measure: "ADS", ... } }
+   *
+   * Allowed fields (whitelist – anything else is silently ignored):
+   *   ad_type, full_color_no, black_color_no, base_unit_of_measure,
+   *   size_dimension, duration, price_fc, price_bw, time_slot,
+   *   currency, effective_date, expiry_date, surcharge_percentage, metadata
+   */
+  async updateRateCardFields(ctx) {
+    try {
+      const { id } = ctx.params;
+ 
+      if (!id) {
+        return ctx.badRequest('Rate card ID is required');
       }
+ 
+      const { fields } = ctx.request.body;
+ 
+      if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
+        return ctx.badRequest('Request body must contain a "fields" object');
+      }
+ 
+      if (Object.keys(fields).length === 0) {
+        return ctx.badRequest('At least one field must be provided');
+      }
+ 
+      // Strict whitelist — do not allow relational or system fields
+      const ALLOWED = [
+        'ad_type',
+        'full_color_no',
+        'black_color_no',
+        'base_unit_of_measure',
+        'size_dimension',
+        'duration',
+        'price_fc',
+        'price_bw',
+        'time_slot',
+        'currency',
+        'effective_date',
+        'expiry_date',
+        'surcharge_percentage',
+        'metadata',
+      ];
+ 
+      const sanitized = {};
+      const rejected  = [];
+ 
+      for (const [key, value] of Object.entries(fields)) {
+        if (ALLOWED.includes(key)) {
+          // Coerce empty strings to null for nullable fields
+          const nullable = ['full_color_no', 'black_color_no', 'base_unit_of_measure',
+                            'size_dimension', 'duration', 'time_slot', 'expiry_date',
+                            'price_fc', 'price_bw', 'surcharge_percentage'];
+          sanitized[key] = (nullable.includes(key) && value === '') ? null : value;
+        } else {
+          rejected.push(key);
+        }
+      }
+ 
+      if (Object.keys(sanitized).length === 0) {
+        return ctx.badRequest(
+          `None of the supplied fields are updatable. Allowed: ${ALLOWED.join(', ')}`
+        );
+      }
+ 
+      // Confirm the rate card exists
+      const existing = await strapi.entityService.findOne(
+        'api::rate-card.rate-card',
+        id,
+        { populate: ['product'] }
+      );
+ 
+      if (!existing) {
+        return ctx.notFound(`Rate card #${id} not found`);
+      }
+ 
+      // Perform the update
+      const updated = await strapi.entityService.update(
+        'api::rate-card.rate-card',
+        id,
+        {
+          data:    sanitized,
+          populate: ['product'],
+        }
+      );
+ 
+      console.log(`✅ Rate card #${id} updated. Fields: ${Object.keys(sanitized).join(', ')}`);
+ 
+      return ctx.send({
+        success:       true,
+        message:       `Rate card #${id} updated successfully`,
+        id:            Number(id),
+        updatedFields: Object.keys(sanitized),
+        ...(rejected.length > 0 && {
+          ignoredFields: rejected,
+          note: `Fields not in the whitelist were ignored: ${rejected.join(', ')}`,
+        }),
+        data: updated,
+      });
+ 
+    } catch (err) {
+      console.error('Error in updateRateCardFields:', err);
+      return ctx.throw(500, err);
+    }
+  },
+
+  
   /*
   async inspectDimValuDS(ctx) {
       try {
