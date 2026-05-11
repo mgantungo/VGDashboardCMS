@@ -4,6 +4,20 @@
 module.exports = {
   routes: [
 
+      {
+        method:  'PATCH',
+        path:    '/rate-cards/:id/fields',
+        handler: 'rate-card.updateRateCardFields',
+        config: {
+          policies:    [],
+          middlewares: [],
+          /*
+          auth: {
+            strategies: ['api-token']
+          }
+          */
+        }
+    },
     {
       method: 'POST',
       path: '/rate-cards/bulk-update-expiry',
@@ -58,5 +72,7 @@ module.exports = {
         */
       }
     },
+
+    
   ]
 };
