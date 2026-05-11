@@ -14,7 +14,6 @@ text
 POST /api/sync/clients?insertNew=false
 */
 
-
 module.exports = {
   // Sync customers from Business Central to Strapi clients collection
   // @param {boolean} insertNew - If true, insert new clients; if false, only check/validate without inserting
