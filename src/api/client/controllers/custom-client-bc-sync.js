@@ -13,6 +13,35 @@ To only validate without inserting (dry run):
 text
 POST /api/sync/clients?insertNew=false
 */
+/*
+
+Key Changes Made:
+Step 1 - Set all clients to inactive: Before fetching from BC, all existing clients have their is_active flag set to false.
+
+Added update tracking: The results object now includes updated and wouldUpdate counters to track updated records.
+
+Update existing clients: When an existing client is found (by bc_no), it's updated with the latest data from BC and is_active is set to true.
+
+Validation mode support: In dry-run mode (insertNew=false), the response includes:
+
+wouldUpdate: Records that would be activated/updated
+
+wouldInsert: New records that would be created
+
+Improved response data: The response summary now shows both inserted and updated counts separately.
+
+How it works:
+All clients start inactive - The sync process first marks every existing client as inactive
+
+BC data activates clients - Only clients present in the BC response get activated (is_active = true)
+
+New clients are created - Clients not previously in the database are created as active
+
+Clients not in BC remain inactive - This effectively "soft deletes" clients that no longer exist in BC
+
+This approach ensures your Strapi client list always mirrors exactly what's in Business Central, with inactive clients representing those that have been removed from BC.
+
+*/
 
 module.exports = {
   // Sync customers from Business Central to Strapi clients collection
@@ -34,7 +63,23 @@ module.exports = {
         return ctx.badRequest('External API configuration is missing. Check your .env file.');
       }
 
-      // Make request to external API with Basic Auth (5 minute timeout = 300000ms)
+      // STEP 1: Set all existing clients to inactive
+      if (insertNew) {
+        const allClients = await strapi.db.query('api::client.client').findMany({
+          select: ['id']
+        });
+        
+        for (const client of allClients) {
+          await strapi.db.query('api::client.client').update({
+            where: { id: client.id },
+            data: { is_active: false }
+          });
+        }
+        
+        console.log(`Set ${allClients.length} clients to inactive`);
+      }
+
+      // STEP 2: Make request to external API with Basic Auth (5 minute timeout = 300000ms)
       const response = await axios.get(externalApiUrl, {
         auth: {
           username: username,
@@ -56,6 +101,7 @@ module.exports = {
           stats: {
             fetched: 0,
             inserted: 0,
+            updated: 0,
             skipped: 0,
             errors: 0,
             executionTimeMs: Date.now() - startTime,
@@ -69,11 +115,13 @@ module.exports = {
       const results = {
         fetched: bcCustomers.length,
         inserted: 0,
+        updated: 0,
         skipped: 0,
         errors: 0,
         skippedDetails: [],
         errorDetails: [],
-        wouldInsert: [] // For validation mode, track which records would be inserted
+        wouldInsert: [], // For validation mode, track which records would be inserted
+        wouldUpdate: []  // For validation mode, track which records would be updated
       };
 
       // Process each customer
@@ -112,50 +160,53 @@ module.exports = {
             continue;
           }
 
+          // Prepare client data
+          const clientData = {
+            company_name: companyName,
+            bc_no: bcNo,
+            phone: phone,
+            contact_person: bcCustomer.Contact?.trim() || '',
+            address: bcCustomer.Address68302?.trim() || bcCustomer.Address_272351?.trim() || '',
+            is_active: true,
+            credit_approved: false,
+            credit_limit: bcCustomer.Balance_LCY || 0,
+            payment_terms: 'cash',
+            email: bcCustomer.Email || '',
+            clientTin: bcCustomer.VAT_Registration_No || ''
+          };
+
           // Check if client already exists by bc_no
           const existingClient = await strapi.db.query('api::client.client').findOne({
             where: { bc_no: bcNo }
           });
 
           if (existingClient) {
-            // Optionally update existing client (uncomment if you want to update)
-            // await strapi.db.query('api::client.client').update({
-            //   where: { id: existingClient.id },
-            //   data: {
-            //     company_name: companyName,
-            //     phone: phone,
-            //     contact_person: bcCustomer.Contact?.trim() || '',
-            //     address: bcCustomer.Address68302?.trim() || bcCustomer.Address_272351?.trim() || '',
-            //     is_active: true
-            //   }
-            // });
-            
-            results.skipped++;
-            results.skippedDetails.push({
-              bc_no: bcNo,
-              name: companyName,
-              reasons: ['Already exists in database']
-            });
+            // Client exists - update is_active and other fields
+            if (insertNew) {
+              await strapi.db.query('api::client.client').update({
+                where: { id: existingClient.id },
+                data: clientData
+              });
+              results.updated++;
+            } else {
+              // In validation mode, track that this would be updated
+              results.updated++;
+              results.wouldUpdate.push({
+                id: existingClient.id,
+                bc_no: bcNo,
+                name: companyName,
+                currentStatus: { is_active: existingClient.is_active },
+                wouldSetActive: true
+              });
+            }
           } else {
-            // Record that this would be inserted (for validation mode)
-            const newClientData = {
-              company_name: companyName,
-              bc_no: bcNo,
-              phone: phone,
-              contact_person: bcCustomer.Contact?.trim() || '',
-              address: bcCustomer.Address68302?.trim() || bcCustomer.Address_272351?.trim() || '',
-              is_active: true,
-              credit_approved: false,
-              credit_limit: bcCustomer.Balance_LCY || 0,
-              payment_terms: 'cash',
-            };
-
-            results.wouldInsert.push(newClientData);
+            // New client - record that this would be inserted
+            results.wouldInsert.push(clientData);
 
             // Only insert if insertNew is true
             if (insertNew) {
-              const newClient = await strapi.db.query('api::client.client').create({
-                data: newClientData
+              await strapi.db.query('api::client.client').create({
+                data: clientData
               });
               results.inserted++;
             } else {
@@ -183,6 +234,7 @@ module.exports = {
         summary: {
           fetched: results.fetched,
           inserted: results.inserted,
+          updated: results.updated,
           skipped: results.skipped,
           errors: results.errors,
           executionTimeMs: executionTime,
@@ -195,10 +247,16 @@ module.exports = {
         }
       };
 
-      // Add wouldInsert details in validation mode
-      if (!insertNew && results.wouldInsert.length > 0) {
-        responseData.details.wouldInsert = results.wouldInsert;
-        responseData.summary.wouldInsertCount = results.wouldInsert.length;
+      // Add wouldInsert and wouldUpdate details in validation mode
+      if (!insertNew) {
+        if (results.wouldInsert.length > 0) {
+          responseData.details.wouldInsert = results.wouldInsert;
+          responseData.summary.wouldInsertCount = results.wouldInsert.length;
+        }
+        if (results.wouldUpdate.length > 0) {
+          responseData.details.wouldUpdate = results.wouldUpdate;
+          responseData.summary.wouldUpdateCount = results.wouldUpdate.length;
+        }
       }
 
       // Return comprehensive results
