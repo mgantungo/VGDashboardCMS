@@ -357,4 +357,64 @@ module.exports = createCoreController('api::rate-card.rate-card', ({ strapi }) =
     }
   },
 
+    /**
+   * POST /api/rate-cards/search
+   * 
+   * Search rate cards with complex query in request body
+   * Body: { populate, filters, pagination, sort, fields }
+   */
+  async search(ctx) {
+    try {
+      const { 
+        populate, 
+        filters, 
+        pagination, 
+        sort, 
+        fields 
+      } = ctx.request.body;
+
+      // Build the query parameters
+      const query = {};
+      
+      if (populate) query.populate = populate;
+      if (filters) query.filters = filters;
+      if (pagination) query.pagination = pagination;
+      if (sort) query.sort = sort;
+      if (fields) query.fields = fields;
+
+      // Use entityService.findMany for more control
+      // or delegate to the default find method
+      const result = await strapi.entityService.findMany(
+        'api::rate-card.rate-card',
+        query
+      );
+
+      // Get pagination info if needed
+      const count = await strapi.entityService.count(
+        'api::rate-card.rate-card',
+        { filters }
+      );
+
+      const page = pagination?.page || 1;
+      const pageSize = pagination?.pageSize || 25;
+      const pageCount = Math.ceil(count / pageSize);
+
+      return ctx.send({
+        data: result,
+        meta: {
+          pagination: {
+            page,
+            pageSize,
+            pageCount,
+            total: count
+          }
+        }
+      });
+
+    } catch (err) {
+      console.error('Error in rate-card search:', err);
+      return ctx.throw(500, err);
+    }
+  },
+
 }));
