@@ -5,7 +5,7 @@
 // It adds two SFA-specific endpoints to the existing clients API.
 // The existing client.js controller is NOT touched.
 
-const { resolveSfaProfile } = require('../../../_sfa-helpers/sfa-profile');
+const { resolveSfaProfile } = require('../../_sfa-helpers/sfa-profile');
 
 module.exports = {
 
