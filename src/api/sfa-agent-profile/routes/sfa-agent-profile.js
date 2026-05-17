@@ -1,12 +1,9 @@
 'use strict';
 
-const { createCoreRouter } = require('@strapi/strapi').factories;
+// Custom routes only.
+// Core CRUD routes are in routes/core.js — Strapi loads both automatically.
 
-// Core CRUD routes
-const coreRouter = createCoreRouter('api::sfa-agent-profile.sfa-agent-profile');
-
-// Custom routes
-const customRoutes = {
+module.exports = {
   routes: [
     {
       method: 'POST',
@@ -18,12 +15,5 @@ const customRoutes = {
         description: 'Returns the SFA profile of the authenticated user',
       },
     },
-  ],
-};
-
-module.exports = {
-  routes: [
-    ...customRoutes.routes,
-    ...coreRouter.routes,
   ],
 };
