@@ -1,0 +1,80 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_opportunities",
+  "info": {
+    "singularName": "sfa-opportunity",
+    "pluralName": "sfa-opportunities",
+    "displayName": "SFA Opportunity"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "title": { "type": "string", "required": true },
+    "description": { "type": "text" },
+    "source": { "type": "string" },
+    "funnel_stage": {
+      "type": "enumeration",
+      "enum": ["opportunity_created", "contact_engaged", "requirement_defined", "quotation_created", "quotation_sent", "negotiation", "approved", "closed_lost"],
+      "default": "opportunity_created",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["new", "in_progress", "quotation_sent", "negotiation", "won", "lost"],
+      "default": "new"
+    },
+    "expected_value": { "type": "decimal" },
+    "expected_close_date": { "type": "date" },
+    "created_by_agent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-agent-profile.sfa-agent-profile",
+      "description": "The SFA agent profile who created this opportunity."
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-company.sfa-company",
+      "inversedBy": "opportunities",
+      "description": "Set when the opportunity is for a NEW prospect (sfa-company). Mutually exclusive with existing_client."
+    },
+    "existing_client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client",
+      "description": "Set when the opportunity is for a RETURN client already in the clients collection. Mutually exclusive with company."
+    },
+    "contacts": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::sfa-contact.sfa-contact",
+      "inversedBy": "opportunities"
+    },
+    "is_converted": { "type": "boolean", "default": false },
+    "converted_at": { "type": "datetime" },
+    "buy_in_lines": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sfa-opportunity-buy-in.sfa-opportunity-buy-in",
+      "mappedBy": "opportunity"
+    },
+    "activities": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sfa-activity.sfa-activity",
+      "mappedBy": "opportunity"
+    },
+    "quotations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sfa-quotation.sfa-quotation",
+      "mappedBy": "opportunity"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::sfa-order.sfa-order",
+      "mappedBy": "opportunity"
+    }
+  }
+}
