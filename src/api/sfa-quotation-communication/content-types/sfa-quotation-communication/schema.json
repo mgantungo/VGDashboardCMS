@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_quotation_communications",
+  "info": {
+    "singularName": "sfa-quotation-communication",
+    "pluralName": "sfa-quotation-communications",
+    "displayName": "SFA Quotation Communication"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "quotation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-quotation.sfa-quotation",
+      "inversedBy": "communications"
+    },
+    "sent_at": {
+      "type": "datetime"
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "email",
+        "whatsapp",
+        "manual",
+        "other"
+      ],
+      "required": true
+    },
+    "sent_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "client_response": {
+      "type": "text"
+    },
+    "response_date": {
+      "type": "datetime"
+    },
+    "negotiation_notes": {
+      "type": "text"
+    },
+    "attachments": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    }
+  }
+}

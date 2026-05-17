@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_buy_ins",
+  "info": {
+    "singularName": "sfa-buy-in",
+    "pluralName": "sfa-buy-ins",
+    "displayName": "SFA Buy-In (Catalogue)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "radio_ads",
+        "tv_ads",
+        "billboard",
+        "website_ads",
+        "courier",
+        "printing",
+        "rig_truck",
+        "other"
+      ],
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "base_price": {
+      "type": "decimal",
+      "default": 0
+    },
+    "unit": {
+      "type": "string",
+      "description": "e.g. per spot, per month, per insertion"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "opportunity_lines": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sfa-opportunity-buy-in.sfa-opportunity-buy-in",
+      "mappedBy": "buy_in"
+    }
+  }
+}

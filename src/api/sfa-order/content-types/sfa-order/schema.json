@@ -1,0 +1,82 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_orders",
+  "info": {
+    "singularName": "sfa-order",
+    "pluralName": "sfa-orders",
+    "displayName": "SFA Order"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "order_number": {
+      "type": "string",
+      "unique": true,
+      "description": "Auto-generated: SFA-ORD-YYYYMM-XXXX"
+    },
+    "opportunity": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::sfa-opportunity.sfa-opportunity",
+      "inversedBy": "order"
+    },
+    "accepted_quotation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-quotation.sfa-quotation"
+    },
+    "confirmation_type": {
+      "type": "enumeration",
+      "enum": [
+        "lpo",
+        "email_confirmation",
+        "signed_quotation"
+      ],
+      "required": true
+    },
+    "confirmation_document": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "converted_date": {
+      "type": "datetime"
+    },
+    "converted_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "in_production",
+        "completed",
+        "cancelled"
+      ],
+      "default": "active",
+      "required": true
+    },
+    "notes": {
+      "type": "text"
+    },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client",
+      "description": "The client for this order. Either an existing client (return order) or newly created on this conversion (first order)."
+    },
+    "client_is_new": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the client record in the clients collection was created at this order's conversion. False when the client already existed."
+    }
+  }
+}
