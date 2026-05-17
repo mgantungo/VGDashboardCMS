@@ -3,222 +3,108 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const https = require('https');
-const url = require('url');
+const url   = require('url');
 
-// ── Legacy dependency (kept for reference, no longer used for auth) ───────────
-// const bcrypt = require('bcryptjs');
+const AD_AUTH_URL = 'https://vg-one-id-auth.newvision.co.ug/api/auth/login';
+const SERVICE_KEY = 'ee222c03986f8323764f8f47ae4c37634d55e5cc89bd541a14fb05343ff565e6';
 
-const AD_AUTH_URL   = 'https://vg-one-id-auth.newvision.co.ug/api/auth/login';
-const SERVICE_KEY   = 'ee222c03986f8323764f8f47ae4c37634d55e5cc89bd541a14fb05343ff565e6';
-
-// Helper function to make HTTPS request with self-signed certificate support
+// ── HTTPS helper (identical to original) ─────────────────────────────────────
 function makeHttpsRequest(urlString, data) {
   return new Promise((resolve, reject) => {
     const parsedUrl = url.parse(urlString);
-    const postData = JSON.stringify(data);
-    
+    const postData  = JSON.stringify(data);
+
     const options = {
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port || 443,
-      path: parsedUrl.path,
-      method: 'POST',
+      hostname:           parsedUrl.hostname,
+      port:               parsedUrl.port || 443,
+      path:               parsedUrl.path,
+      method:             'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'X-Dev-Key': SERVICE_KEY,
-        'Content-Length': Buffer.byteLength(postData)
+        'Content-Type':   'application/json',
+        'X-Dev-Key':      SERVICE_KEY,
+        'Content-Length': Buffer.byteLength(postData),
       },
-      rejectUnauthorized: false, // Accept self-signed certificates
-      timeout: 10000 // 10 second timeout
+      rejectUnauthorized: false,
+      timeout:            10000,
     };
-    
+
     const req = https.request(options, (res) => {
       let responseData = '';
-      
-      res.on('data', (chunk) => {
-        responseData += chunk;
-      });
-      
+      res.on('data',  chunk => { responseData += chunk; });
       res.on('end', () => {
-        try {
-          const jsonResponse = JSON.parse(responseData);
-          resolve(jsonResponse);
-        } catch (e) {
-          reject(new Error('Failed to parse response JSON'));
-        }
+        try   { resolve(JSON.parse(responseData)); }
+        catch { reject(new Error('Failed to parse response JSON')); }
       });
     });
-    
-    req.on('error', (error) => {
-      reject(error);
-    });
-    
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Request timeout'));
-    });
-    
+
+    req.on('error',   err => reject(err));
+    req.on('timeout', ()  => { req.destroy(); reject(new Error('Request timeout')); });
+
     req.write(postData);
     req.end();
   });
 }
 
+// ── Shared AD authentication step ─────────────────────────────────────────────
+async function authenticateWithAD(email, password) {
+  const adResponse = await makeHttpsRequest(AD_AUTH_URL, { email, password });
+
+  if (adResponse?.authenticated !== true || adResponse?.status !== 'SUCCESS') {
+    const messages = {
+      INVALID_CREDENTIALS: 'Incorrect password.',
+      USER_NOT_FOUND:      'No Active Directory account found for this email.',
+      ACCOUNT_DISABLED:    'Your Active Directory account has been disabled. Contact your administrator.',
+      ACCOUNT_LOCKED:      'Your Active Directory account is locked. Contact your administrator.',
+      SERVICE_UNAVAILABLE: 'Authentication service temporarily unavailable.',
+    };
+    const reason = messages[adResponse?.status] || adResponse?.message || 'Authentication failed.';
+    throw Object.assign(new Error(reason), { adStatus: adResponse?.status });
+  }
+
+  return adResponse;
+}
+
+// ── Controller ────────────────────────────────────────────────────────────────
 module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi }) => ({
+
+  // ── Existing GET login — UNCHANGED ────────────────────────────────────────
   async initiateLogin(ctx) {
     try {
-      let email, password;
+      const email    = (ctx.params?.email    || ctx.request.body?.email    || '').toLowerCase().trim();
+      const password =  ctx.params?.password || ctx.request.body?.password || '';
 
-      if (ctx.params?.email && ctx.params?.password) {
-        email    = ctx.params.email;
-        password = ctx.params.password;
-      } else if (ctx.request.body?.email && ctx.request.body?.password) {
-        email    = ctx.request.body.email;
-        password = ctx.request.body.password;
-      } else {
-        return ctx.badRequest('Email and password are required');
-      }
+      if (!email || !password) return ctx.badRequest('Email and password are required');
 
-      email = email.toLowerCase().trim();
-      console.log('🔐 VGAMS Login requested for:', email);
-
-      // ── Step 1: Enforce allowed email domains ─────────────────────────────
-      const ALLOWED_DOMAINS = [
-        'newvision.co.ug'
-      ];
-      const domain = email.split('@')[1];
-      if (!ALLOWED_DOMAINS.includes(domain)) {
-        console.log('🚫 Rejected domain:', domain);
+      if (!['newvision.co.ug'].includes(email.split('@')[1])) {
         return ctx.unauthorized('Only company email addresses are permitted.');
       }
 
-      // ── Step 2: Check user exists in Strapi DB ────────────────────────────
-      const user = await strapi.db.query('api::vgams-user.vgams-user').findOne({
-        where: { email }
-      });
+      const user = await strapi.db.query('api::vgams-user.vgams-user').findOne({ where: { email } });
+      if (!user) return ctx.notFound('No VGAMS account found for this email address.');
 
-      if (!user) {
-        console.log('❌ User not found in VGAMS:', email);
-        return ctx.notFound('No VGAMS account found for this email address.');
-      }
-
-      console.log('✅ VGAMS user found:', user.email, '| Role:', user.role);
-
-      // ── [LEGACY] Old bcrypt password verification — replaced by AD auth proxy ──
-      // Kept here for reference. Do not re-enable unless reverting to local auth.
-      //
-      // console.log('🔐 Stored password hash present:', !!user.password);
-      // if (user.password) {
-      //   console.log('🔐 Password hash starts with:', user.password.substring(0, 10));
-      //   console.log('🔐 Password hash length:', user.password.length);
-      // }
-      //
-      // let validPassword = false;
-      // try {
-      //   console.log('🔑 Comparing password with bcrypt hash...');
-      //
-      //   // Bcrypt hashes start with $2a$, $2b$, or $2y$
-      //   if (user.password && user.password.startsWith('$2')) {
-      //     console.log('✅ Password appears to be a bcrypt hash');
-      //     validPassword = await bcrypt.compare(password, user.password);
-      //   } else {
-      //     console.log('⚠️ Password does not appear to be hashed with bcrypt');
-      //     console.log('⚠️ Stored password format:', user.password);
-      //     // Try comparing anyway (might be plain text for debugging)
-      //     validPassword = (password === user.password);
-      //   }
-      //
-      //   console.log('🔑 Password comparison result:', validPassword);
-      //
-      // } catch (bcryptError) {
-      //   console.error('❌ Bcrypt comparison error:', bcryptError);
-      //   console.error('❌ Error details:', bcryptError.message);
-      //   return ctx.unauthorized('Invalid password');
-      // }
-      //
-      // if (!validPassword) {
-      //   console.log('❌ Invalid password for:', email);
-      //   return ctx.unauthorized('Invalid password');
-      // }
-      //
-      // console.log('✅ Password verified successfully');
-      // ── [END LEGACY] ──────────────────────────────────────────────────────────
-
-      // ── Step 3: Verify credentials against AD auth proxy ──────────────────
-      console.log('📡 Forwarding credentials to AD auth proxy...');
-      console.log(`User Particulars ${JSON.stringify({ email, password })}`);
-      
       let adResponse;
-      try {
-        adResponse = await makeHttpsRequest(AD_AUTH_URL, { email, password });
-        console.log('✅ AD auth proxy response received');
-      } catch (fetchError) {
-        console.error('💥 AD auth proxy unreachable:', fetchError.message);
-        console.error('💥 Error details:', fetchError.code || 'No error code');
-        return ctx.internalServerError('Authentication service is temporarily unavailable. Please try again shortly.');
-      }
+      try { adResponse = await authenticateWithAD(email, password); }
+      catch (e) { return ctx.unauthorized(e.message); }
 
-      console.log('📨 AD auth proxy response — authenticated:', adResponse?.authenticated, '| status:', adResponse?.status);
-
-      // ── Step 4: Handle AD auth result ─────────────────────────────────────
-      // Both fields must pass: authenticated === true AND status === 'SUCCESS'
-      const adAuthenticated = adResponse?.authenticated === true;
-      const adSuccess       = adResponse?.status === 'SUCCESS';
-
-      if (!adAuthenticated || !adSuccess) {
-        const status = adResponse?.status || 'UNKNOWN';
-        const messages = {
-          INVALID_CREDENTIALS: 'Incorrect password.',
-          USER_NOT_FOUND:      'No Active Directory account found for this email.',
-          ACCOUNT_DISABLED:    'Your Active Directory account has been disabled. Contact your administrator.',
-          ACCOUNT_LOCKED:      'Your Active Directory account is locked. Contact your administrator.',
-          SERVICE_UNAVAILABLE: 'Authentication service is temporarily unavailable. Please try again shortly.',
-        };
-
-        const message = messages[status] || adResponse?.message || 'Authentication failed.';
-        console.log(`⚠️  AD auth rejected [authenticated=${adAuthenticated}, status=${status}]:`, email);
-        return ctx.unauthorized(message);
-      }
-
-      console.log('✅ AD authentication successful for:', email, '[authenticated=true, status=SUCCESS]');
-
-      // ── Step 5: Build role-mapped response ────────────────────────────────
       const roleDisplayNames = {
-        booking_clerk:       'Booking Clerk',
-        sub_editor:          'Sub-Editor',
-        advertising_manager: 'Advertising Manager',
-        design_house:        'Design House',
-        finance_team:        'Finance Team',
-        administrator:       'Administrator',
+        booking_clerk: 'Booking Clerk', sub_editor: 'Sub-Editor',
+        advertising_manager: 'Advertising Manager', design_house: 'Design House',
+        finance_team: 'Finance Team', administrator: 'Administrator',
       };
-
       const roleRedirects = {
-        booking_clerk:       '/dashboard/booking',
-        sub_editor:          '/dashboard/review',
-        design_house:        '/dashboard/design',
-        finance_team:        '/dashboard/finance',
-        advertising_manager: '/dashboard/approval',
-        administrator:       '/dashboard/admin',
+        booking_clerk: '/dashboard/booking', sub_editor: '/dashboard/review',
+        design_house: '/dashboard/design', finance_team: '/dashboard/finance',
+        advertising_manager: '/dashboard/approval', administrator: '/dashboard/admin',
       };
-
-      const displayRole = roleDisplayNames[user.role] || user.role;
-      const redirectTo  = roleRedirects[user.role]    || '/dashboard';
-
-      console.log('🎯 Login complete for:', email, '| Role:', displayRole, '| Redirect:', redirectTo);
-
-      // AD-enriched profile from the auth proxy response
       const adUser = adResponse.user ?? {};
 
       return {
         success: true,
         message: 'Login successful',
         user: {
-          id:          user.id,
-          name:        user.name,
-          email:       user.email,
-          role:        user.role,
-          displayRole: displayRole,
-          createdAt:   user.createdAt,
-          updatedAt:   user.updatedAt,
-          // Fields returned by the AD auth proxy
+          id: user.id, name: user.name, email: user.email,
+          role: user.role, displayRole: roleDisplayNames[user.role] || user.role,
+          createdAt: user.createdAt, updatedAt: user.updatedAt,
           adProfile: {
             displayName:   adUser.displayName   ?? null,
             department:    adUser.department    ?? null,
@@ -227,28 +113,120 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
             accountActive: adUser.accountStatus?.active ?? null,
           },
         },
-        redirectTo,
+        redirectTo: roleRedirects[user.role] || '/dashboard',
       };
 
     } catch (error) {
       console.error('💥 VGAMS Login error:', error);
-      console.error('💥 Stack:', error.stack);
       return ctx.internalServerError('Authentication failed');
     }
   },
-  
+
+  // ── POST login — handles standard AND SFA logins ─────────────────────────
   async initiateLoginPost(ctx) {
     try {
-      const { email, password } = ctx.request.body;
+      const { email: rawEmail, password, module: loginModule } = ctx.request.body;
 
-      if (!email || !password) {
-        return ctx.badRequest('Email and password are required');
+      if (!rawEmail || !password) return ctx.badRequest('Email and password are required');
+
+      const email = rawEmail.toLowerCase().trim();
+
+      // ── Standard login: delegate to existing handler ───────────────────
+      if (loginModule !== 'sfa') {
+        return await this.initiateLogin(ctx);
       }
 
-      console.log('📧 POST Login attempt for:', email);
+      // ── SFA LOGIN BRANCH ───────────────────────────────────────────────
+      // Triggered by: { email, password, module: 'sfa' }
+      //
+      // Steps:
+      //  1. Domain check (same as standard)
+      //  2. AD authentication via the existing proxy
+      //  3. Validate email against vgams-sales-persons (isActive = true)
+      //  4. Load the sfa-agent-profile linked to that sales person
+      //  5. Return { salesPerson, sfaProfile } — NO JWT
+      //
+      // The frontend stores this in sessionStorage and passes
+      // sfaProfileDocumentId in every subsequent SFA API call body.
 
-      // Delegate entirely to initiateLogin using the request body path
-      return await this.initiateLogin(ctx);
+      console.log('🔐 SFA login requested for:', email);
+
+      // Step 1: domain check
+      if (!['newvision.co.ug'].includes(email.split('@')[1])) {
+        return ctx.unauthorized('Only company email addresses are permitted.');
+      }
+
+      // Step 2: AD authentication
+      let adResponse;
+      try {
+        adResponse = await authenticateWithAD(email, password);
+      } catch (e) {
+        return ctx.unauthorized(e.message);
+      }
+      console.log('✅ AD auth passed for SFA:', email);
+
+      // Step 3: check vgams-sales-person
+      const [salesPerson] = await strapi.documents(
+        'api::vgams-sales-person.vgams-sales-person'
+      ).findMany({
+        filters: { email: { $eqi: email }, isActive: { $eq: true } },
+        limit: 1,
+      });
+
+      if (!salesPerson) {
+        console.log('🚫 SFA: not an active sales person:', email);
+        return ctx.forbidden(
+          'Your account is not listed as an active sales person. ' +
+          'Contact your administrator to get SFA access.'
+        );
+      }
+      console.log('✅ SFA: sales person confirmed:', salesPerson.name);
+
+      // Step 4: load sfa-agent-profile
+      const [sfaProfile] = await strapi.documents(
+        'api::sfa-agent-profile.sfa-agent-profile'
+      ).findMany({
+        filters: {
+          vgams_sales_person: { documentId: { $eq: salesPerson.documentId } },
+          is_active:          { $eq: true },
+        },
+        populate: ['vgams_sales_person', 'unit'],
+        limit: 1,
+      });
+
+      if (!sfaProfile) {
+        console.log('🚫 SFA: no agent profile for:', email);
+        return ctx.notFound(
+          'No SFA profile is configured for your account. ' +
+          'Ask an administrator to create one under Content Manager → SFA Agent Profile.'
+        );
+      }
+      console.log('✅ SFA: profile loaded — role:', sfaProfile.sfa_role);
+
+      // Step 5: return profile — no JWT
+      return {
+        success: true,
+        message: 'SFA login successful',
+        salesPerson: {
+          id:         salesPerson.id,
+          documentId: salesPerson.documentId,
+          name:       salesPerson.name,
+          email:      salesPerson.email,
+          bc_code:    salesPerson.bc_code || null,
+        },
+        sfaProfile: {
+          id:            sfaProfile.id,
+          documentId:    sfaProfile.documentId,   // sent with every SFA API request body
+          sfa_role:      sfaProfile.sfa_role,
+          employee_code: sfaProfile.employee_code || null,
+          unit: sfaProfile.unit ? {
+            id:         sfaProfile.unit.id,
+            documentId: sfaProfile.unit.documentId,
+            name:       sfaProfile.unit.name,
+          } : null,
+        },
+        redirectTo: '/dashboard/sfa',
+      };
 
     } catch (error) {
       console.error('💥 POST Login error:', error);
