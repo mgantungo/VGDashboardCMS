@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_activities",
+  "info": {
+    "singularName": "sfa-activity",
+    "pluralName": "sfa-activities",
+    "displayName": "SFA Activity"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "opportunity": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-opportunity.sfa-opportunity",
+      "inversedBy": "activities"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": ["call", "email", "visit", "meeting", "internal_note"],
+      "required": true
+    },
+    "activity_date": { "type": "datetime", "required": true },
+    "summary": { "type": "text", "required": true },
+    "outcome": { "type": "text" },
+    "next_followup_date": { "type": "date" },
+    "logged_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-agent-profile.sfa-agent-profile"
+    },
+    "attachments": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": ["images", "files", "videos", "audios"]
+    }
+  }
+}
