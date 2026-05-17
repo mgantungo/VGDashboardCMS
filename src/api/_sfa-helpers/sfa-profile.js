@@ -1,20 +1,5 @@
 'use strict';
 
-/**
- * src/api/_sfa-helpers/sfa-profile.js
- *
- * Shared helper imported by every SFA controller.
- * Resolves the calling agent's identity from sfaProfileDocumentId in the request body.
- * No JWT or ctx.state.user required.
- *
- * Usage:
- *   const { resolveSfaProfile } = require('../../../_sfa-helpers/sfa-profile');
- *   const caller = await resolveSfaProfile(ctx, strapi);
- *   if (!caller) return; // response already sent (403)
- *
- * Returns: { profile, salesPerson, role, unitDocumentId } or null
- */
-
 async function resolveSfaProfile(ctx, strapi) {
   const sfaProfileDocumentId = ctx.request.body?.sfaProfileDocumentId
     || (ctx.is('multipart') && ctx.request.body?.sfaProfileDocumentId);
