@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_quotation_items",
+  "info": {
+    "singularName": "sfa-quotation-item",
+    "pluralName": "sfa-quotation-items",
+    "displayName": "SFA Quotation Item"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "quotation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-quotation.sfa-quotation",
+      "inversedBy": "items"
+    },
+    "buy_in": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-buy-in.sfa-buy-in"
+    },
+    "description": { "type": "string" },
+    "quantity": { "type": "integer", "default": 1, "required": true },
+    "unit_price": { "type": "decimal", "default": 0, "required": true },
+    "subtotal": { "type": "decimal", "default": 0 },
+    "notes": { "type": "text" }
+  }
+}
