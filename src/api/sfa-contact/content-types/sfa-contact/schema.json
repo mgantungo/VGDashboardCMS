@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_contacts",
+  "info": {
+    "singularName": "sfa-contact",
+    "pluralName": "sfa-contacts",
+    "displayName": "SFA Contact"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "full_name": { "type": "string", "required": true },
+    "phone": { "type": "string" },
+    "email": { "type": "email" },
+    "position": { "type": "string" },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-company.sfa-company",
+      "inversedBy": "contacts"
+    },
+    "opportunities": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::sfa-opportunity.sfa-opportunity",
+      "mappedBy": "contacts"
+    }
+  }
+}
