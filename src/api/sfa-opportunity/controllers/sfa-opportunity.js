@@ -2,7 +2,7 @@
 // src/api/sfa-opportunity/controllers/sfa-opportunity.js
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { resolveSfaProfile }    = require('../../../_sfa-helpers/sfa-profile');
+const { resolveSfaProfile }    = require('../../_sfa-helpers/sfa-profile');
 
 const STAGE_ORDER = [
   'opportunity_created', 'contact_engaged', 'requirement_defined',
