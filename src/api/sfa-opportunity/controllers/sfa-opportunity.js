@@ -2,7 +2,7 @@
 // src/api/sfa-opportunity/controllers/sfa-opportunity.js
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { resolveSfaProfile }    = require('../../_sfa-helpers/sfa-profile');
+const { resolveSfaProfile }    = require('../../../_sfa-helpers/sfa-profile');
 
 const STAGE_ORDER = [
   'opportunity_created', 'contact_engaged', 'requirement_defined',
@@ -93,10 +93,27 @@ module.exports = createCoreController(
       const { id, populate } = ctx.request.body;
       if (!id) return ctx.badRequest('id is required.');
 
-      const opp = await strapi.documents('api::sfa-opportunity.sfa-opportunity').findOne({
-        documentId: id,
+      // id may be a numeric database id or a documentId string.
+      // Try documentId first, fall back to numeric id lookup.
+      let opp = await strapi.documents('api::sfa-opportunity.sfa-opportunity').findOne({
+        documentId: String(id),
         populate:   populate || OPP_POPULATE,
       });
+
+      // If not found by documentId, find by numeric id then fetch by documentId
+      if (!opp) {
+        const [found] = await strapi.documents('api::sfa-opportunity.sfa-opportunity').findMany({
+          filters:  { id: { $eq: Number(id) } },
+          populate: ['id'],
+          limit:    1,
+        });
+        if (found) {
+          opp = await strapi.documents('api::sfa-opportunity.sfa-opportunity').findOne({
+            documentId: found.documentId,
+            populate:   populate || OPP_POPULATE,
+          });
+        }
+      }
 
       if (!opp) return ctx.notFound('Opportunity not found.');
       return ctx.send({ data: opp });
