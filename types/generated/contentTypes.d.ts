@@ -1866,6 +1866,601 @@ export interface ApiSectionsCommissionSectionsCommission
   };
 }
 
+export interface ApiSfaActivitySfaActivity extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_activities';
+  info: {
+    displayName: 'SFA Activity';
+    pluralName: 'sfa-activities';
+    singularName: 'sfa-activity';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    activity_date: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    attachments: Schema.Attribute.Media<
+      'images' | 'files' | 'videos' | 'audios',
+      true
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-activity.sfa-activity'
+    > &
+      Schema.Attribute.Private;
+    logged_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-agent-profile.sfa-agent-profile'
+    >;
+    next_followup_date: Schema.Attribute.Date;
+    opportunity: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-opportunity.sfa-opportunity'
+    >;
+    outcome: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    summary: Schema.Attribute.Text & Schema.Attribute.Required;
+    type: Schema.Attribute.Enumeration<
+      ['call', 'email', 'visit', 'meeting', 'internal_note']
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSfaAgentProfileSfaAgentProfile
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_agent_profiles';
+  info: {
+    displayName: 'SFA Agent Profile';
+    pluralName: 'sfa-agent-profiles';
+    singularName: 'sfa-agent-profile';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    employee_code: Schema.Attribute.String;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-agent-profile.sfa-agent-profile'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    sfa_role: Schema.Attribute.Enumeration<
+      ['sales_agent', 'supervisor', 'manager', 'admin']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'sales_agent'>;
+    unit: Schema.Attribute.Relation<'manyToOne', 'api::sfa-unit.sfa-unit'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    vgams_sales_person: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+  };
+}
+
+export interface ApiSfaBuyInSfaBuyIn extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_buy_ins';
+  info: {
+    displayName: 'SFA Buy-In (Catalogue)';
+    pluralName: 'sfa-buy-ins';
+    singularName: 'sfa-buy-in';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    base_price: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    category: Schema.Attribute.Enumeration<
+      [
+        'radio_ads',
+        'tv_ads',
+        'billboard',
+        'website_ads',
+        'courier',
+        'printing',
+        'rig_truck',
+        'other',
+      ]
+    > &
+      Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-buy-in.sfa-buy-in'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    unit: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSfaCompanySfaCompany extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_companies';
+  info: {
+    displayName: 'SFA Prospect Company';
+    pluralName: 'sfa-companies';
+    singularName: 'sfa-company';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    address: Schema.Attribute.Text;
+    company_name: Schema.Attribute.String & Schema.Attribute.Required;
+    contact_person: Schema.Attribute.String;
+    contacts: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-contact.sfa-contact'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email;
+    industry: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-company.sfa-company'
+    > &
+      Schema.Attribute.Private;
+    location: Schema.Attribute.String;
+    opportunities: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-opportunity.sfa-opportunity'
+    >;
+    phone: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSfaContactSfaContact extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_contacts';
+  info: {
+    displayName: 'SFA Contact';
+    pluralName: 'sfa-contacts';
+    singularName: 'sfa-contact';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    company: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-company.sfa-company'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email;
+    full_name: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-contact.sfa-contact'
+    > &
+      Schema.Attribute.Private;
+    opportunities: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::sfa-opportunity.sfa-opportunity'
+    >;
+    phone: Schema.Attribute.String;
+    position: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSfaOpportunityBuyInSfaOpportunityBuyIn
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_opportunity_buy_ins';
+  info: {
+    displayName: 'SFA Opportunity Buy-In Line';
+    pluralName: 'sfa-opportunity-buy-ins';
+    singularName: 'sfa-opportunity-buy-in';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    buy_in: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-buy-in.sfa-buy-in'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    custom_offer: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-opportunity-buy-in.sfa-opportunity-buy-in'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    opportunity: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-opportunity.sfa-opportunity'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    quantity: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<1>;
+    subtotal: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    unit_price: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSfaOpportunitySfaOpportunity
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_opportunities';
+  info: {
+    displayName: 'SFA Opportunity';
+    pluralName: 'sfa-opportunities';
+    singularName: 'sfa-opportunity';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    activities: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-activity.sfa-activity'
+    >;
+    buy_in_lines: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-opportunity-buy-in.sfa-opportunity-buy-in'
+    >;
+    company: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-company.sfa-company'
+    >;
+    contacts: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::sfa-contact.sfa-contact'
+    >;
+    converted_at: Schema.Attribute.DateTime;
+    created_by_agent: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-agent-profile.sfa-agent-profile'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    existing_client: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::client.client'
+    >;
+    expected_close_date: Schema.Attribute.Date;
+    expected_value: Schema.Attribute.Decimal;
+    funnel_stage: Schema.Attribute.Enumeration<
+      [
+        'opportunity_created',
+        'contact_engaged',
+        'requirement_defined',
+        'quotation_created',
+        'quotation_sent',
+        'negotiation',
+        'approved',
+        'closed_lost',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'opportunity_created'>;
+    is_converted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-opportunity.sfa-opportunity'
+    > &
+      Schema.Attribute.Private;
+    order: Schema.Attribute.Relation<'oneToOne', 'api::sfa-order.sfa-order'>;
+    publishedAt: Schema.Attribute.DateTime;
+    quotations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-quotation.sfa-quotation'
+    >;
+    source: Schema.Attribute.String;
+    status: Schema.Attribute.Enumeration<
+      ['new', 'in_progress', 'quotation_sent', 'negotiation', 'won', 'lost']
+    > &
+      Schema.Attribute.DefaultTo<'new'>;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSfaOrderSfaOrder extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_orders';
+  info: {
+    displayName: 'SFA Order';
+    pluralName: 'sfa-orders';
+    singularName: 'sfa-order';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    accepted_quotation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-quotation.sfa-quotation'
+    >;
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    client_is_new: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    confirmation_document: Schema.Attribute.Media<'images' | 'files', true>;
+    confirmation_type: Schema.Attribute.Enumeration<
+      ['lpo', 'email_confirmation', 'signed_quotation']
+    > &
+      Schema.Attribute.Required;
+    converted_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-agent-profile.sfa-agent-profile'
+    >;
+    converted_date: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-order.sfa-order'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    opportunity: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::sfa-opportunity.sfa-opportunity'
+    >;
+    order_number: Schema.Attribute.String & Schema.Attribute.Unique;
+    publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['active', 'in_production', 'completed', 'cancelled']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'active'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSfaQuotationCommunicationSfaQuotationCommunication
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_quotation_communications';
+  info: {
+    displayName: 'SFA Quotation Communication';
+    pluralName: 'sfa-quotation-communications';
+    singularName: 'sfa-quotation-communication';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    attachments: Schema.Attribute.Media<'images' | 'files', true>;
+    channel: Schema.Attribute.Enumeration<
+      ['email', 'whatsapp', 'manual', 'other']
+    > &
+      Schema.Attribute.Required;
+    client_response: Schema.Attribute.Text;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-quotation-communication.sfa-quotation-communication'
+    > &
+      Schema.Attribute.Private;
+    negotiation_notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    quotation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-quotation.sfa-quotation'
+    >;
+    response_date: Schema.Attribute.DateTime;
+    sent_at: Schema.Attribute.DateTime;
+    sent_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-agent-profile.sfa-agent-profile'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSfaQuotationItemSfaQuotationItem
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_quotation_items';
+  info: {
+    displayName: 'SFA Quotation Item';
+    pluralName: 'sfa-quotation-items';
+    singularName: 'sfa-quotation-item';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    buy_in: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-buy-in.sfa-buy-in'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-quotation-item.sfa-quotation-item'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    quantity: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<1>;
+    quotation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-quotation.sfa-quotation'
+    >;
+    subtotal: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    unit_price: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSfaQuotationSfaQuotation
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_quotations';
+  info: {
+    displayName: 'SFA Quotation';
+    pluralName: 'sfa-quotations';
+    singularName: 'sfa-quotation';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    communications: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-quotation-communication.sfa-quotation-communication'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    items: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-quotation-item.sfa-quotation-item'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-quotation.sfa-quotation'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    opportunity: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-opportunity.sfa-opportunity'
+    >;
+    parent_quotation: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-quotation.sfa-quotation'
+    >;
+    pdf_document: Schema.Attribute.Media<'files'>;
+    publishedAt: Schema.Attribute.DateTime;
+    quotation_number: Schema.Attribute.String & Schema.Attribute.Unique;
+    review_comment: Schema.Attribute.Text;
+    reviewed_at: Schema.Attribute.DateTime;
+    reviewed_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-agent-profile.sfa-agent-profile'
+    >;
+    status: Schema.Attribute.Enumeration<
+      [
+        'draft',
+        'pending_approval',
+        'approved',
+        'sent_to_client',
+        'revised',
+        'rejected',
+        'accepted',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'draft'>;
+    submitted_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::sfa-agent-profile.sfa-agent-profile'
+    >;
+    total_amount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    version: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<1>;
+  };
+}
+
+export interface ApiSfaUnitSfaUnit extends Struct.CollectionTypeSchema {
+  collectionName: 'sfa_units';
+  info: {
+    displayName: 'SFA Unit';
+    pluralName: 'sfa-units';
+    singularName: 'sfa-unit';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    agent_profiles: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-agent-profile.sfa-agent-profile'
+    >;
+    code: Schema.Attribute.String & Schema.Attribute.Unique;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::sfa-unit.sfa-unit'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    supervisor: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiStaffTableStaffTable extends Struct.CollectionTypeSchema {
   collectionName: 'staff_tables';
   info: {
@@ -2707,6 +3302,18 @@ declare module '@strapi/strapi' {
       'api::region.region': ApiRegionRegion;
       'api::revenue-stream.revenue-stream': ApiRevenueStreamRevenueStream;
       'api::sections-commission.sections-commission': ApiSectionsCommissionSectionsCommission;
+      'api::sfa-activity.sfa-activity': ApiSfaActivitySfaActivity;
+      'api::sfa-agent-profile.sfa-agent-profile': ApiSfaAgentProfileSfaAgentProfile;
+      'api::sfa-buy-in.sfa-buy-in': ApiSfaBuyInSfaBuyIn;
+      'api::sfa-company.sfa-company': ApiSfaCompanySfaCompany;
+      'api::sfa-contact.sfa-contact': ApiSfaContactSfaContact;
+      'api::sfa-opportunity-buy-in.sfa-opportunity-buy-in': ApiSfaOpportunityBuyInSfaOpportunityBuyIn;
+      'api::sfa-opportunity.sfa-opportunity': ApiSfaOpportunitySfaOpportunity;
+      'api::sfa-order.sfa-order': ApiSfaOrderSfaOrder;
+      'api::sfa-quotation-communication.sfa-quotation-communication': ApiSfaQuotationCommunicationSfaQuotationCommunication;
+      'api::sfa-quotation-item.sfa-quotation-item': ApiSfaQuotationItemSfaQuotationItem;
+      'api::sfa-quotation.sfa-quotation': ApiSfaQuotationSfaQuotation;
+      'api::sfa-unit.sfa-unit': ApiSfaUnitSfaUnit;
       'api::staff-table.staff-table': ApiStaffTableStaffTable;
       'api::sub-county.sub-county': ApiSubCountySubCounty;
       'api::systemuser.systemuser': ApiSystemuserSystemuser;

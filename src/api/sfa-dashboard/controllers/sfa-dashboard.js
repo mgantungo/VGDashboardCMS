@@ -2,7 +2,7 @@
 // src/api/sfa-dashboard/controllers/sfa-dashboard.js
 // No content-type — pure aggregation controller.
 
-const { resolveSfaProfile } = require('../../../_sfa-helpers/sfa-profile');
+const { resolveSfaProfile } = require('../../_sfa-helpers/sfa-profile');
 
 module.exports = {
 

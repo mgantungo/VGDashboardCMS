@@ -2,7 +2,7 @@
 // src/api/sfa-order/controllers/sfa-order.js
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { resolveSfaProfile }    = require('../../../_sfa-helpers/sfa-profile');
+const { resolveSfaProfile }    = require('../../_sfa-helpers/sfa-profile');
 
 const ORDER_POPULATE = [
   'opportunity', 'opportunity.company', 'opportunity.existing_client', 'opportunity.contacts',

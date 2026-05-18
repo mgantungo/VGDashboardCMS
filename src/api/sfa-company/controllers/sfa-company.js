@@ -2,7 +2,7 @@
 // src/api/sfa-company/controllers/sfa-company.js
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { resolveSfaProfile }    = require('../../../_sfa-helpers/sfa-profile');
+const { resolveSfaProfile }    = require('../../_sfa-helpers/sfa-profile');
 
 module.exports = createCoreController(
   'api::sfa-company.sfa-company',

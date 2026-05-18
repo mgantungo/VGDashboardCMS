@@ -2,7 +2,7 @@
 // src/api/sfa-quotation/controllers/sfa-quotation.js
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { resolveSfaProfile }    = require('../../../_sfa-helpers/sfa-profile');
+const { resolveSfaProfile }    = require('../../_sfa-helpers/sfa-profile');
 
 const Q_POPULATE = [
   'opportunity', 'opportunity.company', 'opportunity.existing_client',
