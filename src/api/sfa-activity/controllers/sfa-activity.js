@@ -2,7 +2,7 @@
 // src/api/sfa-activity/controllers/sfa-activity.js
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { resolveSfaProfile }    = require('../../_sfa-helpers/sfa-profile');
+const { resolveSfaProfile }    = require('../../../_sfa-helpers/sfa-profile');
 
 module.exports = createCoreController(
   'api::sfa-activity.sfa-activity',
@@ -65,8 +65,15 @@ module.exports = createCoreController(
       const caller = await resolveSfaProfile(ctx, strapi);
       if (!caller) return;
 
-      const { opportunityId, populate = ['logged_by', 'logged_by.vgams_sales_person', 'attachments'] } = ctx.request.body;
+      const { opportunityId } = ctx.request.body;
       if (!opportunityId) return ctx.badRequest('opportunityId is required.');
+
+      // Always populate attachments — never let the request body omit them
+      const populate = [
+        'logged_by',
+        'logged_by.vgams_sales_person',
+        'attachments',
+      ];
 
       const activities = await strapi.documents('api::sfa-activity.sfa-activity').findMany({
         filters: { opportunity: { documentId: { $eq: opportunityId } } },
