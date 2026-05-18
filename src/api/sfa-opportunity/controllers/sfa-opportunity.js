@@ -2,7 +2,7 @@
 // src/api/sfa-opportunity/controllers/sfa-opportunity.js
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { resolveSfaProfile }    = require('../../_sfa-helpers/sfa-profile');
+const { resolveSfaProfile }    = require('../../../_sfa-helpers/sfa-profile');
 
 const STAGE_ORDER = [
   'opportunity_created', 'contact_engaged', 'requirement_defined',
@@ -112,7 +112,7 @@ module.exports = createCoreController(
         expected_value, expected_close_date,
         existing_client,  // documentId from clients (return order)
         company,          // documentId from sfa-company (new prospect)
-        contacts = [],
+        contacts = [],    // array of { full_name, phone, email, position } OR documentIds
         buy_in_lines = [],
       } = ctx.request.body;
 
@@ -124,22 +124,54 @@ module.exports = createCoreController(
         return ctx.badRequest('Provide either existing_client or company — not both.');
       }
 
+      // ── Resolve contacts ──────────────────────────────────────────────────
+      // The frontend may send either:
+      //   a) documentId strings (existing contacts already in Strapi)
+      //   b) raw objects { full_name, phone, email, position } (new contacts to create)
+      // We create new ones and collect all documentIds for the relation.
+      const contactDocumentIds = [];
+
+      for (const contact of contacts) {
+        if (typeof contact === 'string') {
+          // Already a documentId
+          contactDocumentIds.push(contact);
+        } else if (contact?.documentId) {
+          // Object with documentId
+          contactDocumentIds.push(contact.documentId);
+        } else if (contact?.full_name) {
+          // Raw object — create the sfa-contact record first
+          const companyId = company || null;
+          const newContact = await strapi.documents('api::sfa-contact.sfa-contact').create({
+            data: {
+              full_name: contact.full_name,
+              phone:     contact.phone    || null,
+              email:     contact.email    || null,
+              position:  contact.position || null,
+              company:   companyId,
+            },
+          });
+          contactDocumentIds.push(newContact.documentId);
+        }
+        // Skip empty / malformed contact entries
+      }
+
+      // ── Create the opportunity ────────────────────────────────────────────
       const opp = await strapi.documents('api::sfa-opportunity.sfa-opportunity').create({
         data: {
           title, description, source,
           expected_value, expected_close_date,
           existing_client:  existing_client || null,
           company:          company         || null,
-          contacts,
-          funnel_stage:    'opportunity_created',
-          status:          'new',
-          created_by_agent: caller.profile.documentId,  // sfa-agent-profile documentId
-          is_converted:    false,
+          contacts:         contactDocumentIds,    // array of documentIds
+          funnel_stage:     'opportunity_created',
+          status:           'new',
+          created_by_agent: caller.profile.documentId,
+          is_converted:     false,
         },
         populate: OPP_POPULATE,
       });
 
-      // Create buy-in lines
+      // ── Create buy-in lines ───────────────────────────────────────────────
       for (const line of buy_in_lines) {
         await strapi.documents('api::sfa-opportunity-buy-in.sfa-opportunity-buy-in').create({
           data: {
