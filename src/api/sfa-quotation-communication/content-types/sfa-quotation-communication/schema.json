@@ -6,7 +6,9 @@
     "pluralName": "sfa-quotation-communications",
     "displayName": "SFA Quotation Communication"
   },
-  "options": { "draftAndPublish": false },
+  "options": {
+    "draftAndPublish": false
+  },
   "pluginOptions": {},
   "attributes": {
     "quotation": {
@@ -15,10 +17,17 @@
       "target": "api::sfa-quotation.sfa-quotation",
       "inversedBy": "communications"
     },
-    "sent_at": { "type": "datetime" },
+    "sent_at": {
+      "type": "datetime"
+    },
     "channel": {
       "type": "enumeration",
-      "enum": ["email", "whatsapp", "manual", "other"],
+      "enum": [
+        "email",
+        "whatsapp",
+        "manual",
+        "other"
+      ],
       "required": true
     },
     "sent_by": {
@@ -26,14 +35,23 @@
       "relation": "manyToOne",
       "target": "api::sfa-agent-profile.sfa-agent-profile"
     },
-    "client_response": { "type": "text" },
-    "response_date": { "type": "datetime" },
-    "negotiation_notes": { "type": "text" },
+    "client_response": {
+      "type": "text"
+    },
+    "response_date": {
+      "type": "datetime"
+    },
+    "negotiation_notes": {
+      "type": "text"
+    },
     "attachments": {
       "type": "media",
       "multiple": true,
       "required": false,
-      "allowedTypes": ["images", "files"]
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
     }
   }
 }

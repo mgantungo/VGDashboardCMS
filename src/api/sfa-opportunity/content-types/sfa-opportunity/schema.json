@@ -6,25 +6,54 @@
     "pluralName": "sfa-opportunities",
     "displayName": "SFA Opportunity"
   },
-  "options": { "draftAndPublish": false },
+  "options": {
+    "draftAndPublish": false
+  },
   "pluginOptions": {},
   "attributes": {
-    "title": { "type": "string", "required": true },
-    "description": { "type": "text" },
-    "source": { "type": "string" },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "source": {
+      "type": "string"
+    },
     "funnel_stage": {
       "type": "enumeration",
-      "enum": ["opportunity_created", "contact_engaged", "requirement_defined", "quotation_created", "quotation_sent", "negotiation", "approved", "closed_lost"],
+      "enum": [
+        "opportunity_created",
+        "contact_engaged",
+        "requirement_defined",
+        "quotation_created",
+        "quotation_sent",
+        "negotiation",
+        "approved",
+        "closed_lost"
+      ],
       "default": "opportunity_created",
       "required": true
     },
     "status": {
       "type": "enumeration",
-      "enum": ["new", "in_progress", "quotation_sent", "negotiation", "won", "lost"],
+      "enum": [
+        "new",
+        "in_progress",
+        "quotation_sent",
+        "negotiation",
+        "won",
+        "lost"
+      ],
       "default": "new"
     },
-    "expected_value": { "type": "decimal" },
-    "expected_close_date": { "type": "date" },
+    "expected_value": {
+      "type": "decimal"
+    },
+    "expected_close_date": {
+      "type": "date"
+    },
     "created_by_agent": {
       "type": "relation",
       "relation": "manyToOne",
@@ -50,8 +79,13 @@
       "target": "api::sfa-contact.sfa-contact",
       "inversedBy": "opportunities"
     },
-    "is_converted": { "type": "boolean", "default": false },
-    "converted_at": { "type": "datetime" },
+    "is_converted": {
+      "type": "boolean",
+      "default": false
+    },
+    "converted_at": {
+      "type": "datetime"
+    },
     "buy_in_lines": {
       "type": "relation",
       "relation": "oneToMany",

@@ -6,13 +6,14 @@
     "pluralName": "sfa-quotations",
     "displayName": "SFA Quotation"
   },
-  "options": { "draftAndPublish": false },
+  "options": {
+    "draftAndPublish": false
+  },
   "pluginOptions": {},
   "attributes": {
     "quotation_number": {
       "type": "string",
-      "unique": true,
-      "description": "Auto-generated: QT-YYYYMM-XXXX"
+      "unique": true
     },
     "opportunity": {
       "type": "relation",
@@ -20,15 +21,32 @@
       "target": "api::sfa-opportunity.sfa-opportunity",
       "inversedBy": "quotations"
     },
-    "version": { "type": "integer", "default": 1, "required": true },
+    "version": {
+      "type": "integer",
+      "required": true,
+      "default": 1
+    },
     "status": {
       "type": "enumeration",
-      "enum": ["draft", "pending_approval", "approved", "sent_to_client", "revised", "rejected", "accepted"],
+      "required": true,
       "default": "draft",
-      "required": true
+      "enum": [
+        "draft",
+        "pending_approval",
+        "approved",
+        "sent_to_client",
+        "revised",
+        "rejected",
+        "accepted"
+      ]
     },
-    "total_amount": { "type": "decimal", "default": 0 },
-    "notes": { "type": "text" },
+    "total_amount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "notes": {
+      "type": "text"
+    },
     "submitted_by": {
       "type": "relation",
       "relation": "manyToOne",
@@ -41,13 +59,19 @@
       "target": "api::sfa-agent-profile.sfa-agent-profile",
       "description": "The supervisor or manager who approved or rejected."
     },
-    "reviewed_at": { "type": "datetime" },
-    "review_comment": { "type": "text" },
+    "reviewed_at": {
+      "type": "datetime"
+    },
+    "review_comment": {
+      "type": "text"
+    },
     "pdf_document": {
       "type": "media",
-      "multiple": false,
+      "multiple": true,
       "required": false,
-      "allowedTypes": ["files"]
+      "allowedTypes": [
+        "files"
+      ]
     },
     "parent_quotation": {
       "type": "relation",

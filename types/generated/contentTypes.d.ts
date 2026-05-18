@@ -2388,7 +2388,7 @@ export interface ApiSfaQuotationSfaQuotation
       'manyToOne',
       'api::sfa-quotation.sfa-quotation'
     >;
-    pdf_document: Schema.Attribute.Media<'files'>;
+    pdf_document: Schema.Attribute.Media<'files', true>;
     publishedAt: Schema.Attribute.DateTime;
     quotation_number: Schema.Attribute.String & Schema.Attribute.Unique;
     review_comment: Schema.Attribute.Text;
