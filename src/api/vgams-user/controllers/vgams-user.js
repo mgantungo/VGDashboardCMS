@@ -8,7 +8,7 @@ const url   = require('url');
 const AD_AUTH_URL = 'https://vg-one-id-auth.newvision.co.ug/api/auth/login';
 const SERVICE_KEY = 'ee222c03986f8323764f8f47ae4c37634d55e5cc89bd541a14fb05343ff565e6';
 
-// ── HTTPS helper (identical to original) ─────────────────────────────────────
+// ── HTTPS helper ──────────────────────────────────────────────────────────────
 function makeHttpsRequest(urlString, data) {
   return new Promise((resolve, reject) => {
     const parsedUrl = url.parse(urlString);
@@ -67,7 +67,7 @@ async function authenticateWithAD(email, password) {
 // ── Controller ────────────────────────────────────────────────────────────────
 module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi }) => ({
 
-  // ── Existing GET login — UNCHANGED ────────────────────────────────────────
+  // ── GET login — UNCHANGED ─────────────────────────────────────────────────
   async initiateLogin(ctx) {
     try {
       const email    = (ctx.params?.email    || ctx.request.body?.email    || '').toLowerCase().trim();
@@ -122,7 +122,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
     }
   },
 
-  // ── POST login — handles standard AND SFA logins ─────────────────────────
+  // ── POST login — standard, SFA, and article-analytics ────────────────────
   async initiateLoginPost(ctx) {
     try {
       const { email: rawEmail, password, module: loginModule } = ctx.request.body;
@@ -131,41 +131,55 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
 
       const email = rawEmail.toLowerCase().trim();
 
-      // ── Standard login: delegate to existing handler ───────────────────
-      if (loginModule !== 'sfa') {
+      // ── Standard login ─────────────────────────────────────────────────
+      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics')) {
         return await this.initiateLogin(ctx);
       }
 
-      // ── SFA LOGIN BRANCH ───────────────────────────────────────────────
-      // Triggered by: { email, password, module: 'sfa' }
-      //
-      // Steps:
-      //  1. Domain check (same as standard)
-      //  2. AD authentication via the existing proxy
-      //  3. Validate email against vgams-sales-persons (isActive = true)
-      //  4. Load the sfa-agent-profile linked to that sales person
-      //  5. Return { salesPerson, sfaProfile } — NO JWT
-      //
-      // The frontend stores this in sessionStorage and passes
-      // sfaProfileDocumentId in every subsequent SFA API call body.
-
-      console.log('🔐 SFA login requested for:', email);
-
-      // Step 1: domain check
+      // ── Domain check (shared by all module branches) ───────────────────
       if (!['newvision.co.ug'].includes(email.split('@')[1])) {
         return ctx.unauthorized('Only company email addresses are permitted.');
       }
 
-      // Step 2: AD authentication
+      // ── AD authentication (shared by all module branches) ──────────────
       let adResponse;
       try {
         adResponse = await authenticateWithAD(email, password);
       } catch (e) {
         return ctx.unauthorized(e.message);
       }
+
+      const adUser = adResponse.user ?? {};
+
+      // ── ARTICLE-ANALYTICS BRANCH ───────────────────────────────────────
+      // No collection lookup — AD authentication is the only gate.
+      // Any active @newvision.co.ug account that passes AD auth gets access.
+      if (loginModule === 'article-analytics') {
+        console.log('📊 Article-Analytics login for:', email);
+
+        return {
+          success:    true,
+          message:    'Login successful',
+          user: {
+            name:       adUser.displayName || email.split('@')[0],
+            email,
+            role:       'analyst',
+            adProfile: {
+              displayName:   adUser.displayName   ?? null,
+              department:    adUser.department    ?? null,
+              jobTitle:      adUser.jobTitle      ?? null,
+              phone:         adUser.phone         ?? null,
+              accountActive: adUser.accountStatus?.active ?? null,
+            },
+          },
+          redirectTo: '/',
+        };
+      }
+
+      // ── SFA BRANCH ─────────────────────────────────────────────────────
+      console.log('🔐 SFA login requested for:', email);
       console.log('✅ AD auth passed for SFA:', email);
 
-      // Step 3: check vgams-sales-person
       const [salesPerson] = await strapi.documents(
         'api::vgams-sales-person.vgams-sales-person'
       ).findMany({
@@ -182,7 +196,6 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       }
       console.log('✅ SFA: sales person confirmed:', salesPerson.name);
 
-      // Step 4: load sfa-agent-profile
       const [sfaProfile] = await strapi.documents(
         'api::sfa-agent-profile.sfa-agent-profile'
       ).findMany({
@@ -203,7 +216,6 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       }
       console.log('✅ SFA: profile loaded — role:', sfaProfile.sfa_role);
 
-      // Step 5: return profile — no JWT
       return {
         success: true,
         message: 'SFA login successful',
@@ -216,7 +228,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         },
         sfaProfile: {
           id:            sfaProfile.id,
-          documentId:    sfaProfile.documentId,   // sent with every SFA API request body
+          documentId:    sfaProfile.documentId,
           sfa_role:      sfaProfile.sfa_role,
           employee_code: sfaProfile.employee_code || null,
           unit: sfaProfile.unit ? {
