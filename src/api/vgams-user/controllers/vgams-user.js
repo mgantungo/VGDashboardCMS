@@ -176,6 +176,32 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         };
       }
 
+     // ── JOBS-WEBSITE BRANCH ────────────────────────────────────────────
+     // No collection lookup — AD authentication is the only gate.
+     // Any active @newvision.co.ug account that passes AD auth gets access.
+      if (loginModule === 'jobs-website') {
+        console.log('💼 Jobs-Website login for:', email);
+
+        return {
+          success:    true,
+          message:    'Login successful',
+          user: {
+            name:       adUser.displayName || email.split('@')[0],
+            email,
+            role:       'jobs-websiteadmin',
+            adProfile: {
+              displayName:   adUser.displayName   ?? null,
+              department:    adUser.department    ?? null,
+              jobTitle:      adUser.jobTitle      ?? null,
+              phone:         adUser.phone         ?? null,
+              accountActive: adUser.accountStatus?.active ?? null,
+            },
+          },
+          redirectTo: '/admin',
+        };
+      }
+
+
       // ── SFA BRANCH ─────────────────────────────────────────────────────
       console.log('🔐 SFA login requested for:', email);
       console.log('✅ AD auth passed for SFA:', email);
