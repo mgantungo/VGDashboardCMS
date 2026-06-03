@@ -132,7 +132,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       const email = rawEmail.toLowerCase().trim();
 
       // ── Standard login ─────────────────────────────────────────────────
-      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics')) {
+      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website')) {
         return await this.initiateLogin(ctx);
       }
 
