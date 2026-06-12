@@ -17,6 +17,8 @@ module.exports = [
 		'https://www.harvestmoneyexpo.co.ug',
 		'https://analytics-v2.visiongroup.co.ug',
 		'https://www.analytics-v2.visiongroup.co.ug',
+		'https://aihub.visiongroup.co.ug',
+		'https://www.aihub.visiongroup.co.ug',
 		'https://cms.jobs.co.ug',
 		'https://jobs.co.ug',
 		'https://www.jobs.co.ug'],
