@@ -132,7 +132,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       const email = rawEmail.toLowerCase().trim();
 
       // ── Standard login ─────────────────────────────────────────────────
-      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website')) {
+      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers')) {
         return await this.initiateLogin(ctx);
       }
 
@@ -198,6 +198,31 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
             },
           },
           redirectTo: '/admin',
+        };
+      }
+
+     // ── AIHUB BRANCH ────────────────────────────────────────────
+     // No collection lookup — AD authentication is the only gate.
+     // Any active @newvision.co.ug account that passes AD auth gets access.
+      if (loginModule === 'ai_agent_workers') {
+        console.log('💼 aihub login for:', email);
+
+        return {
+          success:    true,
+          message:    'Login successful',
+          user: {
+            name:       adUser.displayName || email.split('@')[0],
+            email,
+            role:       'ai_agent_workers',
+            adProfile: {
+              displayName:   adUser.displayName   ?? null,
+              department:    adUser.department    ?? null,
+              jobTitle:      adUser.jobTitle      ?? null,
+              phone:         adUser.phone         ?? null,
+              accountActive: adUser.accountStatus?.active ?? null,
+            },
+          },
+          redirectTo: '/',
         };
       }
 
