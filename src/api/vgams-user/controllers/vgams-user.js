@@ -132,7 +132,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       const email = rawEmail.toLowerCase().trim();
 
       // ── Standard login ─────────────────────────────────────────────────
-      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers')) {
+      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers' && loginModule !== 'exhibitor-access')) {
         return await this.initiateLogin(ctx);
       }
 
@@ -214,6 +214,31 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
             name:       adUser.displayName || email.split('@')[0],
             email,
             role:       'ai_agent_workers',
+            adProfile: {
+              displayName:   adUser.displayName   ?? null,
+              department:    adUser.department    ?? null,
+              jobTitle:      adUser.jobTitle      ?? null,
+              phone:         adUser.phone         ?? null,
+              accountActive: adUser.accountStatus?.active ?? null,
+            },
+          },
+          redirectTo: '/',
+        };
+      }
+
+      // ── Exhibitor ACCESS BRANCH ───────────────────────────────────────
+      // No collection lookup — AD authentication is the only gate.
+      // Any active @newvision.co.ug account that passes AD auth gets access.
+      if (loginModule === 'exhibitor-access') {
+        console.log('📊 Exhibitor login for:', email);
+
+        return {
+          success:    true,
+          message:    'Login successful',
+          user: {
+            name:       adUser.displayName || email.split('@')[0],
+            email,
+            role:       'analyst',
             adProfile: {
               displayName:   adUser.displayName   ?? null,
               department:    adUser.department    ?? null,
