@@ -247,7 +247,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
               accountActive: adUser.accountStatus?.active ?? null,
             },
           },
-          redirectTo: '/',
+          redirectTo: '/badge-setup',
         };
       }
 
