@@ -10,6 +10,8 @@ module.exports = [
       headers: '*',
       origin: [	'http://localhost:3130', 
 		'http://localhost:3000', 
+		'http://localhost:8080',
+		'http://localhost:3739',
 		'https://editor.newvision.co.ug',
 		'https://cio.newvision.co.ug',
 		'https://visiongroup.co.ug',
