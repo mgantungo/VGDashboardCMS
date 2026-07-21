@@ -202,7 +202,7 @@ module.exports = {
         filters,
         fields:   ADVERT_FIELDS,
         populate:  ADVERT_POPULATE,
-        sort:      { start_date: 'desc' },
+        sort:      { createdAt: 'desc' },
         limit:    -1,
       });
 
