@@ -35,6 +35,24 @@ module.exports = {
     },
     {
       method: 'PUT',
+      path: '/pager-publications/:id/decrease-pages',
+      handler: 'pager-publication.decreasePages',
+      config: {
+        auth: false,
+        description: 'Remove trailing pages in multiples of 4. Body: { reducePages }. Fails if any of the removed pages have adverts.',
+      },
+    },
+    {
+      method: 'POST',
+      path: '/pager-publications/:id/queue-adverts',
+      handler: 'pager-publication.queueAdverts',
+      config: {
+        auth: false,
+        description: 'Auto-distribute adverts round-robin across non-cover pages. Body: { advertIds: [] }',
+      },
+    },
+    {
+      method: 'PUT',
       path: '/pager-publications/:id/lock',
       handler: 'pager-publication.lock',
       config: { auth: false },
