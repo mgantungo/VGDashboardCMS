@@ -31,31 +31,9 @@ module.exports = {
     data.publication_code = buildPublicationCode(data.masthead, data.publication_date, nextSequence);
   },
 
-  async afterCreate(event) {
-    const { result } = event.params ? event.params : event; // Strapi v5 passes result on event
-    const publication = event.result;
-
-    const totalPages = publication.total_pages;
-    const publicationId = publication.id;
-
-    strapi.log.info(`[Pager] Auto-generating ${totalPages} pages for publication ${publication.publication_code}`);
-
-    const pagesToCreate = [];
-    for (let n = 1; n <= totalPages; n++) {
-      pagesToCreate.push({
-        publication: publicationId,
-        page_number: n,
-        is_cover: n === 1,
-        is_back_cover: n === totalPages,
-        section: n === 1 ? 'Cover Page' : (n === totalPages ? 'Back Cover Page' : null),
-      });
-    }
-
-    // Sequential create — page count is small (24+) and this only runs once per publication.
-    for (const pageData of pagesToCreate) {
-      await strapi.entityService.create('api::pager-page.pager-page', { data: pageData });
-    }
-  },
+  // Page auto-generation moved to the controller's create() action — it has
+  // the created row (and its id) directly in hand, rather than depending on
+  // the shape of the lifecycle event's `result`.
 
   async beforeUpdate(event) {
     const { data, where } = event.params;
