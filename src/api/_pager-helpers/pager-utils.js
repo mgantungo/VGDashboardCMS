@@ -122,6 +122,25 @@ function extractIncomingAdvertIds(data) {
   return null;
 }
 
+/**
+ * Extracts a single relation id from a Strapi v5 manyToOne payload, whatever
+ * shape it arrives in: a bare scalar id, { id }, { connect: [id] },
+ * { connect: [{ id }] }, or an array wrapper around any of those. Returns
+ * null if nothing usable is found.
+ */
+function extractRelationId(rel) {
+  if (rel === null || rel === undefined) return null;
+  if (typeof rel === 'number') return rel;
+  if (typeof rel === 'string' && /^\d+$/.test(rel)) return Number(rel);
+  if (Array.isArray(rel)) return rel.length ? extractRelationId(rel[0]) : null;
+  if (typeof rel === 'object') {
+    if (rel.id !== undefined) return extractRelationId(rel.id);
+    if (rel.connect) return extractRelationId(rel.connect);
+    if (rel.set) return extractRelationId(rel.set);
+  }
+  return null;
+}
+
 module.exports = {
   padSequence,
   toCompactDate,
@@ -131,4 +150,5 @@ module.exports = {
   buildReaderSpreadLayout,
   isPrintEligible,
   extractIncomingAdvertIds,
+  extractRelationId,
 };
