@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pager_pages",
+  "info": {
+    "singularName": "pager-page",
+    "pluralName": "pager-pages",
+    "displayName": "Pager Page"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "publication": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pager-publication.pager-publication",
+      "inversedBy": "pages"
+    },
+    "page_number": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "section": {
+      "type": "enumeration",
+      "enum": [
+        "Adverts", "Beat", "Business", "Business Vision", "CSI", "Case Files", "Classified",
+        "Comments", "Community News", "Court", "Crocs", "Election News", "Feature", "Green UG",
+        "Harvest Money", "Health", "Her Vision", "Homes", "International News", "JobMart",
+        "Leisure", "Letters", "Lifestyle", "Motor Mart", "Mwalimu", "NIE", "National News",
+        "New Era", "News", "OPED", "Oil, Gas and Infrastructure", "Opportunities", "PLE",
+        "OLEVEL", "ALEVEL", "Pakasa", "Relationships", "Schools", "Series", "Special Report",
+        "Sport", "Spotlight", "Supplements", "Teen Vision", "TV and Leisure", "The Hot Sport",
+        "Weekend Xtra", "Muslim News", "Back Cover Page", "Cover Page"
+      ]
+    },
+    "adverts": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::advert.advert",
+      "inversedBy": "pager_pages"
+    },
+    "is_cover": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_back_cover": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
