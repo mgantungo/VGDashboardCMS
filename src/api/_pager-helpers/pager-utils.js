@@ -46,6 +46,25 @@ function assertValidPageCount(totalPages) {
 }
 
 /**
+ * Validates a decrement: reducePages must be a positive multiple of 4, and
+ * the resulting total must not drop below the 24-page minimum. Returns the
+ * validated integer.
+ */
+function assertValidPageDecrement(reducePages, currentTotal) {
+  const n = Number(reducePages);
+  if (!Number.isInteger(n) || n <= 0) {
+    throw new Error('reducePages must be a positive whole number');
+  }
+  if (n % 4 !== 0) {
+    throw new Error('reducePages must be a multiple of 4');
+  }
+  if (currentTotal - n < 24) {
+    throw new Error(`Cannot go below the 24-page minimum (would leave ${currentTotal - n} pages)`);
+  }
+  return n;
+}
+
+/**
  * Validates an increment: additionalPages itself must keep the total
  * divisible by 4 (in practice this means additionalPages must itself
  * be a positive multiple of 4).
@@ -147,6 +166,7 @@ module.exports = {
   buildPublicationCode,
   assertValidPageCount,
   assertValidPageIncrement,
+  assertValidPageDecrement,
   buildReaderSpreadLayout,
   isPrintEligible,
   extractIncomingAdvertIds,
