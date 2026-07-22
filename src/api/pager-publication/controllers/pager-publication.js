@@ -29,7 +29,7 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       for (let n = 1; n <= totalPages; n++) {
         await strapi.entityService.create('api::pager-page.pager-page', {
           data: {
-            publication: publicationId,
+            publication: { connect: [publicationId] },
             page_number: n,
             is_cover: n === 1,
             is_back_cover: n === totalPages,
@@ -130,7 +130,7 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     // Create the new pages; the lifecycle will lock the new last page as back cover.
     for (let n = oldTotal + 1; n <= newTotal; n++) {
       await strapi.entityService.create('api::pager-page.pager-page', {
-        data: { publication: id, page_number: n },
+        data: { publication: { connect: [id] }, page_number: n },
       });
     }
 
