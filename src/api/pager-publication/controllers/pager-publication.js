@@ -8,6 +8,21 @@ const {
 
 module.exports = createCoreController('api::pager-publication.pager-publication', ({ strapi }) => ({
 
+  // POST /pager-publications — overrides the core action so the request body
+  // is flat (not Strapi's default { data: {...} } wrapper) and the response
+  // is flat too, consistent with every other custom action in this module.
+  async create(ctx) {
+    const { masthead, publication_date, total_pages, notes } = ctx.request.body || {};
+    try {
+      const publication = await strapi.entityService.create('api::pager-publication.pager-publication', {
+        data: { masthead, publication_date, total_pages, notes },
+      });
+      ctx.body = publication;
+    } catch (e) {
+      ctx.badRequest(e.message);
+    }
+  },
+
   // GET /pager-publications/:id — deep populate for the editor view
   async findOne(ctx) {
     const { id } = ctx.params;
