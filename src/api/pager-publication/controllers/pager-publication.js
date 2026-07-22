@@ -11,12 +11,33 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
   // POST /pager-publications — overrides the core action so the request body
   // is flat (not Strapi's default { data: {...} } wrapper) and the response
   // is flat too, consistent with every other custom action in this module.
+  // Also auto-generates the publication's pager-page rows here directly,
+  // rather than in a content-type lifecycle, since we have the created row
+  // (and its real id) in hand rather than depending on the lifecycle event shape.
   async create(ctx) {
     const { masthead, publication_date, total_pages, notes } = ctx.request.body || {};
     try {
       const publication = await strapi.entityService.create('api::pager-publication.pager-publication', {
         data: { masthead, publication_date, total_pages, notes },
       });
+
+      const publicationId = publication.id;
+      const totalPages = publication.total_pages;
+
+      strapi.log.info(`[Pager] Auto-generating ${totalPages} pages for publication ${publication.publication_code}`);
+
+      for (let n = 1; n <= totalPages; n++) {
+        await strapi.entityService.create('api::pager-page.pager-page', {
+          data: {
+            publication: publicationId,
+            page_number: n,
+            is_cover: n === 1,
+            is_back_cover: n === totalPages,
+            section: n === 1 ? 'Cover Page' : (n === totalPages ? 'Back Cover Page' : null),
+          },
+        });
+      }
+
       ctx.body = publication;
     } catch (e) {
       ctx.badRequest(e.message);
