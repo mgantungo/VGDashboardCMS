@@ -213,16 +213,26 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id);
     if (!publication) return ctx.notFound('Publication not found');
 
-    const pages = await strapi.entityService.findMany('api::pager-page.pager-page', {
-      filters: { publication: id, is_cover: false, is_back_cover: false },
+    // Check every page (including cover/back cover) for existing placements,
+    // so a conflict is always caught even if an advert was manually put on
+    // the cover via the picker — but only round-robin new assignments across
+    // the ordinary, non-cover pages.
+    const allPages = await strapi.entityService.findMany('api::pager-page.pager-page', {
+      filters: { publication: id },
       sort: { page_number: 'asc' },
       populate: { adverts: true },
     });
+    const pages = allPages.filter((p) => !p.is_cover && !p.is_back_cover);
     if (pages.length === 0) {
       return ctx.badRequest('This publication has no assignable pages');
     }
 
-    const alreadyPlaced = new Set(pages.flatMap((p) => (p.adverts || []).map((a) => a.id)));
+    const placedOnPage = new Map(); // advertId -> page_number
+    for (const p of allPages) {
+      for (const a of (p.adverts || [])) {
+        placedOnPage.set(a.id, p.page_number);
+      }
+    }
 
     const assigned = [];
     const skipped = [];
@@ -231,8 +241,12 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     for (const rawId of advertIds) {
       const advertId = Number(rawId);
 
-      if (alreadyPlaced.has(advertId)) {
-        skipped.push({ advertId, reason: 'already placed in this publication' });
+      if (placedOnPage.has(advertId)) {
+        skipped.push({
+          advertId,
+          reason: `already assigned to page ${placedOnPage.get(advertId)} in this publication`,
+          conflictPageNumber: placedOnPage.get(advertId),
+        });
         continue;
       }
 
@@ -255,7 +269,7 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
           data: { adverts: nextAdvertIds },
         });
         targetPage.adverts = nextAdvertIds.map((aid) => ({ id: aid }));
-        alreadyPlaced.add(advertId);
+        placedOnPage.set(advertId, targetPage.page_number);
         assigned.push({ advertId, pageId: targetPage.id, page_number: targetPage.page_number });
       } catch (e) {
         skipped.push({ advertId, reason: e.message });
