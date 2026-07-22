@@ -4,7 +4,7 @@
   "info": {
     "singularName": "pager-page",
     "pluralName": "pager-pages",
-    "displayName": "Pager Page"
+    "displayName": "CIO Pager Page"
   },
   "options": {
     "draftAndPublish": false
