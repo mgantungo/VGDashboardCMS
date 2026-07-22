@@ -3,7 +3,9 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 const {
   assertValidPageIncrement,
+  assertValidPageDecrement,
   buildReaderSpreadLayout,
+  isPrintEligible,
 } = require('../../_pager-helpers/pager-utils');
 
 module.exports = createCoreController('api::pager-publication.pager-publication', ({ strapi }) => ({
@@ -139,6 +141,128 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     });
 
     ctx.body = updated;
+  },
+
+  // PUT /pager-publications/:id/decrease-pages   body: { reducePages }
+  // Only removes trailing pages, and only if none of them carry adverts.
+  async decreasePages(ctx) {
+    const { id } = ctx.params;
+    const { reducePages } = ctx.request.body || {};
+
+    const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id);
+    if (!publication) return ctx.notFound('Publication not found');
+    if (publication.status === 'locked' || publication.status === 'published') {
+      return ctx.badRequest(`Cannot remove pages from a ${publication.status} publication`);
+    }
+
+    let decrement;
+    try {
+      decrement = assertValidPageDecrement(reducePages, publication.total_pages);
+    } catch (e) {
+      return ctx.badRequest(e.message);
+    }
+
+    const newTotal = publication.total_pages - decrement;
+
+    // The pages being removed — the trailing block above the new total.
+    const pagesToRemove = await strapi.entityService.findMany('api::pager-page.pager-page', {
+      filters: { publication: id, page_number: { $gt: newTotal } },
+      populate: { adverts: true },
+    });
+
+    const withAdverts = pagesToRemove.find((p) => (p.adverts || []).length > 0);
+    if (withAdverts) {
+      return ctx.badRequest(
+        `Cannot remove pages — page ${withAdverts.page_number} still has adverts assigned. Remove them first.`
+      );
+    }
+
+    for (const page of pagesToRemove) {
+      await strapi.entityService.delete('api::pager-page.pager-page', page.id);
+    }
+
+    // The new last page becomes the back cover.
+    const newLastPage = await strapi.entityService.findMany('api::pager-page.pager-page', {
+      filters: { publication: id, page_number: newTotal },
+      limit: 1,
+    });
+    if (newLastPage[0]) {
+      await strapi.entityService.update('api::pager-page.pager-page', newLastPage[0].id, {
+        data: { is_back_cover: true, section: 'Back Cover Page' },
+      });
+    }
+
+    const updated = await strapi.entityService.update('api::pager-publication.pager-publication', id, {
+      data: { total_pages: newTotal },
+    });
+
+    ctx.body = updated;
+  },
+
+  // POST /pager-publications/:id/queue-adverts   body: { advertIds: [] }
+  // Auto-distributes the given adverts round-robin across this publication's
+  // non-cover pages, skipping any already placed anywhere in the publication
+  // and any that aren't print-eligible.
+  async queueAdverts(ctx) {
+    const { id } = ctx.params;
+    const { advertIds } = ctx.request.body || {};
+    if (!Array.isArray(advertIds) || advertIds.length === 0) {
+      return ctx.badRequest('advertIds must be a non-empty array');
+    }
+
+    const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id);
+    if (!publication) return ctx.notFound('Publication not found');
+
+    const pages = await strapi.entityService.findMany('api::pager-page.pager-page', {
+      filters: { publication: id, is_cover: false, is_back_cover: false },
+      sort: { page_number: 'asc' },
+      populate: { adverts: true },
+    });
+    if (pages.length === 0) {
+      return ctx.badRequest('This publication has no assignable pages');
+    }
+
+    const alreadyPlaced = new Set(pages.flatMap((p) => (p.adverts || []).map((a) => a.id)));
+
+    const assigned = [];
+    const skipped = [];
+    let cursor = 0;
+
+    for (const rawId of advertIds) {
+      const advertId = Number(rawId);
+
+      if (alreadyPlaced.has(advertId)) {
+        skipped.push({ advertId, reason: 'already placed in this publication' });
+        continue;
+      }
+
+      const advert = await strapi.entityService.findOne('api::advert.advert', advertId);
+      if (!advert) {
+        skipped.push({ advertId, reason: 'advert not found' });
+        continue;
+      }
+      if (!isPrintEligible(advert)) {
+        skipped.push({ advertId, reason: 'not print-eligible' });
+        continue;
+      }
+
+      const targetPage = pages[cursor % pages.length];
+      cursor += 1;
+
+      const nextAdvertIds = [...(targetPage.adverts || []).map((a) => a.id), advertId];
+      try {
+        await strapi.entityService.update('api::pager-page.pager-page', targetPage.id, {
+          data: { adverts: nextAdvertIds },
+        });
+        targetPage.adverts = nextAdvertIds.map((aid) => ({ id: aid }));
+        alreadyPlaced.add(advertId);
+        assigned.push({ advertId, pageId: targetPage.id, page_number: targetPage.page_number });
+      } catch (e) {
+        skipped.push({ advertId, reason: e.message });
+      }
+    }
+
+    ctx.body = { assigned, skipped };
   },
 
   // PUT /pager-publications/:id/lock
