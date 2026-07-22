@@ -1,15 +1,15 @@
 'use strict';
 
-const { extractIncomingAdvertIds } = require('../../../_pager-helpers/pager-utils');
+const { extractIncomingAdvertIds, extractRelationId } = require('../../../_pager-helpers/pager-utils');
 
 /**
  * Resolves the publication id a page belongs to — either from the incoming
  * data (on create) or by looking up the existing row (on update).
  */
 async function resolvePublicationId(data, where) {
-  if (data.publication) {
-    return typeof data.publication === 'object' ? (data.publication.id ?? data.publication.connect?.[0]?.id) : data.publication;
-  }
+  const fromData = extractRelationId(data.publication);
+  if (fromData !== null) return fromData;
+
   if (where?.id) {
     const existing = await strapi.entityService.findOne('api::pager-page.pager-page', where.id, {
       populate: { publication: true },
