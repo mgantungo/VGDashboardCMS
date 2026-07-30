@@ -79,7 +79,7 @@ module.exports = {
     {
       method: 'GET',
       path: '/adverts/:id',
-      handler: 'advert.findOne',
+      handler: 'advert.findForEdit',
       config: {
         auth: false
       }
