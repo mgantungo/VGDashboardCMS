@@ -79,7 +79,7 @@ module.exports = {
     {
       method: 'GET',
       path: '/adverts/:id',
-      handler: 'advert.findForEdit',
+      handler: 'advert.findOne',
       config: {
         auth: false
       }
@@ -177,6 +177,14 @@ module.exports = {
         description: 'Get specific advert details for design work',
         tags: ['Design House']
       }
+    },
+    {
+      method: 'GET',
+      path: '/adverts/:id/edit',
+      handler: 'advert.findForEdit',
+      config: {
+        auth: false, // server-side identity resolution, same as the rest of this module
+      },
     },
     {
       method: 'POST',
