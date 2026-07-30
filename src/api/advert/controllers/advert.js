@@ -595,6 +595,53 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
         console.error('❌ Error fetching BC sync status:', err.message);
         return ctx.internalServerError(`Failed to fetch BC sync status: ${err.message}`);
       }
-    }
+    },
+    async findForEdit(ctx) {
+        const { id } = ctx.params;
+     
+        if (!id || Number.isNaN(Number(id))) {
+          return ctx.badRequest('A valid advert id is required');
+        }
+     
+        const advert = await strapi.db.query('api::advert.advert').findOne({
+          where: { id },
+          populate: {
+            client: true,
+            product: {
+              populate: ['category'],
+            },
+            rate_card: true,
+            vgams_sales_persons: true,
+            vgams_user: {
+              select: ['id', 'name', 'email', 'role'],
+            },
+            attachments: true,
+          },
+        });
+     
+        if (!advert) {
+          return ctx.notFound('Advert not found');
+        }
+     
+        // Reshape attachments to the flat {id, name, size, url, mime, uploadedAt}
+        // shape the frontend already expects (matches the view-mode endpoint).
+        const attachments = (advert.attachments || []).map((file) => ({
+          id: file.id,
+          name: file.name,
+          size: file.size,
+          url: file.url,
+          mime: file.mime,
+          uploadedAt: file.createdAt,
+        }));
+     
+        ctx.body = {
+          success: true,
+          data: {
+            ...advert,
+            attachments,
+          },
+        };
+  },
+
 
 }));
