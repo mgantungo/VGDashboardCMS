@@ -4,7 +4,7 @@
   "info": {
     "singularName": "broadcast-source",
     "pluralName": "broadcast-sources",
-    "displayName": "Broadcast Source",
+    "displayName": "Bill Board Broadcast Source",
     "description": "A single video source (YouTube/HLS/MP4) that can be assigned to a screen."
   },
   "options": {
