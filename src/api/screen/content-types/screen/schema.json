@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "screens",
+  "info": {
+    "singularName": "screen",
+    "pluralName": "screens",
+    "displayName": "Screen",
+    "description": "A physical billboard/display. One row per device."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true
+    },
+    "width": {
+      "type": "integer",
+      "required": true,
+      "default": 1920
+    },
+    "height": {
+      "type": "integer",
+      "required": true,
+      "default": 1080
+    },
+    "pollInterval": {
+      "type": "integer",
+      "required": true,
+      "default": 300,
+      "min": 5,
+      "description": "Seconds between polls the screen performs against /current"
+    },
+    "staleAfter": {
+      "type": "integer",
+      "required": true,
+      "default": 60,
+      "min": 5,
+      "description": "Seconds since last check-in before dashboard marks this STALE"
+    },
+    "offlineAfter": {
+      "type": "integer",
+      "required": true,
+      "default": 300,
+      "min": 5,
+      "description": "Seconds since last check-in before dashboard marks this OFFLINE"
+    },
+    "lastSeenAt": {
+      "type": "datetime"
+    },
+    "location": {
+      "type": "string"
+    },
+    "broadcastSources": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::broadcast-source.broadcast-source",
+      "mappedBy": "screen"
+    }
+  }
+}

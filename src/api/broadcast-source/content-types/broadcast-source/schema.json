@@ -1,0 +1,49 @@
+{
+  "kind": "collectionType",
+  "collectionName": "broadcast_sources",
+  "info": {
+    "singularName": "broadcast-source",
+    "pluralName": "broadcast-sources",
+    "displayName": "Broadcast Source",
+    "description": "A single video source (YouTube/HLS/MP4) that can be assigned to a screen."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": ["youtube", "hls", "mp4"],
+      "required": true,
+      "default": "youtube"
+    },
+    "value": {
+      "type": "string",
+      "required": true,
+      "description": "YouTube video ID for type=youtube, or full stream/file URL for hls/mp4"
+    },
+    "isActive": {
+      "type": "boolean",
+      "required": true,
+      "default": false,
+      "description": "Only one source per screen should be active at a time"
+    },
+    "order": {
+      "type": "integer",
+      "required": true,
+      "default": 0,
+      "description": "Used for rotation when a screen has multiple active sources"
+    },
+    "screen": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::screen.screen",
+      "inversedBy": "broadcastSources"
+    }
+  }
+}
