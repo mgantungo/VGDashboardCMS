@@ -4,7 +4,7 @@
   "info": {
     "singularName": "screen",
     "pluralName": "screens",
-    "displayName": "Screen",
+    "displayName": "Bill Board Screen",
     "description": "A physical billboard/display. One row per device."
   },
   "options": {
