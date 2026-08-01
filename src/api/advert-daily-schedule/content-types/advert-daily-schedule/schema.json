@@ -41,6 +41,12 @@
     "page": {
       "type": "biginteger",
       "default": "0"
+    },
+    "source_batches": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::design-batch.design-batch",
+      "mappedBy": "daily_schedules"
     }
   }
 }
