@@ -1,0 +1,62 @@
+{
+  "kind": "collectionType",
+  "collectionName": "design_batches",
+  "info": {
+    "singularName": "design-batch",
+    "pluralName": "design-batches",
+    "displayName": "CIO Design Batch"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "reference_number": {
+      "type": "uid",
+      "targetField": "label"
+    },
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "default": "draft",
+      "enum": [
+        "draft",
+        "ready",
+        "attached",
+        "archived"
+      ]
+    },
+    "target_run_date": {
+      "type": "date",
+      "required": true
+    },
+    "notes": {
+      "type": "text"
+    },
+    "designer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-user.vgams-user"
+    },
+    "adverts": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::advert.advert",
+      "inversedBy": "design_batches"
+    },
+    "file_groups": {
+      "type": "component",
+      "component": "design-batch.file-group",
+      "repeatable": true
+    },
+    "daily_schedules": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::advert-daily-schedule.advert-daily-schedule",
+      "inversedBy": "source_batches"
+    }
+  }
+}
