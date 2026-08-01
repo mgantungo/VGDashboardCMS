@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_design_batch_file_groups",
+  "info": {
+    "displayName": "CIO File Group",
+    "description": "One designed file and the adverts it contains — a single PDF can bundle several small adverts (classifieds, combined notices) or just one."
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string"
+    },
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "adverts": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::advert.advert"
+    }
+  }
+}
