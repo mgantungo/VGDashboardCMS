@@ -240,6 +240,12 @@
       "relation": "manyToMany",
       "target": "api::pager-page.pager-page",
       "mappedBy": "adverts"
+    },
+    "design_batches": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::design-batch.design-batch",
+      "mappedBy": "adverts"
     }
   }
 }
