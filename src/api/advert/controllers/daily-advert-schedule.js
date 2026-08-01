@@ -228,10 +228,10 @@ async scheduleAdvert(ctx) {
       }
     }
 
-    // Update advert
-    await strapi.entityService.update('api::advert.advert', advertIdNum, {
-      data: { isScheduled: true },
-    });
+    // Update advert — recompute isScheduled from actual pendingDates rather
+    // than forcing true, so a multi-date booking stays in the design queue
+    // until every one of its publishing_dates has a schedule.
+    await strapi.service('api::advert.schedule-status').recomputeAdvertScheduleStatus(advertIdNum);
 
     // Create workflow log (simplified to avoid errors)
     try {
@@ -448,22 +448,12 @@ async scheduleAdvert(ctx) {
       // Remove the schedule
       await strapi.entityService.delete('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum);
 
-      // Check if any adverts still have schedules and update their isScheduled status
+      // Recompute each advert's isScheduled from its actual pendingDates —
+      // removing one schedule shouldn't flip a multi-date booking straight
+      // back to "needs everything", only re-open the date that was removed.
+      const scheduleStatus = strapi.service('api::advert.schedule-status');
       for (const advertId of advertIds) {
-        const advertSchedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
-          filters: {
-            adverts: {
-              id: advertId,
-            },
-          },
-        });
-
-        // Update advert's isScheduled status
-        await strapi.entityService.update('api::advert.advert', advertId, {
-          data: {
-            isScheduled: advertSchedules.length > 0,
-          },
-        });
+        await scheduleStatus.recomputeAdvertScheduleStatus(advertId);
 
         // Create workflow log for unscheduling
         try {
