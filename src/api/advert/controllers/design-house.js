@@ -6,9 +6,12 @@
  *
  * Filtering rules:
  *   - isPaid: true          → only paid adverts qualify
+ *   - hasRun: false         → the whole booking hasn't finished all its runs
  *   - isCanceled: false     → exclude cancelled adverts
- *   - date range overlap    → advert's [start_date … end_date] overlaps the requested [startDate … endDate]
- *   - isApproved            → TRUE means design work is signed off; advert moves to scheduling queue
+ *   - pendingDates          → publishing_dates entries with no matching
+ *                             advert_daily_schedule row yet. An advert stays
+ *                             in the queue until every booked date is
+ *                             covered, not just the first one.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,6 +60,12 @@ function transformAdvert(advert, today) {
     .filter(Boolean)
     .sort();
 
+  // Dates booked but not yet attached to any schedule — this, not the
+  // isScheduled boolean, is what should drive queue inclusion for
+  // multi-date bookings.
+  const scheduledSet = new Set(scheduledDates);
+  const pendingDates = publishingDates.filter(d => !scheduledSet.has(d));
+
   // Derive platform label from product → category
   const platform = advert.product?.category?.category_type
     || advert.product?.category?.category_name
@@ -68,6 +77,7 @@ function transformAdvert(advert, today) {
   return {
     id:                  advert.id,
     reference:           advert.reference_number,
+    bcOrderNumber:       advert.bc_reference_number,
     advertTitle:         advert.advert_title,
     clientName:          advert.client?.company_name || '—',
     contactPerson:       advert.contact_person  || advert.client?.contact_person || '',
@@ -84,6 +94,7 @@ function transformAdvert(advert, today) {
     endDate,
     publishingDates,
     scheduledDates,                        // dates that already have a schedule
+    pendingDates,                          // dates still needing a schedule
     totalAmount:         advert.total_amount,
     paymentMethod:       advert.payment_method,
     specialInstructions: advert.special_instructions || '',
@@ -91,7 +102,7 @@ function transformAdvert(advert, today) {
     isActive:            advert.isActive,
     isPaid:              advert.isPaid,
     isApproved:          advert.isApproved,   // design approved → next stage
-    isScheduled:         advert.isScheduled,
+    isScheduled:         advert.isScheduled,  // fully scheduled (all dates covered)
     hasRun:              advert.hasRun,
     isClosed:            advert.isClosed,
     isCanceled:          advert.isCanceled,
@@ -112,12 +123,12 @@ function transformAdvert(advert, today) {
 
 /** Fields to always request from entityService */
 const ADVERT_FIELDS = [
-  'id', 'reference_number', 'advert_title',
+  'id', 'reference_number', 'bc_reference_number', 'advert_title',
   'frequency', 'ad_size', 'ad_type',
   'start_date', 'end_date',
   'base_price', 'surcharge', 'discount', 'total_amount',
   'payment_method', 'special_instructions',
-  'publishing_dates',                      // ← NEW
+  'publishing_dates',
   'status',
   'isActive', 'isPaid', 'isClosed', 'isCanceled', 'isApproved',
   'hasRun', 'isScheduled',
@@ -165,13 +176,16 @@ const ADVERT_POPULATE = {
 module.exports = {
 
   /**
-   * GET active adverts for design work.
+   * GET active adverts for design work — the "everything still pending"
+   * overview, independent of any one date.
    * POST /api/design-house/active-adverts
    * Body: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD' }
    *
-   * Returns ALL paid, non-cancelled adverts whose date range overlaps the
-   * requested window. Each record carries runningNow / isUpcoming flags so the
-   * frontend can bucket them without an extra round-trip.
+   * startDate/endDate remain a coarse DB-level prefilter (an advert whose
+   * whole booking window falls outside it can't matter), but inclusion is
+   * ultimately decided by pendingDates, not the date-range overlap alone —
+   * an advert with 4 publishing_dates and 1 still open stays in the queue
+   * even after its first date has passed.
    */
   async getActiveAdverts(ctx) {
     try {
@@ -188,10 +202,10 @@ module.exports = {
 
       const today = new Date().toISOString().split('T')[0];
 
-      // Core filter: paid, not cancelled, date range overlaps window
       const filters = {
         isPaid:     true,
         isCanceled: false,
+        hasRun:     false,
         $and: [
           { start_date: { $lte: endDate   } },
           { end_date:   { $gte: startDate } },
@@ -206,24 +220,21 @@ module.exports = {
         limit:    -1,
       });
 
-      const adverts = raw.map(a => transformAdvert(a, today));
+      const adverts = raw
+        .map(a => transformAdvert(a, today))
+        // Keep it in the queue only while it still has an uncovered date
+        // ahead of today — fixes adverts vanishing after their first run.
+        .filter(a => a.pendingDates.some(d => d >= today));
 
-      // Quick summary counts
       const summary = {
-        total:            adverts.length,
-        runningNow:       adverts.filter(a => a.runningNow).length,
-        upcoming:         adverts.filter(a => a.isUpcoming).length,
-        pendingDesign:    adverts.filter(a => !a.isApproved).length,
-        designApproved:   adverts.filter(a =>  a.isApproved).length,
-        readyToSchedule:  adverts.filter(a =>  a.isApproved && !a.isScheduled).length,
-        scheduled:        adverts.filter(a =>  a.isScheduled).length,
-        withFiles:        adverts.filter(a =>  a.attachmentsCount > 0).length,
-        withoutFiles:     adverts.filter(a =>  a.attachmentsCount === 0).length,
-        urgent:           adverts.filter(a => {
-          if (!a.endDate) return false;
-          const daysLeft = Math.ceil((new Date(a.endDate) - new Date()) / 86400000);
-          return daysLeft >= 0 && daysLeft <= 3;
-        }).length,
+        total:              adverts.length,
+        runningNow:         adverts.filter(a => a.runningNow).length,
+        upcoming:           adverts.filter(a => a.isUpcoming).length,
+        pendingDesign:      adverts.filter(a => !a.isApproved).length,
+        designApproved:     adverts.filter(a =>  a.isApproved).length,
+        readyToSchedule:    adverts.filter(a =>  a.isApproved && a.pendingDates.length > 0).length,
+        partiallyScheduled: adverts.filter(a =>  a.scheduledDates.length > 0 && a.pendingDates.length > 0).length,
+        withFiles:          adverts.filter(a =>  a.attachmentsCount > 0).length,
       };
 
       return ctx.send({
@@ -236,6 +247,63 @@ module.exports = {
 
     } catch (error) {
       console.error('❌ getActiveAdverts:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * The day-first view: every advert booked to run on one specific date,
+   * whether it still needs design or is already scheduled for that date.
+   * POST /api/design-house/adverts/by-date
+   * Body: { date: 'YYYY-MM-DD' }
+   */
+  async getBookingsByDate(ctx) {
+    try {
+      const { date } = ctx.request.body || {};
+      if (!date) {
+        return ctx.badRequest({ success: false, message: 'date is required (YYYY-MM-DD)' });
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Coarse DB prefilter — the booking's window must at least span the date.
+      const filters = {
+        isPaid:     true,
+        isCanceled: false,
+        hasRun:     false,
+        start_date: { $lte: date },
+        end_date:   { $gte: date },
+      };
+
+      const raw = await strapi.entityService.findMany('api::advert.advert', {
+        filters,
+        fields:   ADVERT_FIELDS,
+        populate:  ADVERT_POPULATE,
+        sort:      { advert_title: 'asc' },
+        limit:    -1,
+      });
+
+      const bookings = raw
+        .map(a => transformAdvert(a, today))
+        // publishing_dates is a JSON array — can't filter it in the DB,
+        // so narrow down to an exact match here.
+        .filter(a => a.publishingDates.includes(date))
+        .map(a => ({
+          ...a,
+          scheduledForThisDate: a.scheduledDates.includes(date),
+        }));
+
+      return ctx.send({
+        success: true,
+        date,
+        count: bookings.length,
+        needsDesign: bookings.filter(b => !b.scheduledForThisDate).length,
+        alreadyScheduled: bookings.filter(b => b.scheduledForThisDate).length,
+        bookings,
+      });
+
+    } catch (error) {
+      console.error('❌ getBookingsByDate:', error);
       return ctx.internalServerError({ success: false, message: error.message });
     }
   },
@@ -396,23 +464,13 @@ module.exports = {
         ],
       };
 
-      const baseFilter = { isPaid: true, isCanceled: false, ...dateFilter };
+      const baseFilter = { isPaid: true, isCanceled: false, hasRun: false, ...dateFilter };
 
-      // Parallel queries for counts
-      const [allAdverts, approvedAdverts, scheduledAdverts, advertsForFiles] = await Promise.all([
+      const [allAdverts, advertsForFiles] = await Promise.all([
         strapi.entityService.findMany('api::advert.advert', {
           filters: baseFilter,
-          fields:  ['id', 'start_date', 'end_date', 'isApproved', 'isScheduled'],
-          limit:   -1,
-        }),
-        strapi.entityService.findMany('api::advert.advert', {
-          filters: { ...baseFilter, isApproved: true },
-          fields:  ['id'],
-          limit:   -1,
-        }),
-        strapi.entityService.findMany('api::advert.advert', {
-          filters: { isPaid: true, isCanceled: false, isScheduled: true },
-          fields:  ['id'],
+          fields:  ['id', 'start_date', 'end_date', 'publishing_dates', 'isApproved', 'isScheduled'],
+          populate: { advert_daily_schedules: { fields: ['id', 'run_date'] } },
           limit:   -1,
         }),
         strapi.entityService.findMany('api::advert.advert', {
@@ -423,19 +481,28 @@ module.exports = {
         }),
       ]);
 
-      const runningNow = allAdverts.filter(a => a.start_date <= today && a.end_date >= today).length;
-      const upcoming   = allAdverts.filter(a => a.start_date > today).length;
+      const withDates = allAdverts.map(a => {
+        const publishingDates = Array.isArray(a.publishing_dates) ? a.publishing_dates : [];
+        const scheduledDates  = (a.advert_daily_schedules || []).map(s => s.run_date).filter(Boolean);
+        const scheduledSet    = new Set(scheduledDates);
+        const pendingDates    = publishingDates.filter(d => !scheduledSet.has(d));
+        return { ...a, publishingDates, scheduledDates, pendingDates };
+      });
+
+      const runningNow = withDates.filter(a => a.start_date <= today && a.end_date >= today).length;
+      const upcoming   = withDates.filter(a => a.start_date > today).length;
       const totalFiles = advertsForFiles.reduce((s, a) => s + (a.attachments?.length || 0), 0);
 
       return ctx.send({
         success: true,
         statistics: {
-          running:          runningNow,
+          running:            runningNow,
           upcoming,
-          pendingDesign:    allAdverts.filter(a => !a.isApproved).length,
-          designApproved:   approvedAdverts.length,
-          readyToSchedule:  allAdverts.filter(a => a.isApproved && !a.isScheduled).length,
-          scheduled:        scheduledAdverts.length,
+          pendingDesign:      withDates.filter(a => !a.isApproved).length,
+          designApproved:     withDates.filter(a =>  a.isApproved).length,
+          readyToSchedule:    withDates.filter(a =>  a.isApproved && a.pendingDates.length > 0).length,
+          scheduled:          withDates.filter(a =>  a.publishingDates.length > 0 && a.pendingDates.length === 0).length,
+          partiallyScheduled: withDates.filter(a =>  a.scheduledDates.length > 0 && a.pendingDates.length > 0).length,
           totalFiles,
           lastUpdated:      new Date().toISOString(),
         },
