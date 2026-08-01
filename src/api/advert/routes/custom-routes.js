@@ -169,6 +169,19 @@ module.exports = {
       }
     },
     {
+      method: 'POST',
+      path: '/design-house/adverts/by-date',
+      handler: 'design-house.getBookingsByDate',
+      config: {
+        auth: false,
+        description: 'Get every advert booked to run on a specific date, flagged with whether that date is already scheduled',
+        tags: ['Design House'],
+        body: {
+          date: { type: 'string', required: true, description: 'YYYY-MM-DD', example: '2026-08-03' }
+        }
+      }
+    },
+    {
       method: 'GET',
       path: '/design-house/adverts/:id',
       handler: 'design-house.getAdvertDetails',
