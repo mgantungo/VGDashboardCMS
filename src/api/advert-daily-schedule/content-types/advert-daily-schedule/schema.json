@@ -46,7 +46,11 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::design-batch.design-batch",
-      "mappedBy": "daily_schedules"
+      "inversedBy": "schedules"
+    },
+    "source_file_group_id": {
+      "type": "integer",
+      "description": "The design-batch file_group component's own id this schedule row was created for. Components aren't a standalone content-type in Strapi, so this is a plain integer reference rather than a relation. Null for schedule rows created outside design-batch (legacy direct scheduling) — those remain 'ungrouped' from the editor's perspective."
     }
   }
 }
