@@ -478,6 +478,22 @@ module.exports = {
         description: 'Check sync status by Business Central reference number',
         tags: ['Payment Monitor']
       }
-    }
+    },
+    // Bypass BC APyment 
+    {
+      method: 'POST',
+      path: '/bc/test/mark-paid',
+      handler: 'bc-test.markPaidForTesting',
+      config: {
+        auth: false,
+        description: 'TEST ONLY — bypass BC and mark an advert paid by bc_reference_number. Gated by ALLOW_BC_TEST_BYPASS=true.',
+        tags: ['Payment Monitor', 'Test'],
+        body: {
+          bc_reference_number: { type: 'string', required: true, example: 'B-SO-216545N' },
+          isPaid:   { type: 'boolean', required: false, description: 'default true' },
+          isActive: { type: 'boolean', required: false, description: 'default true' }
+        }
+      }
+    },
   ]
 };
