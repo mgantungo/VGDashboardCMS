@@ -429,20 +429,23 @@ module.exports = {
    * POST /design-batches/:id/attach
    * Body: { runTime? }  — runDate is always the batch's own target_run_date.
    *
-   * Idempotent by design: every call fully re-derives the schedule row's
-   * adverts/media from EVERY batch currently attached to that date (not
-   * just this one — a schedule row can be shared across batches), diffs
-   * against what's currently on the schedule, and connects/disconnects
-   * exactly what changed. That's what makes it safe to edit an already-
-   * attached batch (add/remove a file, move an advert to a different
-   * group, etc.) and just call attach again to re-sync — added items show
-   * up, removed items actually drop off the schedule, and other batches
-   * sharing the same run date are left untouched.
+   * One schedule row PER FILE GROUP, not one shared row per date. The
+   * editor's atomic unit is the file group — it has its own file, its own
+   * page number, its own publish state, and unscheduling it should never
+   * touch an unrelated group that just happens to run the same day. (Groups
+   * can still end up sharing the same PAGER page later via the print-queue
+   * round-robin — that's a different, independent concept from this.)
    *
-   * isScheduled is recomputed for every advert affected by the diff in
-   * either direction — newly connected AND newly disconnected — since a
-   * removed advert's isScheduled needs to flip back if this schedule was
-   * its only coverage for that date. Never a blind true/false write.
+   * Idempotent by design: each group's schedule row is found by
+   * (run_date, source_file_group_id), so re-attaching after editing a
+   * batch (adding/removing a file, moving an advert to a different group)
+   * finds and updates that group's own row rather than creating a
+   * duplicate or touching any other group's row.
+   *
+   * isScheduled is recomputed for every advert affected in either
+   * direction — newly connected AND newly disconnected — since removing an
+   * advert from a group needs its isScheduled reconsidered too. Never a
+   * blind true/false write.
    */
   async attachToSchedule(ctx) {
     try {
@@ -455,84 +458,79 @@ module.exports = {
       if (!batch) return ctx.notFound({ success: false, message: `Batch ${id} not found` });
 
       const runDate = batch.target_run_date;
-      const advertIds = collectAdvertIds(batch.file_groups);
+      const groupsWithAdverts = (batch.file_groups || []).filter(g => (g.adverts || []).length > 0);
 
-      if (advertIds.length === 0) {
-        return ctx.badRequest({ success: false, message: 'Batch has no adverts to attach' });
+      if (groupsWithAdverts.length === 0) {
+        return ctx.badRequest({ success: false, message: 'Batch has no file groups with adverts to attach' });
       }
 
-      // Find or create the schedule row for this date
-      let schedule = (await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
-        filters: { run_date: runDate },
-        populate: { adverts: { fields: ['id'] } },
-        limit: 1,
-      }))[0];
+      const scheduleStatus = strapi.service('api::advert.schedule-status');
+      const groupResults = [];
+      const affectedAdvertIds = new Set();
 
-      const previousAdvertIds = schedule ? (schedule.adverts || []).map(a => a.id) : [];
+      for (const group of groupsWithAdverts) {
+        const groupAdvertIds = (group.adverts || []).map(a => a.id);
+        const fileId = group.file?.id || null;
 
-      if (!schedule) {
-        schedule = await strapi.entityService.create('api::advert-daily-schedule.advert-daily-schedule', {
-          data: {
-            run_date: runDate,
-            run_time: JSON.stringify([runTime || '00:00 AM']),
-            is_published: false,
-            adverts: [],
-            media: [],
-            source_batches: { connect: [id] },
-          },
-        });
-      } else {
-        await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', schedule.id, {
-          data: { source_batches: { connect: [id] } },
+        // This group's own schedule row — matched by (run_date, source_file_group_id),
+        // never by run_date alone, so unrelated groups on the same date never collide.
+        let schedule = (await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
+          filters: { run_date: runDate, source_file_group_id: group.id },
+          populate: { adverts: { fields: ['id'] } },
+          limit: 1,
+        }))[0];
+
+        const previousAdvertIds = schedule ? (schedule.adverts || []).map(a => a.id) : [];
+        let created = false;
+
+        if (!schedule) {
+          created = true;
+          schedule = await strapi.entityService.create('api::advert-daily-schedule.advert-daily-schedule', {
+            data: {
+              run_date: runDate,
+              run_time: JSON.stringify([runTime || '00:00 AM']),
+              is_published: false,
+              adverts: groupAdvertIds,
+              media: fileId ? [fileId] : [],
+              source_batches: { connect: [id] },
+              source_file_group_id: group.id,
+            },
+          });
+        } else {
+          const toConnect    = groupAdvertIds.filter(aid => !previousAdvertIds.includes(aid));
+          const toDisconnect = previousAdvertIds.filter(aid => !groupAdvertIds.includes(aid));
+          schedule = await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', schedule.id, {
+            data: {
+              adverts: { connect: toConnect, disconnect: toDisconnect },
+              media: fileId ? [fileId] : [],
+              source_batches: { connect: [id] },
+            },
+          });
+        }
+
+        groupAdvertIds.forEach(aid => affectedAdvertIds.add(aid));
+        previousAdvertIds.forEach(aid => affectedAdvertIds.add(aid)); // covers anyone disconnected too
+
+        groupResults.push({
+          groupId: group.id,
+          label: group.label || null,
+          scheduleId: schedule.id,
+          created,
+          advertCount: groupAdvertIds.length,
         });
       }
-
-      // Re-derive the schedule's full adverts/media from every source_batch
-      // currently attached to it (this one included) — the authoritative
-      // set, not just this batch's own delta.
-      const fullSchedule = await strapi.entityService.findOne('api::advert-daily-schedule.advert-daily-schedule', schedule.id, {
-        populate: {
-          source_batches: {
-            populate: { file_groups: { populate: { file: { fields: ['id'] }, adverts: { fields: ['id'] } } } },
-          },
-        },
-      });
-
-      const allAdvertIds = new Set();
-      const allFileIds = new Set();
-      (fullSchedule.source_batches || []).forEach(b => {
-        collectAdvertIds(b.file_groups).forEach(aid => allAdvertIds.add(aid));
-        (b.file_groups || []).filter(g => g.file).forEach(g => allFileIds.add(g.file.id));
-      });
-
-      const toConnect    = [...allAdvertIds].filter(aid => !previousAdvertIds.includes(aid));
-      const toDisconnect = previousAdvertIds.filter(aid => !allAdvertIds.has(aid));
-
-      schedule = await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', schedule.id, {
-        data: {
-          adverts: { connect: toConnect, disconnect: toDisconnect },
-          media: [...allFileIds], // media field type tolerates plain-array replace; relations don't
-        },
-      });
 
       await strapi.entityService.update('api::design-batch.design-batch', id, {
         data: { status: 'attached' },
       });
 
-      // Recompute isScheduled for everyone the diff touched in either direction
-      const scheduleStatus = strapi.service('api::advert.schedule-status');
-      const affectedIds = [...new Set([...allAdvertIds, ...previousAdvertIds])];
-      const recomputed = await scheduleStatus.recomputeMany(affectedIds);
+      const recomputed = await scheduleStatus.recomputeMany([...affectedAdvertIds]);
 
       return ctx.send({
         success: true,
-        message: `Batch synced to ${runDate}`,
-        scheduleId: schedule.id,
+        message: `Batch synced to ${runDate} — ${groupResults.length} file group(s), each on its own schedule row`,
         runDate,
-        advertsOnSchedule: allAdvertIds.size,
-        filesOnSchedule: allFileIds.size,
-        connected: toConnect.length,
-        disconnected: toDisconnect.length,
+        groups: groupResults,
         advertStatuses: recomputed,
       });
     } catch (error) {
