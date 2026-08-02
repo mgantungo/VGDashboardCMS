@@ -90,6 +90,7 @@ function transformAdvert(advert, today, scheduleStatus) {
   return {
     id:                  advert.id,
     reference:           advert.reference_number,
+    bcReference:         advert.bc_reference_number || '',
     advertTitle:         advert.advert_title,
     clientName:          advert.client?.company_name || '—',
     contactPerson:       advert.contact_person  || advert.client?.contact_person || '',
@@ -135,7 +136,7 @@ function transformAdvert(advert, today, scheduleStatus) {
 
 /** Fields to always request from entityService */
 const ADVERT_FIELDS = [
-  'id', 'reference_number', 'advert_title',
+  'id', 'reference_number', 'bc_reference_number', 'advert_title',
   'frequency', 'ad_size', 'ad_type',
   'start_date', 'end_date',
   'base_price', 'surcharge', 'discount', 'total_amount',
