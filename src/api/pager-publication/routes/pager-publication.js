@@ -48,7 +48,7 @@ module.exports = {
       handler: 'pager-publication.queueAdverts',
       config: {
         auth: false,
-        description: 'Auto-distribute printable units round-robin across non-cover pages, keeping each unit (a file group or a single advert) together on one page. Body: { units: [{ advertIds: [] }] } — legacy flat { advertIds: [] } still accepted, treated as one unit per advert.',
+        description: 'Round-robins each printable unit (a file group or a single advert) across non-cover pages as a starting layout — a group\u2019s adverts always land together, but a page can end up holding more than one unit. Final composition is still up to the editor via the manual assign/unassign endpoints. Body: { units: [{ advertIds: [] }] } — legacy flat { advertIds: [] } still accepted, treated as one unit per advert.',
       },
     },
     {
