@@ -228,9 +228,9 @@ async scheduleAdvert(ctx) {
       }
     }
 
-    // Update advert — recompute isScheduled from actual pendingDates rather
-    // than forcing true, so a multi-date booking stays in the design queue
-    // until every one of its publishing_dates has a schedule.
+    // Recompute isScheduled from publishing_dates vs. actual schedule rows —
+    // never a blind flip, since a multi-date booking may still have other
+    // dates pending after this one is covered.
     await strapi.service('api::advert.schedule-status').recomputeAdvertScheduleStatus(advertIdNum);
 
     // Create workflow log (simplified to avoid errors)
@@ -448,12 +448,11 @@ async scheduleAdvert(ctx) {
       // Remove the schedule
       await strapi.entityService.delete('api::advert-daily-schedule.advert-daily-schedule', scheduleIdNum);
 
-      // Recompute each advert's isScheduled from its actual pendingDates —
-      // removing one schedule shouldn't flip a multi-date booking straight
-      // back to "needs everything", only re-open the date that was removed.
-      const scheduleStatus = strapi.service('api::advert.schedule-status');
+      // Recompute isScheduled for each affected advert against its own
+      // publishing_dates — the old logic here treated "has any schedule row"
+      // as fully scheduled, which is wrong for multi-date bookings.
       for (const advertId of advertIds) {
-        await scheduleStatus.recomputeAdvertScheduleStatus(advertId);
+        await strapi.service('api::advert.schedule-status').recomputeAdvertScheduleStatus(advertId);
 
         // Create workflow log for unscheduling
         try {
@@ -676,14 +675,18 @@ async scheduleAdvert(ctx) {
       return ctx.internalServerError('Failed to update schedule', error);
     }
   },
-  // Get advert daily schedules with full details
+  // Get advert daily schedules with full details — group-aware: an advert
+  // that belongs to a design-batch file group (a combined print file
+  // covering several adverts) is returned nested under that group rather
+  // than treated as an independent row, so the editor can see and act on
+  // the group as one printable unit.
 async getFullSchedules(ctx) {
   try {
     const { startDate, endDate, page, isPublished, clientId } = ctx.query;
-    
+
     // Build filters
     const filters = {};
-    
+
     // Date range filter
     if (startDate && endDate) {
       filters.run_date = {
@@ -699,12 +702,12 @@ async getFullSchedules(ctx) {
         $lte: endDate,
       };
     }
-    
+
     // Published status filter
     if (isPublished !== undefined) {
       filters.is_published = isPublished === 'true';
     }
-    
+
     // Client filter
     if (clientId) {
       const clientIdNum = parseInt(clientId);
@@ -715,11 +718,16 @@ async getFullSchedules(ctx) {
         };
       }
     }
-    
+
     // Get schedules with all required relations.
     // NOTE: Do NOT use a `fields` restriction on adverts in Strapi v5 — it suppresses
     // nested populate results (the client relation returns empty).
     // Use populate: true on client to guarantee contact_person / email / phone come through.
+    // source_batches → file_groups is what makes this group-aware: it's the
+    // authoritative source of "which adverts share one physical file",
+    // separate from just "which adverts are on this schedule row" (a
+    // schedule row can accumulate adverts from multiple unrelated batches
+    // that just happen to run the same day).
     const schedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
       filters,
       populate: {
@@ -735,51 +743,83 @@ async getFullSchedules(ctx) {
             'contact_person', 'contact_number', 'contact_email',
           ],
         },
+        source_batches: {
+          populate: {
+            file_groups: {
+              populate: {
+                file:    true,
+                adverts: { fields: ['id'] }, // ids only — full advert data comes from schedule.adverts above
+              },
+            },
+          },
+        },
       },
       sort: { run_date: 'asc', page: 'asc' },
     });
-    
+
+    const shapeAdvert = (advert) => {
+      const client = advert.client || {};
+      return {
+        id:                    advert.id,
+        advert_title:          advert.advert_title,
+        start_date:            advert.start_date,
+        end_date:              advert.end_date,
+        frequency:             advert.frequency,
+        ad_size:               advert.ad_size,
+        ad_type:               advert.ad_type,
+        special_instructions:  advert.special_instructions,
+        client_id:             client.id ?? null,
+        company_name:          client.company_name || advert.clientName || null,
+        contact_person:        advert.contact_person || client.contact_person || null,
+        contact_number:        advert.contact_number || client.phone          || null,
+        contact_email:         advert.contact_email  || client.email          || null,
+      };
+    };
+
     // Format the response
     const formattedSchedules = schedules.map(schedule => {
-      const advert = schedule.adverts?.[0] || {};
-      const client = advert.client           || {};
+      const advertsOnSchedule = schedule.adverts || [];
+      const advertMap = new Map(advertsOnSchedule.map(a => [a.id, a]));
+      const claimed = new Set();
 
-      // Contact details are stored directly on the advert record.
-      // Also check client relation as a secondary fallback.
-      const contactPerson = advert.contact_person || client.contact_person || null;
-      const contactNumber = advert.contact_number || client.phone          || null;
-      const contactEmail  = advert.contact_email  || client.email          || null;
-      
+      const fileGroups = [];
+      for (const batch of (schedule.source_batches || [])) {
+        for (const group of (batch.file_groups || [])) {
+          const memberIds = (group.adverts || []).map(a => a.id).filter(aid => advertMap.has(aid) && !claimed.has(aid));
+          if (memberIds.length === 0) continue; // this group's adverts aren't (or are no longer) on this schedule
+
+          memberIds.forEach(aid => claimed.add(aid));
+
+          fileGroups.push({
+            groupId: group.id,
+            label:   group.label || null,
+            file:    group.file ? { id: group.file.id, name: group.file.name, url: group.file.url, size: group.file.size, mime: group.file.mime } : null,
+            adverts: memberIds.map(aid => shapeAdvert(advertMap.get(aid))),
+          });
+        }
+      }
+
+      const ungroupedAdverts = advertsOnSchedule
+        .filter(a => !claimed.has(a.id))
+        .map(shapeAdvert);
+
       return {
         schedule_id:  schedule.id,
         run_date:     schedule.run_date,
         run_time:     schedule.run_time ? parseRunTime(schedule.run_time) : null,
         is_published: schedule.is_published,
-        page:  schedule.page || 0,
-        media: schedule.media || [],
-        
-        // Advert data
-        advert_id:            advert.id,
-        advert_title:         advert.advert_title,
-        start_date:           advert.start_date,
-        end_date:             advert.end_date,
-        frequency:            advert.frequency,
-        ad_size:              advert.ad_size,
-        ad_type:              advert.ad_type,
-        special_instructions: advert.special_instructions,
-        
-        // Client / contact data
-        client_id:      client.id,
-        company_name:   client.company_name || advert.clientName || null,
-        contact_person: contactPerson,
-        contact_number: contactNumber,
-        contact_email:  contactEmail,
-        
+        page:         schedule.page || 0,
+        media:        schedule.media || [],
+
+        fileGroups,
+        ungroupedAdverts,
+        advertCount: advertsOnSchedule.length,
+
         created_at: schedule.createdAt,
         updated_at: schedule.updatedAt,
       };
     });
-    
+
     return ctx.send({
       success: true,
       data: formattedSchedules,
@@ -790,7 +830,7 @@ async getFullSchedules(ctx) {
         total: formattedSchedules.length
       }
     });
-    
+
   } catch (error) {
     strapi.log.error('Get full schedules error:', error);
     return ctx.internalServerError('Failed to get schedules');
