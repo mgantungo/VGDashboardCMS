@@ -48,7 +48,7 @@ module.exports = {
       handler: 'pager-publication.queueAdverts',
       config: {
         auth: false,
-        description: 'Auto-distribute adverts round-robin across non-cover pages. Body: { advertIds: [] }',
+        description: 'Auto-distribute printable units round-robin across non-cover pages, keeping each unit (a file group or a single advert) together on one page. Body: { units: [{ advertIds: [] }] } — legacy flat { advertIds: [] } still accepted, treated as one unit per advert.',
       },
     },
     {
