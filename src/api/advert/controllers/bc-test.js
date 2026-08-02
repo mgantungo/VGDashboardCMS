@@ -25,6 +25,11 @@ module.exports = {
   /**
    * POST /bc/test/mark-paid
    * Body: { bc_reference_number, isPaid?: boolean (default true), isActive?: boolean (default true) }
+      curl -X POST http://localhost:1337/api/bc/test/mark-paid \
+        -H "Content-Type: application/json" \
+        -d '{
+          "bc_reference_number": "B-SO-235653N"
+      }'
    */
   async markPaidForTesting(ctx) {
     if (process.env.ALLOW_BC_TEST_BYPASS !== 'true') {
