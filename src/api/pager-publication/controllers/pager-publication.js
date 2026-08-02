@@ -199,15 +199,35 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     ctx.body = updated;
   },
 
-  // POST /pager-publications/:id/queue-adverts   body: { advertIds: [] }
-  // Auto-distributes the given adverts round-robin across this publication's
-  // non-cover pages, skipping any already placed anywhere in the publication
-  // and any that aren't print-eligible.
+  // POST /pager-publications/:id/queue-adverts
+  // Body: { units: [{ advertIds: [...] }, ...] }  — each unit is one
+  // printable item: a design-batch file group (several adverts, one
+  // physical file, must land on the same page together) or a single
+  // ungrouped advert (a unit of one). Round-robins by UNIT, not by advert,
+  // so a group's adverts never get split across pages.
+  //
+  // Backward compatible: a flat { advertIds: [...] } body is still accepted
+  // and treated as one unit per advert (the old per-advert behavior).
   async queueAdverts(ctx) {
     const { id } = ctx.params;
-    const { advertIds } = ctx.request.body || {};
-    if (!Array.isArray(advertIds) || advertIds.length === 0) {
-      return ctx.badRequest('advertIds must be a non-empty array');
+    const body = ctx.request.body || {};
+
+    let units = body.units;
+    if (!Array.isArray(units)) {
+      // Legacy flat shape — wrap each id as its own single-advert unit.
+      if (Array.isArray(body.advertIds) && body.advertIds.length > 0) {
+        units = body.advertIds.map((advertId) => ({ advertIds: [advertId] }));
+      } else {
+        return ctx.badRequest('units (or advertIds) must be a non-empty array');
+      }
+    }
+    if (units.length === 0) {
+      return ctx.badRequest('units must be a non-empty array');
+    }
+    for (const u of units) {
+      if (!Array.isArray(u.advertIds) || u.advertIds.length === 0) {
+        return ctx.badRequest('Every unit must have a non-empty advertIds array');
+      }
     }
 
     const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id);
@@ -238,41 +258,59 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     const skipped = [];
     let cursor = 0;
 
-    for (const rawId of advertIds) {
-      const advertId = Number(rawId);
+    for (const unit of units) {
+      const unitAdvertIds = unit.advertIds.map((rawId) => Number(rawId));
+      const failures = [];
 
-      if (placedOnPage.has(advertId)) {
-        skipped.push({
-          advertId,
-          reason: `already assigned to page ${placedOnPage.get(advertId)} in this publication`,
-          conflictPageNumber: placedOnPage.get(advertId),
-        });
-        continue;
+      // Validate every member before placing anything — a group is
+      // all-or-nothing, never split across pages.
+      for (const advertId of unitAdvertIds) {
+        if (placedOnPage.has(advertId)) {
+          failures.push({
+            advertId,
+            reason: `already assigned to page ${placedOnPage.get(advertId)} in this publication`,
+            conflictPageNumber: placedOnPage.get(advertId),
+          });
+          continue;
+        }
+        const advert = await strapi.entityService.findOne('api::advert.advert', advertId);
+        if (!advert) {
+          failures.push({ advertId, reason: 'advert not found' });
+          continue;
+        }
+        if (!isPrintEligible(advert)) {
+          failures.push({ advertId, reason: 'not print-eligible' });
+        }
       }
 
-      const advert = await strapi.entityService.findOne('api::advert.advert', advertId);
-      if (!advert) {
-        skipped.push({ advertId, reason: 'advert not found' });
-        continue;
-      }
-      if (!isPrintEligible(advert)) {
-        skipped.push({ advertId, reason: 'not print-eligible' });
+      if (failures.length > 0) {
+        // Whole unit bounces back — report every member's status so the
+        // caller can see exactly why a group didn't go through, rather
+        // than silently placing the valid members and dropping the rest.
+        for (const advertId of unitAdvertIds) {
+          const failure = failures.find((f) => f.advertId === advertId);
+          skipped.push(failure || { advertId, reason: 'skipped — another member of this group failed validation' });
+        }
         continue;
       }
 
       const targetPage = pages[cursor % pages.length];
       cursor += 1;
 
-      const nextAdvertIds = [...(targetPage.adverts || []).map((a) => a.id), advertId];
+      const nextAdvertIds = [...(targetPage.adverts || []).map((a) => a.id), ...unitAdvertIds];
       try {
         await strapi.entityService.update('api::pager-page.pager-page', targetPage.id, {
           data: { adverts: nextAdvertIds },
         });
         targetPage.adverts = nextAdvertIds.map((aid) => ({ id: aid }));
-        placedOnPage.set(advertId, targetPage.page_number);
-        assigned.push({ advertId, pageId: targetPage.id, page_number: targetPage.page_number });
+        for (const advertId of unitAdvertIds) {
+          placedOnPage.set(advertId, targetPage.page_number);
+          assigned.push({ advertId, pageId: targetPage.id, page_number: targetPage.page_number });
+        }
       } catch (e) {
-        skipped.push({ advertId, reason: e.message });
+        for (const advertId of unitAdvertIds) {
+          skipped.push({ advertId, reason: e.message });
+        }
       }
     }
 
