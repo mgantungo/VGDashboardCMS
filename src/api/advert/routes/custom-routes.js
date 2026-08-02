@@ -479,20 +479,33 @@ module.exports = {
         tags: ['Payment Monitor']
       }
     },
-    // Bypass BC APyment 
+    // ── BC Test Bypass (dev/test only — gated by ALLOW_BC_TEST_BYPASS) ────
     {
       method: 'POST',
       path: '/bc/test/mark-paid',
       handler: 'bc-test.markPaidForTesting',
       config: {
         auth: false,
-        description: 'TEST ONLY — bypass BC and mark an advert paid by bc_reference_number. Gated by ALLOW_BC_TEST_BYPASS=true.',
+        description: 'TEST ONLY — bypass BC and update isPaid/isActive/start_date/end_date/publishing_dates by bc_reference_number. Gated by ALLOW_BC_TEST_BYPASS=true.',
         tags: ['Payment Monitor', 'Test'],
         body: {
           bc_reference_number: { type: 'string', required: true, example: 'B-SO-216545N' },
-          isPaid:   { type: 'boolean', required: false, description: 'default true' },
-          isActive: { type: 'boolean', required: false, description: 'default true' }
+          isPaid:            { type: 'boolean', required: false, description: 'default true' },
+          isActive:          { type: 'boolean', required: false, description: 'default true' },
+          start_date:        { type: 'string',  required: false, example: '2026-08-02' },
+          end_date:          { type: 'string',  required: false, example: '2026-08-06' },
+          publishing_dates:  { type: 'array',   required: false, example: ['2026-08-02', '2026-08-03'] }
         }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/bc/test/lookup/:bc_reference_number',
+      handler: 'bc-test.lookupByBcReference',
+      config: {
+        auth: false,
+        description: 'TEST ONLY — look up current field values for an advert by bc_reference_number. Gated by ALLOW_BC_TEST_BYPASS=true.',
+        tags: ['Payment Monitor', 'Test']
       }
     },
   ]
