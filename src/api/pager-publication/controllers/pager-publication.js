@@ -202,9 +202,18 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
   // POST /pager-publications/:id/queue-adverts
   // Body: { units: [{ advertIds: [...] }, ...] }  — each unit is one
   // printable item: a design-batch file group (several adverts, one
-  // physical file, must land on the same page together) or a single
-  // ungrouped advert (a unit of one). Round-robins by UNIT, not by advert,
-  // so a group's adverts never get split across pages.
+  // physical file — its adverts must land on the same page TOGETHER, never
+  // split across two pages) or a single ungrouped advert (a unit of one).
+  //
+  // Round-robins by UNIT across non-cover pages, wrapping back to page 1
+  // once every page has had a turn — so a page CAN end up holding more than
+  // one unit (a file group plus an ungrouped advert, two ungrouped adverts,
+  // etc.). That's intentional: this endpoint is a fast starting layout, not
+  // a hard page-composition rule. Final page composition is always at the
+  // editor's discretion via the manual assign/unassign endpoints in
+  // pager-page.js, which were never restricted and can freely move any
+  // advert onto or off of any page regardless of what this auto-placement
+  // did first.
   //
   // Backward compatible: a flat { advertIds: [...] } body is still accepted
   // and treated as one unit per advert (the old per-advert behavior).
