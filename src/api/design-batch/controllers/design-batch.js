@@ -4,8 +4,8 @@
  * Design Batch Controller
  *
  * A design-batch is the design house's working unit: one target run date,
- * one or more "file groups" (a designed file + the adverts it contains).
- * Attaching a batch to a schedule snapshots its current file groups into
+ * one or more "ad slots" (a designed file + the adverts it contains).
+ * Attaching a batch to a schedule snapshots its current ad slots into
  * the advert-daily-schedule row for that date — the batch itself stays
  * editable/reusable for other dates afterwards.
  */
@@ -37,7 +37,7 @@ const BATCH_POPULATE = {
   daily_schedules: { fields: ['id', 'run_date', 'is_published'] },
 };
 
-/** Every advert id referenced anywhere across a batch's file groups, deduped. */
+/** Every advert id referenced anywhere across a batch's ad slots, deduped. */
 function collectAdvertIds(fileGroups = []) {
   const ids = new Set();
   fileGroups.forEach(g => (g.adverts || []).forEach(a => ids.add(a.id)));
@@ -148,7 +148,7 @@ module.exports = {
 
   /**
    * GET /design-batches/:id
-   * Full detail — file groups with enriched advert data (BC order #, ad
+   * Full detail — ad slots with enriched advert data (BC order #, ad
    * label, client, attachments) and attach history.
    */
   async getBatchDetail(ctx) {
@@ -256,10 +256,10 @@ module.exports = {
       }));
 
       const updated = await strapi.entityService.update('api::design-batch.design-batch', id, {
-        data: { file_groups: [...existingGroups, { label: label || `File Group ${existingGroups.length + 1}`, adverts: [] }] },
+        data: { file_groups: [...existingGroups, { label: label || `Ad Slot ${existingGroups.length + 1}`, adverts: [] }] },
       });
 
-      return ctx.send({ success: true, message: 'File group added', fileGroups: updated.file_groups });
+      return ctx.send({ success: true, message: 'Ad slot added', fileGroups: updated.file_groups });
     } catch (error) {
       console.error('❌ addFileGroup:', error);
       return ctx.internalServerError({ success: false, message: error.message });
@@ -285,7 +285,7 @@ module.exports = {
         data: { file_groups: remaining },
       });
 
-      return ctx.send({ success: true, message: 'File group removed', fileGroups: updated.file_groups });
+      return ctx.send({ success: true, message: 'Ad slot removed', fileGroups: updated.file_groups });
     } catch (error) {
       console.error('❌ removeFileGroup:', error);
       return ctx.internalServerError({ success: false, message: error.message });
@@ -298,7 +298,7 @@ module.exports = {
    *
    * Guard rail: an advert can only join a group whose batch target_run_date
    * is one of that advert's own remaining pendingDates — this is what makes
-   * "the same advert in different file groups on different dates" safe.
+   * "the same advert in different ad slots on different dates" safe.
    */
   async addAdvertToFileGroup(ctx) {
     try {
@@ -345,7 +345,7 @@ module.exports = {
         data: { file_groups: groups, adverts: [...new Set(groups.flatMap(g => g.adverts))] },
       });
 
-      return ctx.send({ success: true, message: 'Advert added to file group', fileGroups: updated.file_groups });
+      return ctx.send({ success: true, message: 'Advert added to ad slot', fileGroups: updated.file_groups });
     } catch (error) {
       console.error('❌ addAdvertToFileGroup:', error);
       return ctx.internalServerError({ success: false, message: error.message });
@@ -375,7 +375,7 @@ module.exports = {
         data: { file_groups: groups, adverts: [...new Set(groups.flatMap(g => g.adverts))] },
       });
 
-      return ctx.send({ success: true, message: 'Advert removed from file group', fileGroups: updated.file_groups });
+      return ctx.send({ success: true, message: 'Advert removed from ad slot', fileGroups: updated.file_groups });
     } catch (error) {
       console.error('❌ removeAdvertFromFileGroup:', error);
       return ctx.internalServerError({ success: false, message: error.message });
@@ -429,8 +429,8 @@ module.exports = {
    * POST /design-batches/:id/attach
    * Body: { runTime? }  — runDate is always the batch's own target_run_date.
    *
-   * One schedule row PER FILE GROUP, not one shared row per date. The
-   * editor's atomic unit is the file group — it has its own file, its own
+   * One schedule row PER AD SLOT, not one shared row per date. The
+   * editor's atomic unit is the ad slot — it has its own file, its own
    * page number, its own publish state, and unscheduling it should never
    * touch an unrelated group that just happens to run the same day. (Groups
    * can still end up sharing the same PAGER page later via the print-queue
@@ -461,7 +461,7 @@ module.exports = {
       const groupsWithAdverts = (batch.file_groups || []).filter(g => (g.adverts || []).length > 0);
 
       if (groupsWithAdverts.length === 0) {
-        return ctx.badRequest({ success: false, message: 'Batch has no file groups with adverts to attach' });
+        return ctx.badRequest({ success: false, message: 'Batch has no ad slots with adverts to attach' });
       }
 
       const scheduleStatus = strapi.service('api::advert.schedule-status');
@@ -528,7 +528,7 @@ module.exports = {
 
       return ctx.send({
         success: true,
-        message: `Batch synced to ${runDate} — ${groupResults.length} file group(s), each on its own schedule row`,
+        message: `Batch synced to ${runDate} — ${groupResults.length} ad slot(s), each on its own schedule row`,
         runDate,
         groups: groupResults,
         advertStatuses: recomputed,
