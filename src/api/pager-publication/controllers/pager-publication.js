@@ -8,6 +8,63 @@ const {
   isPrintEligible,
 } = require('../../_pager-helpers/pager-utils');
 
+/**
+ * After an advert is placed on a pager page via queueAdverts, reflect that
+ * back onto the advert's own advert-daily-schedule row for this
+ * publication's date — see the identical helper in pager-page.js (the two
+ * files are separate controllers, so this is intentionally duplicated
+ * rather than shared, to avoid touching _pager-helpers/pager-utils.js
+ * blind).
+ */
+async function syncScheduleRowPage(strapi, advertId, publicationDate, pageNumberOrNull) {
+  if (!publicationDate) return;
+  const rows = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
+    filters: { run_date: publicationDate, adverts: { id: advertId } },
+    limit: 1,
+  });
+  const row = rows[0];
+  if (!row) return;
+  await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', row.id, {
+    data: { page: pageNumberOrNull ?? 0 },
+  });
+}
+
+/**
+ * Map of advertId -> { slotKey, slotSize } for every advert whose
+ * advert-daily-schedule row (for this publication's date) has more than
+ * one advert on it — i.e. an ad slot with siblings that must always be
+ * displayed/moved/removed together in the Pager, never split.
+ */
+async function buildSlotMap(strapi, publicationDate) {
+  const map = new Map();
+  if (!publicationDate) return map;
+
+  const schedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
+    filters: { run_date: publicationDate },
+    populate: { adverts: { fields: ['id'] } },
+  });
+
+  for (const s of schedules) {
+    const advertIds = (s.adverts || []).map(a => a.id);
+    if (advertIds.length <= 1) continue;
+    for (const aid of advertIds) {
+      map.set(aid, { slotKey: `schedule:${s.id}`, slotSize: advertIds.length });
+    }
+  }
+  return map;
+}
+
+/** Stamps slotKey/slotSize onto each advert of each page in a pages array, in place. */
+function enrichPagesWithSlotInfo(pages, slotMap) {
+  for (const page of pages) {
+    for (const advert of (page.adverts || [])) {
+      const slot = slotMap.get(advert.id);
+      advert.slotKey = slot?.slotKey || null;
+      advert.slotSize = slot?.slotSize || 1;
+    }
+  }
+}
+
 module.exports = createCoreController('api::pager-publication.pager-publication', ({ strapi }) => ({
 
   // POST /pager-publications — overrides the core action so the request body
@@ -61,6 +118,10 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       },
     });
     if (!publication) return ctx.notFound('Publication not found');
+
+    const slotMap = await buildSlotMap(strapi, publication.publication_date);
+    enrichPagesWithSlotInfo(publication.pages || [], slotMap);
+
     ctx.body = publication;
   },
 
@@ -81,6 +142,13 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     if (!publication) return ctx.notFound('Publication not found');
 
     const { left, right, mid } = buildReaderSpreadLayout(publication.pages, publication.total_pages);
+
+    // Ad-slot grouping — so PagerPageCard can render adverts that share one
+    // physical file as a single visual block with one shared remove action,
+    // instead of separate chips a person could accidentally split apart.
+    const slotMap = await buildSlotMap(strapi, publication.publication_date);
+    enrichPagesWithSlotInfo(left, slotMap);
+    enrichPagesWithSlotInfo(right, slotMap);
 
     ctx.body = {
       publication: {
@@ -201,19 +269,23 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
 
   // POST /pager-publications/:id/queue-adverts
   // Body: { units: [{ advertIds: [...] }, ...] }  — each unit is one
-  // printable item: a design-batch file group (several adverts, one
-  // physical file — its adverts must land on the same page TOGETHER, never
-  // split across two pages) or a single ungrouped advert (a unit of one).
+  // printable item: a design-batch ad slot (several adverts, one physical
+  // file — its adverts must land on the same page TOGETHER, never split
+  // across two pages) or a single ungrouped advert (a unit of one).
   //
   // Round-robins by UNIT across non-cover pages, wrapping back to page 1
   // once every page has had a turn — so a page CAN end up holding more than
-  // one unit (a file group plus an ungrouped advert, two ungrouped adverts,
+  // one unit (an ad slot plus an ungrouped advert, two ungrouped adverts,
   // etc.). That's intentional: this endpoint is a fast starting layout, not
   // a hard page-composition rule. Final page composition is always at the
   // editor's discretion via the manual assign/unassign endpoints in
   // pager-page.js, which were never restricted and can freely move any
   // advert onto or off of any page regardless of what this auto-placement
   // did first.
+  //
+  // After each successful placement, every affected advert's own
+  // advert-daily-schedule row (for this publication's date) gets its
+  // "Page / Slot" number synced to match — see syncScheduleRowPage.
   //
   // Backward compatible: a flat { advertIds: [...] } body is still accepted
   // and treated as one unit per advert (the old per-advert behavior).
@@ -223,7 +295,6 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
 
     let units = body.units;
     if (!Array.isArray(units)) {
-      // Legacy flat shape — wrap each id as its own single-advert unit.
       if (Array.isArray(body.advertIds) && body.advertIds.length > 0) {
         units = body.advertIds.map((advertId) => ({ advertIds: [advertId] }));
       } else {
@@ -242,10 +313,6 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id);
     if (!publication) return ctx.notFound('Publication not found');
 
-    // Check every page (including cover/back cover) for existing placements,
-    // so a conflict is always caught even if an advert was manually put on
-    // the cover via the picker — but only round-robin new assignments across
-    // the ordinary, non-cover pages.
     const allPages = await strapi.entityService.findMany('api::pager-page.pager-page', {
       filters: { publication: id },
       sort: { page_number: 'asc' },
@@ -256,7 +323,7 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       return ctx.badRequest('This publication has no assignable pages');
     }
 
-    const placedOnPage = new Map(); // advertId -> page_number
+    const placedOnPage = new Map();
     for (const p of allPages) {
       for (const a of (p.adverts || [])) {
         placedOnPage.set(a.id, p.page_number);
@@ -271,8 +338,6 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       const unitAdvertIds = unit.advertIds.map((rawId) => Number(rawId));
       const failures = [];
 
-      // Validate every member before placing anything — a group is
-      // all-or-nothing, never split across pages.
       for (const advertId of unitAdvertIds) {
         if (placedOnPage.has(advertId)) {
           failures.push({
@@ -293,9 +358,6 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       }
 
       if (failures.length > 0) {
-        // Whole unit bounces back — report every member's status so the
-        // caller can see exactly why a group didn't go through, rather
-        // than silently placing the valid members and dropping the rest.
         for (const advertId of unitAdvertIds) {
           const failure = failures.find((f) => f.advertId === advertId);
           skipped.push(failure || { advertId, reason: 'skipped — another member of this group failed validation' });
@@ -315,6 +377,7 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
         for (const advertId of unitAdvertIds) {
           placedOnPage.set(advertId, targetPage.page_number);
           assigned.push({ advertId, pageId: targetPage.id, page_number: targetPage.page_number });
+          await syncScheduleRowPage(strapi, advertId, publication.publication_date, targetPage.page_number);
         }
       } catch (e) {
         for (const advertId of unitAdvertIds) {
