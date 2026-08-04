@@ -30,13 +30,20 @@ async function syncScheduleRowPage(strapi, advertId, publicationDate, pageNumber
 }
 
 /**
- * Map of advertId -> { slotKey, slotSize, file } for every advert whose
- * advert-daily-schedule row (for this publication's date) represents an ad
- * slot — meaning it either has a design file attached (media) or has more
- * than one advert sharing it. Either way, the Pager should show the SLOT
- * (and its file, if any) rather than listing individual adverts out —
+ * Map of advertId -> { slotKey, slotSize, file, label } for every advert
+ * whose advert-daily-schedule row (for this publication's date) represents
+ * an ad slot — meaning it either has a design file attached (media) or has
+ * more than one advert sharing it. Either way, the Pager should show the
+ * SLOT (and its file, if any) rather than listing individual adverts out —
  * that's the whole point of a slot from the print side: one thing to open,
  * not N adverts to read through.
+ *
+ * label resolution: source_file_group_id (added alongside the one-row-per-
+ * ad-slot attachToSchedule rewrite) lets us look up the ad slot's own
+ * label from the design-batch it came from, not just fall back to the raw
+ * filename — a batch's file_groups[].label is the human-chosen name
+ * ("Classifieds — Motoring"), which is what an editor actually wants to
+ * see, not "classifieds-motoring-v2-final.pdf".
  */
 async function buildSlotMap(strapi, publicationDate) {
   const map = new Map();
@@ -47,6 +54,7 @@ async function buildSlotMap(strapi, publicationDate) {
     populate: {
       adverts: { fields: ['id'] },
       media: true,
+      source_batches: { populate: { file_groups: true } },
     },
   });
 
@@ -61,14 +69,26 @@ async function buildSlotMap(strapi, publicationDate) {
       ? { id: file.id, name: file.name, url: file.url, size: file.size, mime: file.mime }
       : null;
 
+    // Prefer the design-batch's own label for this slot; fall back to the
+    // filename if this schedule row wasn't created via a batch attach (e.g.
+    // legacy/manual scheduling), or the group's label was left blank.
+    let label = file?.name || null;
+    if (s.source_file_group_id) {
+      for (const batch of (s.source_batches || [])) {
+        const group = (batch.file_groups || []).find(g => g.id === s.source_file_group_id);
+        if (group?.label) { label = group.label; break; }
+      }
+    }
+
     for (const aid of advertIds) {
-      map.set(aid, { slotKey: `schedule:${s.id}`, slotSize: advertIds.length, file: fileInfo });
+      map.set(aid, { slotKey: `schedule:${s.id}`, slotSize: advertIds.length, file: fileInfo, label });
     }
   }
   return map;
+
 }
 
-/** Stamps slotKey/slotSize/slotFile onto each advert of each page in a pages array, in place. */
+/** Stamps slotKey/slotSize/slotFile/slotLabel onto each advert of each page in a pages array, in place. */
 function enrichPagesWithSlotInfo(pages, slotMap) {
   for (const page of pages) {
     for (const advert of (page.adverts || [])) {
@@ -76,6 +96,7 @@ function enrichPagesWithSlotInfo(pages, slotMap) {
       advert.slotKey = slot?.slotKey || null;
       advert.slotSize = slot?.slotSize || 1;
       advert.slotFile = slot?.file || null;
+      advert.slotLabel = slot?.label || null;
     }
   }
 }
