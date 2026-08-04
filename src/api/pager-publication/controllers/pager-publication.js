@@ -30,10 +30,13 @@ async function syncScheduleRowPage(strapi, advertId, publicationDate, pageNumber
 }
 
 /**
- * Map of advertId -> { slotKey, slotSize } for every advert whose
- * advert-daily-schedule row (for this publication's date) has more than
- * one advert on it — i.e. an ad slot with siblings that must always be
- * displayed/moved/removed together in the Pager, never split.
+ * Map of advertId -> { slotKey, slotSize, file } for every advert whose
+ * advert-daily-schedule row (for this publication's date) represents an ad
+ * slot — meaning it either has a design file attached (media) or has more
+ * than one advert sharing it. Either way, the Pager should show the SLOT
+ * (and its file, if any) rather than listing individual adverts out —
+ * that's the whole point of a slot from the print side: one thing to open,
+ * not N adverts to read through.
  */
 async function buildSlotMap(strapi, publicationDate) {
   const map = new Map();
@@ -41,26 +44,38 @@ async function buildSlotMap(strapi, publicationDate) {
 
   const schedules = await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
     filters: { run_date: publicationDate },
-    populate: { adverts: { fields: ['id'] } },
+    populate: {
+      adverts: { fields: ['id'] },
+      media: true,
+    },
   });
 
   for (const s of schedules) {
     const advertIds = (s.adverts || []).map(a => a.id);
-    if (advertIds.length <= 1) continue;
+    if (advertIds.length === 0) continue;
+
+    const file = (s.media || [])[0] || null;
+    if (!file && advertIds.length <= 1) continue; // a plain single advert with no file — nothing slot-like about it
+
+    const fileInfo = file
+      ? { id: file.id, name: file.name, url: file.url, size: file.size, mime: file.mime }
+      : null;
+
     for (const aid of advertIds) {
-      map.set(aid, { slotKey: `schedule:${s.id}`, slotSize: advertIds.length });
+      map.set(aid, { slotKey: `schedule:${s.id}`, slotSize: advertIds.length, file: fileInfo });
     }
   }
   return map;
 }
 
-/** Stamps slotKey/slotSize onto each advert of each page in a pages array, in place. */
+/** Stamps slotKey/slotSize/slotFile onto each advert of each page in a pages array, in place. */
 function enrichPagesWithSlotInfo(pages, slotMap) {
   for (const page of pages) {
     for (const advert of (page.adverts || [])) {
       const slot = slotMap.get(advert.id);
       advert.slotKey = slot?.slotKey || null;
       advert.slotSize = slot?.slotSize || 1;
+      advert.slotFile = slot?.file || null;
     }
   }
 }
