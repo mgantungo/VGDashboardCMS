@@ -304,8 +304,8 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     // further over its limit, so the aspect ratio never distorts. Applied
     // regardless of whether the size came from a real PDF read or the
     // fallback default above.
-    const ARTBOARD_MAX_WIDTH_MM = 26;
-    const ARTBOARD_MAX_HEIGHT_MM = 29;
+    const ARTBOARD_MAX_WIDTH_MM = 260;
+    const ARTBOARD_MAX_HEIGHT_MM = 290;
 
     function constrainToArtboard(widthMm, heightMm) {
       if (widthMm <= ARTBOARD_MAX_WIDTH_MM && heightMm <= ARTBOARD_MAX_HEIGHT_MM) {
