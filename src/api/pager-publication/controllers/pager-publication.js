@@ -201,6 +201,138 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     };
   },
 
+  // GET /pager-publications/:id/export-to-layoutx
+  // Reshapes this publication's ad slots into LayoutX's own
+  // { publicationDetails, pages } contract — the exact shape
+  // loadPublicationFromCMS already returns from the Naviga side, so
+  // LayoutX's downstream canvas/save/resave code doesn't need to know or
+  // care which system a layout was pulled from.
+  //
+  // One ad slot = one artwork (not one artwork per advert): a slot is a
+  // single physical file, which is what LayoutX actually positions on the
+  // page. Multi-advert slots collapse into that one artwork with a joined
+  // clientName. There's no positioning data in the Pager at all today, so
+  // every pulled-in artwork lands at a default tiled offset — this is a
+  // seed to start positioning from, not a finished layout.
+  //
+  // ASSUMPTIONS baked in here that may need correcting:
+  //  - masthead -> { publication, template } lookup is hardcoded below.
+  //  - sourceUrl is left as whatever Strapi's media url resolves to via
+  //    server.url — confirm this is actually reachable (CORS, auth) from
+  //    LayoutX's origin before relying on this in production.
+  async exportToLayoutX(ctx) {
+    const { id } = ctx.params;
+    const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id, {
+      populate: {
+        pages: {
+          populate: {
+            adverts: { populate: { client: true } },
+          },
+        },
+      },
+    });
+    if (!publication) return ctx.notFound('Publication not found');
+
+    const slotMap = await buildSlotMap(strapi, publication.publication_date);
+    enrichPagesWithSlotInfo(publication.pages || [], slotMap);
+
+    // masthead -> LayoutX's { publication, template } fields.
+    // TODO confirm this mapping and whether template varies per publication.
+    const MASTHEAD_LOOKUP = {
+      NV: { publication: 'New Vision', template: 'newvision.indd' },
+      BK: { publication: 'Bukedde',    template: 'bukedde.indd' },
+    };
+    const mastheadInfo = MASTHEAD_LOOKUP[publication.masthead] || {
+      publication: publication.masthead,
+      template: `${String(publication.masthead || 'unknown').toLowerCase()}.indd`,
+    };
+
+    const serverUrl = strapi.config.get('server.url', '');
+    const resolveMediaUrl = (url) => {
+      if (!url) return null;
+      if (/^https?:\/\//i.test(url)) return url;
+      return `${serverUrl}${url}`;
+    };
+
+    // Default box size for a pulled-in artwork with no real positioning
+    // data yet — matches this app's own existing fallback pattern
+    // (artworkData.width || 100) elsewhere, since artwork.width is used as
+    // a division denominator during PDF scaling and must never be null/0.
+    const DEFAULT_ARTWORK_WIDTH = 150;
+    const DEFAULT_ARTWORK_HEIGHT = 100;
+
+    const pageSections = {};
+    const pages = [];
+
+    const sortedPages = [...(publication.pages || [])].sort((a, b) => a.page_number - b.page_number);
+
+    for (const page of sortedPages) {
+      const pageId = `page-${page.page_number}`;
+      if (page.section) pageSections[pageId] = page.section;
+
+      // Cluster this page's adverts by slotKey — one artwork per ad slot,
+      // never one per advert (matches how the Pager itself treats a slot
+      // as one atomic, inseparable file).
+      const bySlot = new Map();
+      for (const advert of (page.adverts || [])) {
+        if (!advert.slotKey) continue; // no file behind this advert — nothing LayoutX can position
+        if (!bySlot.has(advert.slotKey)) {
+          bySlot.set(advert.slotKey, { file: advert.slotFile, label: advert.slotLabel, clients: [] });
+        }
+        bySlot.get(advert.slotKey).clients.push(advert.client?.company_name || advert.advert_title || 'Unknown');
+      }
+
+      const artworks = [];
+      let tileIndex = 0;
+      for (const [slotKey, slot] of bySlot) {
+        if (!slot.file) continue; // slot has no actual file to place — skip rather than place an empty box
+
+        // No positioning data exists in the Pager — default to a simple
+        // tiled offset so multiple artworks on one page don't stack
+        // exactly on top of each other. Whoever pulls this in still needs
+        // to actually position these by hand.
+        const x = 20 + (tileIndex % 3) * 220;
+        const y = 20 + Math.floor(tileIndex / 3) * 170;
+        tileIndex += 1;
+
+        artworks.push({
+          id:          `slot-${slotKey}`,
+          filename:    slot.file.name,
+          // NOTE: the field is s3Url, not sourceUrl — LayoutX's own
+          // background PDF-render pipeline specifically checks
+          // `if (!artwork.s3Url) continue` to know which artworks to fetch
+          // and render; the wrong field name here means every pulled-in
+          // artwork silently stays a placeholder forever.
+          s3Url:       resolveMediaUrl(slot.file.url),
+          clientName:  slot.label || slot.clients.join(', ') || 'Unknown Client',
+          adType:      'Display',
+          isImported:  true, // LayoutX should fetch/render from s3Url, not expect a local File blob
+          x, y,
+          width:  DEFAULT_ARTWORK_WIDTH,
+          height: DEFAULT_ARTWORK_HEIGHT,
+        });
+      }
+
+      pages.push({
+        id:       pageId,
+        name:     `Page ${page.page_number}`,
+        artworks,
+      });
+    }
+
+    ctx.body = {
+      publicationDetails: {
+        publication:    mastheadInfo.publication,
+        template:       mastheadInfo.template,
+        date:           publication.publication_date,
+        publicationref: publication.publication_code,
+        totalpages:     publication.total_pages,
+        pageSections,
+      },
+      pages,
+    };
+  },
+
   // PUT /pager-publications/:id/increase-pages   body: { additionalPages }
   async increasePages(ctx) {
     const { id } = ctx.params;
