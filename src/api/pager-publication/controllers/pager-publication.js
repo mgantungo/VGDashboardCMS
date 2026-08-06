@@ -1,7 +1,6 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { PDFDocument } = require('pdf-lib'); // npm install pdf-lib if this throws at boot
 const {
   assertValidPageIncrement,
   assertValidPageDecrement,
@@ -276,47 +275,20 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     // only when the file genuinely isn't readable as a PDF (e.g. one of
     // the test-data .jpg files still floating around) or fetching/parsing
     // it fails outright — artwork.width/height must never end up null/0,
-    // since LayoutX uses it as a division denominator during PDF scaling.
-    const FALLBACK_WIDTH_MM = 150;
-    const FALLBACK_HEIGHT_MM = 100;
-
-    async function getPdfDimensionsMm(fileUrl, mime) {
-      if (!fileUrl || mime !== 'application/pdf') return null;
-      try {
-        const res = await fetch(fileUrl);
-        if (!res.ok) return null;
-        const buffer = Buffer.from(await res.arrayBuffer());
-        const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
-        const page = pdfDoc.getPage(0);
-        const { width, height } = page.getSize(); // points (1/72 inch)
-        return {
-          widthMm:  Math.round((width  * 25.4 / 72) * 10) / 10,
-          heightMm: Math.round((height * 25.4 / 72) * 10) / 10,
-        };
-      } catch (e) {
-        strapi.log.warn(`[exportToLayoutX] Could not read PDF dimensions from ${fileUrl}: ${e.message}`);
-        return null;
-      }
-    }
-
-    // Artboard limits — an artwork must never exceed these, in either
-    // dimension. Proportionate: scaled down by whichever dimension is
-    // further over its limit, so the aspect ratio never distorts. Applied
-    // regardless of whether the size came from a real PDF read or the
-    // fallback default above.
-    const ARTBOARD_MAX_WIDTH_MM = 260;
-    const ARTBOARD_MAX_HEIGHT_MM = 290;
-
-    function constrainToArtboard(widthMm, heightMm) {
-      if (widthMm <= ARTBOARD_MAX_WIDTH_MM && heightMm <= ARTBOARD_MAX_HEIGHT_MM) {
-        return { width: widthMm, height: heightMm };
-      }
-      const scale = Math.min(ARTBOARD_MAX_WIDTH_MM / widthMm, ARTBOARD_MAX_HEIGHT_MM / heightMm);
-      return {
-        width:  Math.round(widthMm  * scale * 10) / 10,
-        height: Math.round(heightMm * scale * 10) / 10,
-      };
-    }
+    // No dimension computation happens here anymore — it used to (via
+    // pdf-lib), but that meant this endpoint and the normal FileDropZone
+    // upload path computed a PDF's size two different ways, with two
+    // different libraries (pdf-lib server-side vs PDF.js client-side),
+    // which can legitimately disagree on the same file (MediaBox/CropBox
+    // handling, rotation, etc.) — exactly the kind of thing that looks
+    // like "unexplained resizing" without either computation being wrong
+    // in isolation. Real dimensions now come from the SAME place a normal
+    // drop gets them: processPdfFile (PDF.js) on the frontend, once the
+    // file is actually fetched — see handleLoadFromPager in index.vue.
+    // This placeholder only needs to be non-zero so nothing divides by 0
+    // in the brief window before that real size lands.
+    const PLACEHOLDER_WIDTH_MM = 150;
+    const PLACEHOLDER_HEIGHT_MM = 100;
 
     const pageSections = {};
     const pages = [];
@@ -346,17 +318,13 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
 
         // No POSITIONING data exists in the Pager — x/y still default to a
         // simple tiled offset, and still need manual placement afterward.
-        // SIZE, though, is now read from the actual file rather than
-        // guessed at.
         const x = 20 + (tileIndex % 3) * 220;
         const y = 20 + Math.floor(tileIndex / 3) * 170;
         tileIndex += 1;
 
         const resolvedUrl = resolveMediaUrl(slot.file.url);
-        const dims = await getPdfDimensionsMm(resolvedUrl, slot.file.mime);
-        const rawWidth  = dims?.widthMm  ?? FALLBACK_WIDTH_MM;
-        const rawHeight = dims?.heightMm ?? FALLBACK_HEIGHT_MM;
-        const { width, height } = constrainToArtboard(rawWidth, rawHeight);
+        const width  = PLACEHOLDER_WIDTH_MM;
+        const height = PLACEHOLDER_HEIGHT_MM;
 
         artworks.push({
           id:          `slot-${slotKey}`,
