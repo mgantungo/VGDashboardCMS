@@ -1,6 +1,7 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { PDFDocument } = require('pdf-lib'); // npm install pdf-lib if this throws at boot
 const {
   assertValidPageIncrement,
   assertValidPageDecrement,
@@ -270,12 +271,33 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       return `${serverUrl}${url}`;
     };
 
-    // Default box size for a pulled-in artwork with no real positioning
-    // data yet — matches this app's own existing fallback pattern
-    // (artworkData.width || 100) elsewhere, since artwork.width is used as
-    // a division denominator during PDF scaling and must never be null/0.
-    const DEFAULT_ARTWORK_WIDTH = 150;
-    const DEFAULT_ARTWORK_HEIGHT = 100;
+    // Reads the real page size straight out of the PDF itself — no
+    // guessing, no placeholder box. Falls back to a conservative default
+    // only when the file genuinely isn't readable as a PDF (e.g. one of
+    // the test-data .jpg files still floating around) or fetching/parsing
+    // it fails outright — artwork.width/height must never end up null/0,
+    // since LayoutX uses it as a division denominator during PDF scaling.
+    const FALLBACK_WIDTH_MM = 150;
+    const FALLBACK_HEIGHT_MM = 100;
+
+    async function getPdfDimensionsMm(fileUrl, mime) {
+      if (!fileUrl || mime !== 'application/pdf') return null;
+      try {
+        const res = await fetch(fileUrl);
+        if (!res.ok) return null;
+        const buffer = Buffer.from(await res.arrayBuffer());
+        const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+        const page = pdfDoc.getPage(0);
+        const { width, height } = page.getSize(); // points (1/72 inch)
+        return {
+          widthMm:  Math.round((width  * 25.4 / 72) * 10) / 10,
+          heightMm: Math.round((height * 25.4 / 72) * 10) / 10,
+        };
+      } catch (e) {
+        strapi.log.warn(`[exportToLayoutX] Could not read PDF dimensions from ${fileUrl}: ${e.message}`);
+        return null;
+      }
+    }
 
     const pageSections = {};
     const pages = [];
@@ -303,13 +325,18 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       for (const [slotKey, slot] of bySlot) {
         if (!slot.file) continue; // slot has no actual file to place — skip rather than place an empty box
 
-        // No positioning data exists in the Pager — default to a simple
-        // tiled offset so multiple artworks on one page don't stack
-        // exactly on top of each other. Whoever pulls this in still needs
-        // to actually position these by hand.
+        // No POSITIONING data exists in the Pager — x/y still default to a
+        // simple tiled offset, and still need manual placement afterward.
+        // SIZE, though, is now read from the actual file rather than
+        // guessed at.
         const x = 20 + (tileIndex % 3) * 220;
         const y = 20 + Math.floor(tileIndex / 3) * 170;
         tileIndex += 1;
+
+        const resolvedUrl = resolveMediaUrl(slot.file.url);
+        const dims = await getPdfDimensionsMm(resolvedUrl, slot.file.mime);
+        const width  = dims?.widthMm  ?? FALLBACK_WIDTH_MM;
+        const height = dims?.heightMm ?? FALLBACK_HEIGHT_MM;
 
         artworks.push({
           id:          `slot-${slotKey}`,
@@ -319,13 +346,13 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
           // `if (!artwork.s3Url) continue` to know which artworks to fetch
           // and render; the wrong field name here means every pulled-in
           // artwork silently stays a placeholder forever.
-          s3Url:       resolveMediaUrl(slot.file.url),
+          s3Url:       resolvedUrl,
           clientName:  slot.label || slot.clients.join(', ') || 'Unknown Client',
           adType:      'Display',
           isImported:  true, // LayoutX should fetch/render from s3Url, not expect a local File blob
           x, y,
-          width:  DEFAULT_ARTWORK_WIDTH,
-          height: DEFAULT_ARTWORK_HEIGHT,
+          width,
+          height,
         });
       }
 
