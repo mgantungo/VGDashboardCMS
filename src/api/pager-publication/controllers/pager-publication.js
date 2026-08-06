@@ -247,7 +247,23 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       template: `${String(publication.masthead || 'unknown').toLowerCase()}.indd`,
     };
 
-    const serverUrl = strapi.config.get('server.url', '');
+    // strapi.config.get('server.url') is only populated if config/server.js
+    // actually sets it (commonly via env('PUBLIC_URL', ...)) — on this
+    // instance it isn't, which produced a bare "/uploads/xyz.jpg" with no
+    // host, and the browser silently resolved that against LayoutX's OWN
+    // origin (localhost:3150) instead of VGAMS's. Fall through a couple of
+    // env var names before giving up, so this doesn't depend on one
+    // specific config path being set correctly.
+    //
+    // The real fix belongs on the Strapi side: set PUBLIC_URL (or
+    // config/server.js's url) properly, since ANY other code relying on
+    // strapi.config.get('server.url') for an absolute URL has this same
+    // latent bug, not just this endpoint.
+    const serverUrl =
+      strapi.config.get('server.url', '') ||
+      process.env.PUBLIC_URL ||
+      process.env.STRAPI_PUBLIC_URL ||
+      'https://cms-vgad.visiongroup.co.ug'; // confirmed-correct fallback — last resort only
     const resolveMediaUrl = (url) => {
       if (!url) return null;
       if (/^https?:\/\//i.test(url)) return url;
