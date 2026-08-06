@@ -25,6 +25,15 @@ module.exports = {
       config: { auth: false },
     },
     {
+      method: 'GET',
+      path: '/pager-publications/:id/export-to-layoutx',
+      handler: 'pager-publication.exportToLayoutX',
+      config: {
+        auth: false,
+        description: 'Reshapes this publication\u2019s ad slots into LayoutX\u2019s { publicationDetails, pages } contract for pulling a Pager layout into LayoutX.',
+      },
+    },
+    {
       method: 'PUT',
       path: '/pager-publications/:id/increase-pages',
       handler: 'pager-publication.increasePages',
