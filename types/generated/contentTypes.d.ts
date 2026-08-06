@@ -444,6 +444,11 @@ export interface ApiAdvertDailyScheduleAdvertDailySchedule
     publishedAt: Schema.Attribute.DateTime;
     run_date: Schema.Attribute.Date & Schema.Attribute.Required;
     run_time: Schema.Attribute.JSON;
+    source_batches: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::design-batch.design-batch'
+    >;
+    source_file_group_id: Schema.Attribute.Integer;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -493,6 +498,10 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    design_batches: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::design-batch.design-batch'
+    >;
     discount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     end_date: Schema.Attribute.Date;
     frequency: Schema.Attribute.Integer &
@@ -525,6 +534,10 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     market_sector: Schema.Attribute.String;
     office_location: Schema.Attribute.String;
+    pager_pages: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::pager-page.pager-page'
+    >;
     payment_method: Schema.Attribute.Enumeration<
       ['cash', 'credit', 'pdc', 'bank_transfer', 'mobile_money']
     > &
@@ -784,6 +797,47 @@ export interface ApiBcDatasetBcDataset extends Struct.CollectionTypeSchema {
     VAT_Amount: Schema.Attribute.BigInteger;
     VAT_Bus_Posting_Group: Schema.Attribute.String;
     VAT_Prod_Posting_Group: Schema.Attribute.String;
+  };
+}
+
+export interface ApiBroadcastSourceBroadcastSource
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'broadcast_sources';
+  info: {
+    description: 'A single video source (YouTube/HLS/MP4) that can be assigned to a screen.';
+    displayName: 'Bill Board Broadcast Source';
+    pluralName: 'broadcast-sources';
+    singularName: 'broadcast-source';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    isActive: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::broadcast-source.broadcast-source'
+    > &
+      Schema.Attribute.Private;
+    order: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<0>;
+    publishedAt: Schema.Attribute.DateTime;
+    screen: Schema.Attribute.Relation<'manyToOne', 'api::screen.screen'>;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    type: Schema.Attribute.Enumeration<['youtube', 'hls', 'mp4']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'youtube'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    value: Schema.Attribute.String & Schema.Attribute.Required;
   };
 }
 
@@ -1133,6 +1187,51 @@ export interface ApiDepartmentDepartment extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiDesignBatchDesignBatch extends Struct.CollectionTypeSchema {
+  collectionName: 'design_batches';
+  info: {
+    displayName: 'CIO Design Batch';
+    pluralName: 'design-batches';
+    singularName: 'design-batch';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    adverts: Schema.Attribute.Relation<'manyToMany', 'api::advert.advert'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    daily_schedules: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::advert-daily-schedule.advert-daily-schedule'
+    >;
+    designer: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-user.vgams-user'
+    >;
+    file_groups: Schema.Attribute.Component<'design-batch.file-group', true>;
+    label: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::design-batch.design-batch'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.Text;
+    publishedAt: Schema.Attribute.DateTime;
+    reference_number: Schema.Attribute.UID<'label'>;
+    status: Schema.Attribute.Enumeration<
+      ['draft', 'ready', 'attached', 'archived']
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
+    target_run_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiDesignFileDesignFile extends Struct.CollectionTypeSchema {
   collectionName: 'design_files';
   info: {
@@ -1424,6 +1523,161 @@ export interface ApiPagePage extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     wp_id: Schema.Attribute.Integer & Schema.Attribute.Unique;
+  };
+}
+
+export interface ApiPagerPagePagerPage extends Struct.CollectionTypeSchema {
+  collectionName: 'pager_pages';
+  info: {
+    displayName: 'CIO Pager Page';
+    pluralName: 'pager-pages';
+    singularName: 'pager-page';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    adverts: Schema.Attribute.Relation<'manyToMany', 'api::advert.advert'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_back_cover: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    is_cover: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pager-page.pager-page'
+    > &
+      Schema.Attribute.Private;
+    page_number: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
+    publication: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::pager-publication.pager-publication'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    section: Schema.Attribute.Enumeration<
+      [
+        'Adverts',
+        'Beat',
+        'Business',
+        'Business Vision',
+        'CSI',
+        'Case Files',
+        'Classified',
+        'Comments',
+        'Community News',
+        'Court',
+        'Crocs',
+        'Election News',
+        'Feature',
+        'Green UG',
+        'Harvest Money',
+        'Health',
+        'Her Vision',
+        'Homes',
+        'International News',
+        'JobMart',
+        'Leisure',
+        'Letters',
+        'Lifestyle',
+        'Motor Mart',
+        'Mwalimu',
+        'NIE',
+        'National News',
+        'New Era',
+        'News',
+        'OPED',
+        'Oil, Gas and Infrastructure',
+        'Opportunities',
+        'PLE',
+        'OLEVEL',
+        'ALEVEL',
+        'Pakasa',
+        'Relationships',
+        'Schools',
+        'Series',
+        'Special Report',
+        'Sport',
+        'Spotlight',
+        'Supplements',
+        'Teen Vision',
+        'TV and Leisure',
+        'The Hot Sport',
+        'Weekend Xtra',
+        'Muslim News',
+        'Back Cover Page',
+        'Cover Page',
+      ]
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiPagerPublicationPagerPublication
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'pager_publications';
+  info: {
+    displayName: 'CIO Pager Publication';
+    pluralName: 'pager-publications';
+    singularName: 'pager-publication';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    created_by_user: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-user.vgams-user'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::pager-publication.pager-publication'
+    > &
+      Schema.Attribute.Private;
+    masthead: Schema.Attribute.Enumeration<['NV', 'BK']> &
+      Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    pages: Schema.Attribute.Relation<'oneToMany', 'api::pager-page.pager-page'>;
+    publication_code: Schema.Attribute.String & Schema.Attribute.Unique;
+    publication_date: Schema.Attribute.Date & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    sequence: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    status: Schema.Attribute.Enumeration<
+      ['draft', 'in_progress', 'locked', 'published']
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
+    total_pages: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 24;
+        },
+        number
+      >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -1833,6 +2087,75 @@ export interface ApiRevenueStreamRevenueStream
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiScreenScreen extends Struct.CollectionTypeSchema {
+  collectionName: 'screens';
+  info: {
+    description: 'A physical billboard/display. One row per device.';
+    displayName: 'Bill Board Screen';
+    pluralName: 'screens';
+    singularName: 'screen';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    broadcastSources: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::broadcast-source.broadcast-source'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    height: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<1080>;
+    lastSeenAt: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::screen.screen'
+    > &
+      Schema.Attribute.Private;
+    location: Schema.Attribute.String;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    offlineAfter: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 5;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<300>;
+    pollInterval: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 5;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<300>;
+    publishedAt: Schema.Attribute.DateTime;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    staleAfter: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 5;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<60>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    width: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<1920>;
   };
 }
 
@@ -3275,6 +3598,7 @@ declare module '@strapi/strapi' {
       'api::api-listing.api-listing': ApiApiListingApiListing;
       'api::author.author': ApiAuthorAuthor;
       'api::bc-dataset.bc-dataset': ApiBcDatasetBcDataset;
+      'api::broadcast-source.broadcast-source': ApiBroadcastSourceBroadcastSource;
       'api::campaign-attendence.campaign-attendence': ApiCampaignAttendenceCampaignAttendence;
       'api::campaign.campaign': ApiCampaignCampaign;
       'api::category.category': ApiCategoryCategory;
@@ -3283,6 +3607,7 @@ declare module '@strapi/strapi' {
       'api::company-asset.company-asset': ApiCompanyAssetCompanyAsset;
       'api::cost-stream.cost-stream': ApiCostStreamCostStream;
       'api::department.department': ApiDepartmentDepartment;
+      'api::design-batch.design-batch': ApiDesignBatchDesignBatch;
       'api::design-file.design-file': ApiDesignFileDesignFile;
       'api::district.district': ApiDistrictDistrict;
       'api::enumeration-area.enumeration-area': ApiEnumerationAreaEnumerationArea;
@@ -3291,6 +3616,8 @@ declare module '@strapi/strapi' {
       'api::office-location.office-location': ApiOfficeLocationOfficeLocation;
       'api::office.office': ApiOfficeOffice;
       'api::page.page': ApiPagePage;
+      'api::pager-page.pager-page': ApiPagerPagePagerPage;
+      'api::pager-publication.pager-publication': ApiPagerPublicationPagerPublication;
       'api::parish.parish': ApiParishParish;
       'api::payment.payment': ApiPaymentPayment;
       'api::polling-station.polling-station': ApiPollingStationPollingStation;
@@ -3301,6 +3628,7 @@ declare module '@strapi/strapi' {
       'api::rate-card.rate-card': ApiRateCardRateCard;
       'api::region.region': ApiRegionRegion;
       'api::revenue-stream.revenue-stream': ApiRevenueStreamRevenueStream;
+      'api::screen.screen': ApiScreenScreen;
       'api::sections-commission.sections-commission': ApiSectionsCommissionSectionsCommission;
       'api::sfa-activity.sfa-activity': ApiSfaActivitySfaActivity;
       'api::sfa-agent-profile.sfa-agent-profile': ApiSfaAgentProfileSfaAgentProfile;
