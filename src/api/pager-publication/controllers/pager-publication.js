@@ -299,6 +299,25 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       }
     }
 
+    // Artboard limits — an artwork must never exceed these, in either
+    // dimension. Proportionate: scaled down by whichever dimension is
+    // further over its limit, so the aspect ratio never distorts. Applied
+    // regardless of whether the size came from a real PDF read or the
+    // fallback default above.
+    const ARTBOARD_MAX_WIDTH_MM = 26;
+    const ARTBOARD_MAX_HEIGHT_MM = 29;
+
+    function constrainToArtboard(widthMm, heightMm) {
+      if (widthMm <= ARTBOARD_MAX_WIDTH_MM && heightMm <= ARTBOARD_MAX_HEIGHT_MM) {
+        return { width: widthMm, height: heightMm };
+      }
+      const scale = Math.min(ARTBOARD_MAX_WIDTH_MM / widthMm, ARTBOARD_MAX_HEIGHT_MM / heightMm);
+      return {
+        width:  Math.round(widthMm  * scale * 10) / 10,
+        height: Math.round(heightMm * scale * 10) / 10,
+      };
+    }
+
     const pageSections = {};
     const pages = [];
 
@@ -335,8 +354,9 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
 
         const resolvedUrl = resolveMediaUrl(slot.file.url);
         const dims = await getPdfDimensionsMm(resolvedUrl, slot.file.mime);
-        const width  = dims?.widthMm  ?? FALLBACK_WIDTH_MM;
-        const height = dims?.heightMm ?? FALLBACK_HEIGHT_MM;
+        const rawWidth  = dims?.widthMm  ?? FALLBACK_WIDTH_MM;
+        const rawHeight = dims?.heightMm ?? FALLBACK_HEIGHT_MM;
+        const { width, height } = constrainToArtboard(rawWidth, rawHeight);
 
         artworks.push({
           id:          `slot-${slotKey}`,
