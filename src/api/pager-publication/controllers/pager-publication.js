@@ -302,7 +302,8 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       // meant LayoutX just showed nothing for that page, which is what was
       // read as "sections aren't being imported."
       const DEFAULT_SECTION = 'National News';
-      pageSections[pageId] = page.section || DEFAULT_SECTION;
+      const resolvedSection = page.section || DEFAULT_SECTION;
+      pageSections[pageId] = resolvedSection;
 
       // Cluster this page's adverts by slotKey — one artwork per ad slot,
       // never one per advert (matches how the Pager itself treats a slot
@@ -351,7 +352,7 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
 
       pages.push({
         id:       pageId,
-        name:     `Page ${page.page_number}`,
+        name:     resolvedSection, // matches renamePage's own convention — name IS the section, not "Page N"
         artworks,
       });
     }
