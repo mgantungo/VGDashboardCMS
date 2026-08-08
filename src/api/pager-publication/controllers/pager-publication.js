@@ -297,7 +297,12 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
 
     for (const page of sortedPages) {
       const pageId = `page-${page.page_number}`;
-      if (page.section) pageSections[pageId] = page.section;
+      // Pages with no section assigned in the Pager get a default rather
+      // than being omitted from pageSections entirely — an omitted key
+      // meant LayoutX just showed nothing for that page, which is what was
+      // read as "sections aren't being imported."
+      const DEFAULT_SECTION = 'National News';
+      pageSections[pageId] = page.section || DEFAULT_SECTION;
 
       // Cluster this page's adverts by slotKey — one artwork per ad slot,
       // never one per advert (matches how the Pager itself treats a slot
