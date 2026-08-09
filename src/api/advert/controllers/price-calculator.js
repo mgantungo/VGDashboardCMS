@@ -131,7 +131,12 @@ module.exports = {
             return ctx.badRequest('Word rate card not found for accompanying text');
           }
 
-          const wordRate = adType === 'full_color' ? wordRateCard.price_fc : wordRateCard.price_bw;
+          // Classified text is always billed at the black & white (mono)
+          // per-word rate, regardless of the overall ad's Color/Type
+          // toggle - there is no full-colour rate for per-word classified
+          // text, so following `adType` here would price it at an empty/0
+          // price_fc whenever the ad itself is set to full colour.
+          const wordRate = wordRateCard.price_bw;
           const wordSubtotal = wordRate * words;
 
           adjustedBasePrice = photoSubtotal + wordSubtotal;
