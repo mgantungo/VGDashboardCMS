@@ -28,6 +28,14 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/screens/register',
+      handler: 'screen.register',
+      config: {
+        auth: false, // dashboard write — recommend requiring auth here, see README
+      },
+    },
+    {
+      method: 'POST',
       path: '/screens/:slug/push',
       handler: 'screen.push',
       config: {
