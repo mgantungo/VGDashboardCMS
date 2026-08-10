@@ -297,9 +297,15 @@ module.exports = ({ strapi }) => ({
 
   /**
    * GET /api/screens/status
-   * Everything the dashboard needs in one call: per-screen live/stale/offline
-   * status plus whatever is currently active (external feed or manual push),
-   * computed server-side so the dashboard doesn't duplicate the logic.
+   * Everything the dashboard needs in one call. Two separate signals:
+   *  - broadcastStatus: 'live' | 'offline' — is there actually an active
+   *    source assigned right now (external feed or manual push)? This is
+   *    what the dashboard's main badge should reflect — a freshly pushed
+   *    screen is live immediately, it doesn't need to wait on a check-in.
+   *  - connectionStatus: 'live' | 'stale' | 'offline' — is the physical
+   *    device itself still polling, derived from lastSeenAt vs.
+   *    staleAfter/offlineAfter. Useful to show separately (e.g. "last
+   *    seen 2m ago") but shouldn't drive the main LIVE/OFFLINE badge.
    */
   async status(ctx) {
     const screens = await strapi.documents(SCREEN_UID).findMany({
@@ -310,16 +316,20 @@ module.exports = ({ strapi }) => ({
     const now = Date.now();
 
     const data = await Promise.all(
-      screens.map(async (screen) => ({
-        slug: screen.slug,
-        name: screen.name,
-        width: screen.width,
-        height: screen.height,
-        status: computeStatus(screen, now),
-        lastSeenAt: screen.lastSeenAt || null,
-        usingExternalFeed: Boolean(screen.externalFeedEnabled && screen.externalFeedUrl),
-        current: await resolveSource(screen, strapi),
-      }))
+      screens.map(async (screen) => {
+        const current = await resolveSource(screen, strapi);
+        return {
+          slug: screen.slug,
+          name: screen.name,
+          width: screen.width,
+          height: screen.height,
+          broadcastStatus: current ? 'live' : 'offline',
+          connectionStatus: computeStatus(screen, now),
+          lastSeenAt: screen.lastSeenAt || null,
+          usingExternalFeed: Boolean(screen.externalFeedEnabled && screen.externalFeedUrl),
+          current,
+        };
+      })
     );
 
     ctx.body = { data };
