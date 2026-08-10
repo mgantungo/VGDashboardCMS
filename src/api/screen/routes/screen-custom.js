@@ -35,6 +35,14 @@ module.exports = {
       },
     },
     {
+      method: 'GET',
+      path: '/screens/live-sources',
+      handler: 'screen.listLiveSources',
+      config: {
+        auth: false, // dashboard read — same public feed as detect-source
+      },
+    },
+    {
       method: 'POST',
       path: '/screens/register',
       handler: 'screen.register',
