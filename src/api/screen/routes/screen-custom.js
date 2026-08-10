@@ -27,6 +27,14 @@ module.exports = {
       },
     },
     {
+      method: 'GET',
+      path: '/screens/detect-source',
+      handler: 'screen.detectSource',
+      config: {
+        auth: false, // dashboard read — safe to keep public, it only reads a public page
+      },
+    },
+    {
       method: 'POST',
       path: '/screens/register',
       handler: 'screen.register',
