@@ -5,14 +5,14 @@ const SOURCE_UID = 'api::broadcast-source.broadcast-source';
 
 // How long to trust a fetched external broadcast key before re-fetching.
 // Keeps multiple screens sharing the same feed URL from hammering it,
-// and keeps a single screen's own poll cycle cheap.
+// and keeps a single screen's own poll cycle cheap. Also used by
+// detectSource below, which shares this cache/helper.
 const EXTERNAL_FEED_CACHE_TTL_MS = 30 * 1000;
 const externalFeedCache = new Map(); // url -> { data, expiresAt }
 
-// Where "Fetch live ID" defaults to if the caller doesn't specify a url.
-const DEFAULT_DETECT_URL = 'https://billboards.visiongroup.co.ug';
-const DETECT_CACHE_TTL_MS = 15 * 1000;
-const detectCache = new Map(); // url -> { data, expiresAt }
+// Where "Fetch live ID" defaults to if the caller doesn't specify a url —
+// the same feed the original PHP script polled for the live broadcast key.
+const DEFAULT_DETECT_URL = 'https://adverts.newvisionapp.com/adverts/items/live_broadcast';
 
 function computeStatus(screen, now) {
   if (!screen.lastSeenAt) return 'offline';
@@ -27,6 +27,15 @@ function activeSource(screen) {
     .filter((s) => s.isActive)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   return sources[0] || null;
+}
+
+function extractStatus(item) {
+  // The original PHP script only ever read broadcast_id/title, so we
+  // don't know the real field name (if any) the API uses to mark a
+  // broadcast "live"/"active". Pass through whichever of these exists,
+  // if any, so the dashboard can show it — otherwise null, and the
+  // admin just picks by title.
+  return item.status ?? item.active ?? item.is_live ?? item.live ?? null;
 }
 
 /**
@@ -97,24 +106,6 @@ function slugify(input) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-}
-
-/**
- * Pulls a YouTube video ID out of a page's raw HTML — matches the
- * various ways a video can be embedded/linked (iframe embed src,
- * youtube-nocookie, watch?v=, youtu.be short links).
- */
-function extractYouTubeId(html) {
-  const patterns = [
-    /youtube(?:-nocookie)?\.com\/embed\/([a-zA-Z0-9_-]{6,})/i,
-    /youtube\.com\/watch\?[^"'\s<>]*[?&]v=([a-zA-Z0-9_-]{6,})/i,
-    /youtu\.be\/([a-zA-Z0-9_-]{6,})/i,
-  ];
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match) return match[1];
-  }
-  return null;
 }
 
 async function uniqueSlug(strapi, name) {
@@ -252,11 +243,12 @@ module.exports = ({ strapi }) => ({
   },
 
   /**
-   * GET /api/screens/detect-source?url=<optional page url>
-   * Fetches the given page (defaults to https://billboards.visiongroup.co.ug)
-   * and pulls a YouTube video ID out of its HTML — for the dashboard's
-   * "Fetch live ID" button, so you don't have to manually copy an ID out
-   * of the current site before pushing/registering it.
+   * GET /api/screens/detect-source?url=<optional feed url>
+   * Calls the live broadcast feed (defaults to the newvisionapp
+   * adverts API — same one the original PHP script polled) and reads
+   * back { broadcast_id, title } from the most recent entry. Powers the
+   * dashboard's "Fetch live ID" button so you don't have to manually
+   * copy an ID out of anywhere before pushing/registering it.
    */
   async detectSource(ctx) {
     const url = ctx.query.url || DEFAULT_DETECT_URL;
@@ -265,29 +257,69 @@ module.exports = ({ strapi }) => ({
       return ctx.badRequest('url must start with http:// or https://');
     }
 
-    const cached = detectCache.get(url);
-    if (cached && cached.expiresAt > Date.now()) {
-      ctx.body = cached.data;
-      return;
-    }
-
-    let html;
+    let broadcast;
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Page responded ${res.status}`);
-      html = await res.text();
+      broadcast = await fetchExternalBroadcast(url);
     } catch (err) {
       return ctx.badRequest(`Could not reach ${url}: ${err.message}`);
     }
 
-    const videoId = extractYouTubeId(html);
-    if (!videoId) {
-      return ctx.notFound(`No YouTube video ID found on ${url}`);
+    if (!broadcast?.broadcastId) {
+      return ctx.notFound(`No live broadcast found at ${url}`);
     }
 
-    const data = { type: 'youtube', value: videoId, sourceUrl: url };
-    detectCache.set(url, { data, expiresAt: Date.now() + DETECT_CACHE_TTL_MS });
-    ctx.body = data;
+    ctx.body = {
+      type: 'youtube',
+      value: broadcast.broadcastId,
+      title: broadcast.title || null,
+      sourceUrl: url,
+    };
+  },
+
+  /**
+   * GET /api/screens/live-sources?url=<optional feed url>&limit=<n>
+   * Like detectSource, but returns the N most recent entries instead of
+   * just the top one — for when more than one broadcast might be
+   * relevant at once, so the dashboard can show each by title and let
+   * you push the right id to the right screen instead of only ever
+   * getting whatever happens to be newest.
+   *
+   * NOTE: the original PHP script only ever read broadcast_id/title off
+   * this feed, so there's no confirmed field marking an entry as
+   * currently "live"/"active" — each item's `status` is passed through
+   * as-is if the API happens to include one (null otherwise). If you
+   * know the actual field name, tell me and I'll filter on it properly
+   * instead of just listing the N most recent by id.
+   */
+  async listLiveSources(ctx) {
+    const url = ctx.query.url || DEFAULT_DETECT_URL;
+    const limit = Math.min(Number(ctx.query.limit) || 10, 50);
+
+    if (!/^https?:\/\//i.test(url)) {
+      return ctx.badRequest('url must start with http:// or https://');
+    }
+
+    let json;
+    try {
+      const sep = url.includes('?') ? '&' : '?';
+      const res = await fetch(`${url}${sep}sort=-id&limit=${limit}`);
+      if (!res.ok) throw new Error(`Feed responded ${res.status}`);
+      json = await res.json();
+    } catch (err) {
+      return ctx.badRequest(`Could not reach ${url}: ${err.message}`);
+    }
+
+    const items = json?.data || [];
+
+    ctx.body = {
+      data: items
+        .filter((item) => item.broadcast_id)
+        .map((item) => ({
+          value: item.broadcast_id,
+          title: item.title || item.broadcast_id,
+          status: extractStatus(item),
+        })),
+    };
   },
 
   /**
