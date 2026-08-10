@@ -9,6 +9,11 @@ const SOURCE_UID = 'api::broadcast-source.broadcast-source';
 const EXTERNAL_FEED_CACHE_TTL_MS = 30 * 1000;
 const externalFeedCache = new Map(); // url -> { data, expiresAt }
 
+// Where "Fetch live ID" defaults to if the caller doesn't specify a url.
+const DEFAULT_DETECT_URL = 'https://billboards.visiongroup.co.ug';
+const DETECT_CACHE_TTL_MS = 15 * 1000;
+const detectCache = new Map(); // url -> { data, expiresAt }
+
 function computeStatus(screen, now) {
   if (!screen.lastSeenAt) return 'offline';
   const secondsSince = (now - new Date(screen.lastSeenAt).getTime()) / 1000;
@@ -92,6 +97,24 @@ function slugify(input) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Pulls a YouTube video ID out of a page's raw HTML — matches the
+ * various ways a video can be embedded/linked (iframe embed src,
+ * youtube-nocookie, watch?v=, youtu.be short links).
+ */
+function extractYouTubeId(html) {
+  const patterns = [
+    /youtube(?:-nocookie)?\.com\/embed\/([a-zA-Z0-9_-]{6,})/i,
+    /youtube\.com\/watch\?[^"'\s<>]*[?&]v=([a-zA-Z0-9_-]{6,})/i,
+    /youtu\.be\/([a-zA-Z0-9_-]{6,})/i,
+  ];
+  for (const pattern of patterns) {
+    const match = html.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
 }
 
 async function uniqueSlug(strapi, name) {
@@ -226,6 +249,45 @@ module.exports = ({ strapi }) => ({
     });
 
     ctx.body = { ok: true, source: created };
+  },
+
+  /**
+   * GET /api/screens/detect-source?url=<optional page url>
+   * Fetches the given page (defaults to https://billboards.visiongroup.co.ug)
+   * and pulls a YouTube video ID out of its HTML — for the dashboard's
+   * "Fetch live ID" button, so you don't have to manually copy an ID out
+   * of the current site before pushing/registering it.
+   */
+  async detectSource(ctx) {
+    const url = ctx.query.url || DEFAULT_DETECT_URL;
+
+    if (!/^https?:\/\//i.test(url)) {
+      return ctx.badRequest('url must start with http:// or https://');
+    }
+
+    const cached = detectCache.get(url);
+    if (cached && cached.expiresAt > Date.now()) {
+      ctx.body = cached.data;
+      return;
+    }
+
+    let html;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Page responded ${res.status}`);
+      html = await res.text();
+    } catch (err) {
+      return ctx.badRequest(`Could not reach ${url}: ${err.message}`);
+    }
+
+    const videoId = extractYouTubeId(html);
+    if (!videoId) {
+      return ctx.notFound(`No YouTube video ID found on ${url}`);
+    }
+
+    const data = { type: 'youtube', value: videoId, sourceUrl: url };
+    detectCache.set(url, { data, expiresAt: Date.now() + DETECT_CACHE_TTL_MS });
+    ctx.body = data;
   },
 
   /**
