@@ -110,10 +110,17 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
   // rather than in a content-type lifecycle, since we have the created row
   // (and its real id) in hand rather than depending on the lifecycle event shape.
   async create(ctx) {
-    const { masthead, publication_date, total_pages, notes } = ctx.request.body || {};
+    const { masthead, publication_date, total_pages, notes, product } = ctx.request.body || {};
     try {
       const publication = await strapi.entityService.create('api::pager-publication.pager-publication', {
-        data: { masthead, publication_date, total_pages, notes },
+        data: {
+          masthead,
+          publication_date,
+          total_pages,
+          notes,
+          ...(product ? { product: { connect: [product] } } : {}),
+        },
+        populate: { product: true },
       });
 
       const publicationId = publication.id;
@@ -144,6 +151,7 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     const { id } = ctx.params;
     const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id, {
       populate: {
+        product: true,
         pages: {
           populate: {
             adverts: {
@@ -166,6 +174,7 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
     const { id } = ctx.params;
     const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id, {
       populate: {
+        product: true,
         pages: {
           populate: {
             adverts: {
@@ -194,6 +203,9 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
         publication_date: publication.publication_date,
         total_pages: publication.total_pages,
         status: publication.status,
+        product: publication.product
+          ? { id: publication.product.id, name: publication.product.product_name }
+          : null,
         mid_page: mid,
       },
       left,
@@ -515,7 +527,9 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
       }
     }
 
-    const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id);
+    const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id, {
+      populate: { product: true },
+    });
     if (!publication) return ctx.notFound('Publication not found');
 
     const allPages = await strapi.entityService.findMany('api::pager-page.pager-page', {
@@ -552,12 +566,14 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
           });
           continue;
         }
-        const advert = await strapi.entityService.findOne('api::advert.advert', advertId);
+        const advert = await strapi.entityService.findOne('api::advert.advert', advertId, {
+          populate: { product: true },
+        });
         if (!advert) {
           failures.push({ advertId, reason: 'advert not found' });
           continue;
         }
-        if (!isPrintEligible(advert)) {
+        if (!isPrintEligible(advert, { publicationProductId: publication.product?.id ?? null })) {
           failures.push({ advertId, reason: 'not print-eligible' });
         }
       }
