@@ -164,8 +164,14 @@ module.exports = {
       handler: 'design-house.getActiveAdverts',
       config: {
         auth: false,
-        description: 'Get active adverts for design work with optional date range',
-        tags: ['Design House']
+        description: 'Get active adverts for design work with optional date range and product/category filter',
+        tags: ['Design House'],
+        body: {
+          startDate: { type: 'string', required: false, description: 'YYYY-MM-DD', example: '2026-08-01' },
+          endDate:   { type: 'string', required: false, description: 'YYYY-MM-DD', example: '2026-08-31' },
+          productId: { type: 'number', required: false, description: 'Scope results to one product (masthead), e.g. New Vision', example: 3 },
+          scope:     { type: 'string', required: false, description: "category_type to scope by, or 'all' to lift the constraint. Defaults to 'print'.", example: 'print' }
+        }
       }
     },
     {
@@ -177,8 +183,20 @@ module.exports = {
         description: 'Get every advert booked to run on a specific date, flagged with whether that date is already scheduled',
         tags: ['Design House'],
         body: {
-          date: { type: 'string', required: true, description: 'YYYY-MM-DD', example: '2026-08-03' }
+          date: { type: 'string', required: true, description: 'YYYY-MM-DD', example: '2026-08-03' },
+          productId: { type: 'number', required: false, description: 'Scope results to one product (masthead), e.g. New Vision', example: 3 },
+          scope:     { type: 'string', required: false, description: "category_type to scope by, or 'all' to lift the constraint. Defaults to 'print'.", example: 'print' }
         }
+      }
+    },
+    {
+      method: 'GET',
+      path: '/design-house/product-categories',
+      handler: 'design-house.getProductCategories',
+      config: {
+        auth: false,
+        description: 'List every product category (Print, TV, Radio, Billboard, Web, …) — powers the scope radio buttons',
+        tags: ['Design House']
       }
     },
     {
@@ -224,16 +242,28 @@ module.exports = {
       }
     },
     {
+      method: 'GET',
+      path: '/design-house/products',
+      handler: 'design-house.getProducts',
+      config: {
+        auth: false,
+        description: "List active products, scoped by ?scope=<category_type> (defaults to 'print'; pass 'all' to lift the constraint)",
+        tags: ['Design House']
+      }
+    },
+    {
       method: 'POST',
       path: '/design-house/stats',
       handler: 'design-house.getDesignStats',
       config: {
         auth: false,
-        description: 'Get design statistics with optional date range',
+        description: 'Get design statistics with optional date range and product filter',
         tags: ['Design House'],
         body: {
           startDate: { type: 'string', description: 'Start date in YYYY-MM-DD format (optional, defaults to today)', example: '2026-01-01' },
-          endDate:   { type: 'string', description: 'End date in YYYY-MM-DD format (optional, defaults to today)',   example: '2026-01-31' }
+          endDate:   { type: 'string', description: 'End date in YYYY-MM-DD format (optional, defaults to today)',   example: '2026-01-31' },
+          productId: { type: 'number', required: false, description: 'Scope results to one product (masthead), e.g. New Vision', example: 3 },
+          scope:     { type: 'string', required: false, description: "category_type to scope by, or 'all' to lift the constraint. Defaults to 'print'.", example: 'print' }
         }
       }
     },
