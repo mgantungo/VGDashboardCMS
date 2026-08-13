@@ -111,7 +111,7 @@ module.exports = createCoreController('api::pager-page.pager-page', ({ strapi })
     const ids = advertIds.map((v) => Number(v));
 
     const page = await strapi.entityService.findOne('api::pager-page.pager-page', id, {
-      populate: { adverts: true, publication: true },
+      populate: { adverts: true, publication: { populate: { product: true } } },
     });
     if (!page) return ctx.notFound('Page not found');
 
@@ -121,10 +121,14 @@ module.exports = createCoreController('api::pager-page.pager-page', ({ strapi })
       return ctx.badRequest(`Advert(s) ${alreadyOnPage.join(', ')} already on this page`);
     }
 
+    const publicationProductId = page.publication?.product?.id ?? null;
+
     for (const advertId of ids) {
-      const advert = await strapi.entityService.findOne('api::advert.advert', advertId);
+      const advert = await strapi.entityService.findOne('api::advert.advert', advertId, {
+        populate: { product: true },
+      });
       if (!advert) return ctx.notFound(`Advert ${advertId} not found`);
-      if (!isPrintEligible(advert)) {
+      if (!isPrintEligible(advert, { publicationProductId })) {
         return ctx.badRequest(`Advert ${advertId} is not eligible for pager assignment`);
       }
     }
@@ -194,11 +198,17 @@ module.exports = createCoreController('api::pager-page.pager-page', ({ strapi })
   // Selection table and Schedule Queue already use, so the picker can show
   // "3 adverts · file.jpg" as one selectable unit instead of three separate
   // rows a person could accidentally split across pages.
+  //
+  // Scoped to this publication's product (when it has one) via
+  // isPrintEligible's publicationProductId option, same as assignAdverts —
+  // an advert from a different product never shows up as available here in
+  // the first place, rather than being selectable and then rejected on
+  // assign.
   async getAvailableAdverts(ctx) {
     const { id } = ctx.params;
 
     const page = await strapi.entityService.findOne('api::pager-page.pager-page', id, {
-      populate: { publication: true },
+      populate: { publication: { populate: { product: true } } },
     });
     if (!page) return ctx.notFound('Page not found');
 
@@ -211,11 +221,14 @@ module.exports = createCoreController('api::pager-page.pager-page', ({ strapi })
     );
 
     const candidates = await strapi.entityService.findMany('api::advert.advert', {
-      populate: { client: true },
+      populate: { client: true, product: true },
       filters: { isCanceled: false },
     });
 
-    const available = candidates.filter((a) => !usedAdvertIds.has(a.id) && isPrintEligible(a));
+    const publicationProductId = page.publication?.product?.id ?? null;
+    const available = candidates.filter(
+      (a) => !usedAdvertIds.has(a.id) && isPrintEligible(a, { publicationProductId })
+    );
 
     const slotMap = await buildSlotMap(strapi, page.publication?.publication_date);
     const groups = new Map(); // slotKey -> { adverts: [] }
