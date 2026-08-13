@@ -107,20 +107,6 @@ function buildReaderSpreadLayout(pages, totalPages) {
 }
 
 /**
- * TODO(felix): confirm the real "print advert" signal.
- * Placeholder eligibility check used by getAvailableAdverts — currently just
- * excludes cancelled/rejected adverts and requires an ad_size to be set.
- * Swap the body of this function once the actual field is confirmed
- * (e.g. advert.product?.category === 'print').
- */
-function isPrintEligible(advert) {
-  if (!advert) return false;
-  if (advert.isCanceled) return false;
-  if (advert.status === 'editor_rejected' || advert.status === 'manager_rejected') return false;
-  return Boolean(advert.ad_size);
-}
-
-/**
  * Best-effort extraction of incoming advert ids from a Strapi v5 relation
  * payload, which may arrive as a plain array of ids/documentIds, or as
  * { set: [...] } / { connect: [...] }.
@@ -158,6 +144,36 @@ function extractRelationId(rel) {
     if (rel.set) return extractRelationId(rel.set);
   }
   return null;
+}
+
+/**
+ * Determines whether an advert may be assigned to a pager page.
+ *
+ * Previously a placeholder (TODO(felix)) that only excluded cancelled/
+ * rejected adverts and required ad_size to be set — it didn't check paid
+ * status or product at all, meaning unpaid adverts and adverts from any
+ * product could already be assigned to any publication today.
+ *
+ * options.publicationProductId — when provided (i.e. the publication this
+ * advert is being assigned into has a product set), the advert's own
+ * product must match it exactly. Publications created before the product
+ * field existed have no product set, so this constraint simply doesn't
+ * apply to them — they keep working exactly as before.
+ */
+function isPrintEligible(advert, options = {}) {
+  if (!advert) return false;
+  if (advert.isCanceled) return false;
+  if (advert.status === 'editor_rejected' || advert.status === 'manager_rejected') return false;
+  // Unpaid adverts must never be sent for printing.
+  if (!advert.isPaid) return false;
+  if (!advert.ad_size) return false;
+
+  if (options.publicationProductId != null) {
+    const advertProductId = extractRelationId(advert.product);
+    if (advertProductId !== options.publicationProductId) return false;
+  }
+
+  return true;
 }
 
 module.exports = {
