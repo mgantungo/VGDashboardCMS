@@ -53,6 +53,11 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::vgams-user.vgams-user"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
     }
   }
 }
