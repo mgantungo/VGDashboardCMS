@@ -8,6 +8,10 @@
  *   - isPaid: true          → only paid adverts qualify
  *   - hasRun: false         → adverts that have already run drop out of the queue
  *   - isCanceled: false     → exclude cancelled adverts
+ *   - product.category.category_type === scope → defaults to 'print' on every
+ *                             endpoint below (Design House works on print layout
+ *                             day-to-day); the front end can pass any other
+ *                             category_type, or 'all' to lift the constraint.
  *   - pendingDates          → publishing_dates minus dates already covered by an
  *                             advert-daily-schedule row; queue membership requires
  *                             at least one pendingDate after today.
@@ -186,6 +190,22 @@ const ADVERT_POPULATE = {
 // Controller
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Design House defaults to print layout (Pager/LayoutX), but the queue can
+ * be scoped to any product category — print, TV, radio, billboard, web,
+ * whatever exists in product-category — via `scope`. `scope` is the raw
+ * category_type value to filter on; pass 'all' (or omit) to lift the
+ * constraint entirely. `productId` further narrows to one specific product
+ * within whatever scope is active.
+ */
+function productFilter(productId, scope = 'print') {
+  const productConstraints = {};
+  if (scope && scope !== 'all') productConstraints.category = { category_type: scope };
+  if (productId) productConstraints.id = productId;
+  if (Object.keys(productConstraints).length === 0) return {};
+  return { product: productConstraints };
+}
+
 module.exports = {
 
   /**
@@ -198,7 +218,7 @@ module.exports = {
   async getActiveAdverts(ctx) {
     try {
       const body = bodyOf(ctx);
-      const { startDate, endDate } = body;
+      const { startDate, endDate, productId, scope } = body;
       const today = new Date().toISOString().split('T')[0];
       const scheduleStatus = strapi.service('api::advert.schedule-status');
 
@@ -207,6 +227,7 @@ module.exports = {
         isPaid:     true,
         hasRun:     false,
         isCanceled: false,
+        ...productFilter(productId, scope),
       };
 
       const raw = await strapi.entityService.findMany('api::advert.advert', {
@@ -269,7 +290,7 @@ module.exports = {
    */
   async getBookingsByDate(ctx) {
     try {
-      const { date } = bodyOf(ctx);
+      const { date, productId, scope } = bodyOf(ctx);
       if (!date) {
         return ctx.badRequest({
           success: false,
@@ -281,19 +302,21 @@ module.exports = {
       const today = new Date().toISOString().split('T')[0];
       const scheduleStatus = strapi.service('api::advert.schedule-status');
 
-      // DB-level filter on the three booleans only — publishing_dates (a JSON
-      // array) can't be queried in SQL, and start_date/end_date are NOT a
-      // reliable stand-in for it: end_date isn't guaranteed to actually span
-      // every entry in publishing_dates (e.g. a 4-day booking whose end_date
-      // was left at the first day), which silently drops later dates from
-      // this query before the publishing_dates check ever runs. So: filter
-      // on the booleans here, then match the exact date against
-      // publishing_dates in JS below.
+      // DB-level filter on the three booleans (and product, when the design
+      // team has scoped the queue to one masthead/product) — publishing_dates
+      // (a JSON array) can't be queried in SQL, and start_date/end_date are
+      // NOT a reliable stand-in for it: end_date isn't guaranteed to actually
+      // span every entry in publishing_dates (e.g. a 4-day booking whose
+      // end_date was left at the first day), which silently drops later dates
+      // from this query before the publishing_dates check ever runs. So:
+      // filter on the booleans (and product) here, then match the exact date
+      // against publishing_dates in JS below.
       const raw = await strapi.entityService.findMany('api::advert.advert', {
         filters: {
           isPaid:     true,
           isActive:   true,
           isCanceled: false,
+          ...productFilter(productId, scope),
         },
         fields:   ADVERT_FIELDS,
         populate:  ADVERT_POPULATE,
@@ -473,10 +496,14 @@ module.exports = {
    */
   async getDesignStats(ctx) {
     try {
+      const { productId, scope } = bodyOf(ctx);
       const today = new Date().toISOString().split('T')[0];
       const scheduleStatus = strapi.service('api::advert.schedule-status');
 
-      const baseFilter = { isPaid: true, hasRun: false, isCanceled: false };
+      const baseFilter = {
+        isPaid: true, hasRun: false, isCanceled: false,
+        ...productFilter(productId, scope),
+      };
 
       const [queueCandidates, scheduledAdverts] = await Promise.all([
         strapi.entityService.findMany('api::advert.advert', {
@@ -490,7 +517,10 @@ module.exports = {
         }),
         // isScheduled is now correctly maintained by schedule-status, safe to trust directly
         strapi.entityService.findMany('api::advert.advert', {
-          filters: { isPaid: true, isCanceled: false, isScheduled: true },
+          filters: {
+            isPaid: true, isCanceled: false, isScheduled: true,
+            ...productFilter(productId, scope),
+          },
           fields:  ['id'],
           limit:   -1,
         }),
@@ -524,6 +554,76 @@ module.exports = {
 
     } catch (error) {
       console.error('❌ getDesignStats:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * List active products for the design-house product filter — the design
+   * team works across multiple products/mastheads (New Vision, Bukedde, etc.)
+   * and needs to scope the queue to one of them.
+   * GET /api/design-house/products
+   */
+  async getProducts(ctx) {
+    try {
+      const scope = ctx.query.scope || 'print';
+
+      const products = await strapi.entityService.findMany('api::product.product', {
+        filters: {
+          is_active: true,
+          ...(scope !== 'all' ? { category: { category_type: scope } } : {}),
+        },
+        fields:  ['id', 'product_name', 'product_id'],
+        populate: {
+          category: { fields: ['id', 'category_name', 'category_type'] },
+        },
+        sort:  { product_name: 'asc' },
+        limit: -1,
+      });
+
+      return ctx.send({
+        success: true,
+        products: products.map(p => ({
+          id:        p.id,
+          name:      p.product_name,
+          productId: p.product_id,
+          category:  p.category?.category_name || null,
+          categoryType: p.category?.category_type || null,
+        })),
+      });
+
+    } catch (error) {
+      console.error('❌ getProducts:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * List every distinct product category — this powers the scope radio
+   * buttons (Print / TV / Radio / Billboard / Web / … / All) on the front
+   * end. Returns whatever actually exists in product-category, so the UI
+   * never has to hardcode guessed category_type strings.
+   * GET /api/design-house/product-categories
+   */
+  async getProductCategories(ctx) {
+    try {
+      const categories = await strapi.entityService.findMany('api::product-category.product-category', {
+        fields: ['id', 'category_name', 'category_type'],
+        sort:   { category_name: 'asc' },
+        limit:  -1,
+      });
+
+      return ctx.send({
+        success: true,
+        categories: categories.map(c => ({
+          id:   c.id,
+          name: c.category_name,
+          type: c.category_type,
+        })),
+      });
+
+    } catch (error) {
+      console.error('❌ getProductCategories:', error);
       return ctx.internalServerError({ success: false, message: error.message });
     }
   },
