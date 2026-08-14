@@ -157,6 +157,132 @@ module.exports = createCoreController('api::rate-card.rate-card', ({ strapi }) =
     }
   },
 
+
+  async analyzeResources(ctx) {
+  try {
+    const axios = require('axios');
+
+    console.log('🔍 Starting ResourceDS analysis...');
+    console.log(`📡 Endpoint: ${process.env.EXTERNAL_API_URL_RESOURCEDS}`);
+    console.log(`🔐 Authentication: Using Basic Auth with username: ${process.env.EXTERNAL_API_USERNAME}`);
+
+    const response = await axios.get(process.env.EXTERNAL_API_URL_RESOURCEDS, {
+      auth: {
+        username: process.env.EXTERNAL_API_USERNAME,
+        password: process.env.EXTERNAL_API_PASSWORD
+      },
+      headers: { 'Accept': 'application/json' },
+      timeout: 30000
+    });
+
+    // ============ LOGGING THE RESPONSE ============
+    
+    // 1. Log response status
+    console.log(`✅ Response Status: ${response.status} ${response.statusText}`);
+    
+    // 2. Log response headers (useful for debugging)
+    console.log('📋 Response Headers:', JSON.stringify(response.headers, null, 2));
+    
+    // 3. Log the FULL response data structure
+    console.log('📊 Full Response Data Structure:');
+    console.log(JSON.stringify(response.data, null, 2));
+    
+    // 4. Log specific parts of the response
+    if (response.data) {
+      console.log(`📦 Response has data: ${!!response.data}`);
+      
+      // Check if it's an array or object
+      if (Array.isArray(response.data)) {
+        console.log(`📋 Response is an array with ${response.data.length} items`);
+        console.log('📝 First item sample:', JSON.stringify(response.data[0], null, 2));
+      } else if (response.data.value) {
+        console.log(`📋 Response has "value" property with ${response.data.value.length} items`);
+        console.log('📝 First item sample:', JSON.stringify(response.data.value[0], null, 2));
+      } else if (response.data.items) {
+        console.log(`📋 Response has "items" property with ${response.data.items.length} items`);
+        console.log('📝 First item sample:', JSON.stringify(response.data.items[0], null, 2));
+      } else if (response.data.results) {
+        console.log(`📋 Response has "results" property with ${response.data.results.length} items`);
+        console.log('📝 First item sample:', JSON.stringify(response.data.results[0], null, 2));
+      } else {
+        console.log('📋 Response data keys:', Object.keys(response.data));
+        console.log('📝 Full response:', JSON.stringify(response.data, null, 2));
+      }
+    }
+    
+    // 5. Log if no data found
+    const records = response.data.value || response.data.items || response.data.results || [];
+    if (records.length === 0) {
+      console.warn('⚠️ No records found in response');
+    } else {
+      console.log(`✅ Found ${records.length} total records`);
+      
+      // Log all available columns/fields
+      const sampleRecord = records[0] || {};
+      console.log('📋 Available fields/columns:', Object.keys(sampleRecord));
+      
+      // Log first 3 records as sample
+      console.log('🔍 Sample records (first 3):');
+      records.slice(0, 3).forEach((record, index) => {
+        console.log(`  Record ${index + 1}:`, JSON.stringify(record, null, 2));
+      });
+      
+      // Log unique values for important fields (if they exist)
+      if (sampleRecord.Dimension_Code31351) {
+        const dimensionCodes = [...new Set(records.map(r => r.Dimension_Code31351))];
+        console.log(`📊 Unique Dimension_Code31351 values:`, dimensionCodes);
+      }
+      
+      if (sampleRecord.Code) {
+        const codes = [...new Set(records.map(r => r.Code))];
+        console.log(`📊 Sample of Code values (first 10):`, codes.slice(0, 10));
+      }
+      
+      if (sampleRecord.Name) {
+        const names = [...new Set(records.map(r => r.Name))];
+        console.log(`📊 Sample of Name values (first 10):`, names.slice(0, 10));
+      }
+    }
+
+    // ============ RETURN RESPONSE ============
+    
+    return ctx.send({
+      success: true,
+      message: 'ResourceDS analysis completed',
+      // Return the full data for the client to see
+      fullResponse: response.data,
+      summary: {
+        status: response.status,
+        statusText: response.statusText,
+        totalRecords: records.length,
+        availableFields: records.length > 0 ? Object.keys(records[0]) : [],
+        sampleRecords: records.slice(0, 3),
+        // Show unique dimension codes if available
+        dimensionCodes: records.length > 0 && records[0].Dimension_Code31351 
+          ? [...new Set(records.map(r => r.Dimension_Code31351))]
+          : []
+      }
+    });
+
+  } catch (error) {
+    console.error('💥 Error in analyzeResources:', error.message);
+    
+    // Log full error details
+    if (error.response) {
+      console.error('BC API Response Status:', error.response.status);
+      console.error('BC API Response Data:', JSON.stringify(error.response.data, null, 2));
+      console.error('BC API Response Headers:', JSON.stringify(error.response.headers, null, 2));
+    } else if (error.request) {
+      console.error('No response received from BC API');
+      console.error('Request details:', error.request);
+    }
+    
+    return ctx.badRequest(error.message);
+  }
+}
+  
+
+  /*
   async analyzeResources(ctx) {
     try {
       const axios = require('axios');
@@ -181,7 +307,9 @@ module.exports = createCoreController('api::rate-card.rate-card', ({ strapi }) =
     } catch (error) {
       return ctx.badRequest(error.message);
     }
-  },
+  }
+  */
+  ,
   
   async inspectDimValuDS(ctx) {
     try {
