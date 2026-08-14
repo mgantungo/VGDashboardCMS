@@ -31,7 +31,7 @@ module.exports = {
       method: 'GET',
       path: '/rate-cards/inspectDimValuDS',
       handler: 'rate-card.inspectDimValuDS',
-      config: { policies: [], middlewares: [] }
+      config: { auth:false,policies: [], middlewares: [] }
     },
 
     // ── NEW: Search endpoint with POST body ──────────────────────────────
