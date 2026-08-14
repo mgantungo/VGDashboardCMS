@@ -194,16 +194,25 @@ module.exports = createCoreController('api::pager-page.pager-page', ({ strapi })
 
   // GET /pager-pages/:id/available-adverts
   // Print-eligible adverts not already placed anywhere in this page's
-  // publication — grouped by ad slot, matching the shape the Print Queue
-  // Selection table and Schedule Queue already use, so the picker can show
-  // "3 adverts · file.jpg" as one selectable unit instead of three separate
-  // rows a person could accidentally split across pages.
+  // publication, actually booked to run on this publication's date —
+  // grouped by ad slot, matching the shape the Print Queue Selection table
+  // and Schedule Queue already use, so the picker can show "3 adverts ·
+  // file.jpg" as one selectable unit instead of three separate rows a
+  // person could accidentally split across pages.
   //
   // Scoped to this publication's product (when it has one) via
   // isPrintEligible's publicationProductId option, same as assignAdverts —
   // an advert from a different product never shows up as available here in
   // the first place, rather than being selectable and then rejected on
   // assign.
+  //
+  // Every ungrouped (non-classified) advert here is real: it's paid,
+  // matches this publication's product, and is booked for this exact date
+  // — whether or not Design House has attached a file or scheduled it yet.
+  // The client decides whether ticking is still required per-advert (see
+  // PagerAdvertPicker.vue): classified ad slots stay gated behind Design
+  // House's ticked flow since grouping is still their call; non-classified
+  // adverts are not.
   async getAvailableAdverts(ctx) {
     const { id } = ctx.params;
 
@@ -221,14 +230,30 @@ module.exports = createCoreController('api::pager-page.pager-page', ({ strapi })
     );
 
     const candidates = await strapi.entityService.findMany('api::advert.advert', {
-      populate: { client: true, product: true },
+      populate: {
+        client: true,
+        product: true,
+        // ad_type/size_dimension is the classified-vs-not signal the
+        // frontend picker uses (same fields exposed via design-house.js's
+        // rateCard field) - populated here too since this endpoint returns
+        // raw advert records, not that controller's transformed shape.
+        rate_card: { fields: ['ad_type', 'size_dimension'] },
+      },
       filters: { isCanceled: false },
     });
 
+    const publicationDate = page.publication?.publication_date;
     const publicationProductId = page.publication?.product?.id ?? null;
-    const available = candidates.filter(
-      (a) => !usedAdvertIds.has(a.id) && isPrintEligible(a, { publicationProductId })
-    );
+    const available = candidates.filter((a) => {
+      if (usedAdvertIds.has(a.id)) return false;
+      if (!isPrintEligible(a, { publicationProductId })) return false;
+      // publishing_dates is a JSON array and can't be filtered in the query
+      // above (same constraint noted in design-house.js) - checked here.
+      if (publicationDate && !(Array.isArray(a.publishing_dates) && a.publishing_dates.includes(publicationDate))) {
+        return false;
+      }
+      return true;
+    });
 
     const slotMap = await buildSlotMap(strapi, page.publication?.publication_date);
     const groups = new Map(); // slotKey -> { adverts: [] }
