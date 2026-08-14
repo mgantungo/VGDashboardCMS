@@ -194,7 +194,7 @@ async inspectDimValuDS(ctx) {
         username: process.env.EXTERNAL_API_USERNAME,
         password: process.env.EXTERNAL_API_PASSWORD
       },
-      timeout: 30000
+      timeout: 60000
     });
 
     const data = response.data;
