@@ -125,14 +125,6 @@ function transformAdvert(advert, today, scheduleStatus) {
     isCanceled:          advert.isCanceled,
     attachments,
     attachmentsCount:    attachments.length,
-    // Populated (ADVERT_POPULATE.rate_card) but previously dropped before
-    // reaching the response. This is the signal downstream consumers (the
-    // Pager's editor-facing picker) use to tell classifieds apart from
-    // everything else - classified rate cards' ad_type/size_dimension
-    // contain "classified"/"per word" (see the rate card data itself).
-    rateCard: advert.rate_card
-      ? { adType: advert.rate_card.ad_type, sizeDimension: advert.rate_card.size_dimension }
-      : null,
     totalFileSize:       formatFileSize(totalBytes),
     createdBy:           advert.vgams_user?.name || advert.vgams_user?.email || '',
     salesAgents,
