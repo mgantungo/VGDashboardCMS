@@ -192,7 +192,7 @@ module.exports = createCoreController('api::rate-card.rate-card', ({ strapi }) =
           username: process.env.EXTERNAL_API_USERNAME,
           password: process.env.EXTERNAL_API_PASSWORD
         },
-        timeout: 30000
+        headers: { 'Accept': 'application/json' }
       });
 
       const data    = response.data;
