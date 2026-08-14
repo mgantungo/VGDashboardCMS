@@ -125,6 +125,12 @@ function transformAdvert(advert, today, scheduleStatus) {
     isCanceled:          advert.isCanceled,
     attachments,
     attachmentsCount:    attachments.length,
+    // Populated (ADVERT_POPULATE.rate_card) but previously not returned.
+    // Consumers (e.g. the editor's Paid Adverts view) use this to detect
+    // classifieds: ad_type/size_dimension containing "classified"/"per word".
+    rateCard: advert.rate_card
+      ? { adType: advert.rate_card.ad_type, sizeDimension: advert.rate_card.size_dimension }
+      : null,
     totalFileSize:       formatFileSize(totalBytes),
     createdBy:           advert.vgams_user?.name || advert.vgams_user?.email || '',
     salesAgents,
