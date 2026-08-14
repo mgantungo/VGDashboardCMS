@@ -182,6 +182,7 @@ module.exports = createCoreController('api::rate-card.rate-card', ({ strapi }) =
       return ctx.badRequest(error.message);
     }
   },
+/*
 async inspectDimValuDS(ctx) {
   try {
     const axios = require('axios');
@@ -310,7 +311,7 @@ async inspectDimValuDS(ctx) {
     return ctx.badRequest(error.message);
   }
 }
-  /*
+  */
   async inspectDimValuDS(ctx) {
     try {
       const axios = require('axios');
@@ -399,7 +400,7 @@ async inspectDimValuDS(ctx) {
       return ctx.badRequest(error.message);
     }
   }
-  */,
+  ,
 
   /**
    * PATCH /api/rate-cards/:id/fields
