@@ -51,6 +51,12 @@ function jsonHeaders() {
   return { 'Content-Type': 'application/json' };
 }
 
+function formatCodes(row) {
+  const fc = row.full_color_no || '—';
+  const bw = row.black_color_no || '—';
+  return `[FC: ${fc} | BW: ${bw}]`;
+}
+
 let productListCache = null;
 
 async function fetchAllProducts() {
@@ -114,11 +120,13 @@ async function createRateCard(productId, row) {
       effective_date: row.effective_date,
       expiry_date: row.expiry_date,
       surcharge_percentage: row.surcharge_percentage ?? 0,
+      full_color_no: row.full_color_no ?? null,
+      black_color_no: row.black_color_no ?? null,
     },
   };
 
   if (DRY_RUN) {
-    console.log(`  [dry-run] would create: ${row.ad_type}${row.size_dimension ? ` (${row.size_dimension})` : ''}`);
+    console.log(`  [dry-run] would create: ${row.ad_type}${row.size_dimension ? ` (${row.size_dimension})` : ''} ${formatCodes(row)}`);
     return { skipped: false, dryRun: true };
   }
 
@@ -136,6 +144,37 @@ async function createRateCard(productId, row) {
   return { skipped: false, dryRun: false };
 }
 
+function checkForDuplicateCodes(data) {
+  const codeMap = new Map(); // code -> [{masthead, ad_type, size_dimension}]
+
+  for (const [mastheadKey, mastheadInfo] of Object.entries(data)) {
+    for (const row of mastheadInfo.rates || []) {
+      for (const [field, code] of [['full_color_no', row.full_color_no], ['black_color_no', row.black_color_no]]) {
+        if (!code) continue;
+        const label = `${mastheadKey} / ${row.ad_type}${row.size_dimension ? ` (${row.size_dimension})` : ''} [${field}]`;
+        if (!codeMap.has(code)) codeMap.set(code, []);
+        codeMap.get(code).push(label);
+      }
+    }
+  }
+
+  const duplicates = [...codeMap.entries()].filter(([, labels]) => {
+    // Same code reused for genuinely different ad_types is suspicious;
+    // reused across mastheads for the *same* ad_type is expected (shared BC item).
+    const distinctAdTypes = new Set(labels.map((l) => l.split(' / ')[1].split(' [')[0]));
+    return distinctAdTypes.size > 1;
+  });
+
+  if (duplicates.length > 0) {
+    console.warn('\n⚠ Warning: the following BC codes are assigned to more than one distinct ad_type — double-check the mapping:');
+    for (const [code, labels] of duplicates) {
+      console.warn(`  ${code}:`);
+      labels.forEach((l) => console.warn(`    - ${l}`));
+    }
+    console.warn('');
+  }
+}
+
 async function run() {
   console.log(`Using STRAPI_URL: ${STRAPI_URL}`);
 
@@ -146,6 +185,8 @@ async function run() {
 
   const raw = fs.readFileSync(DATA_FILE, 'utf-8');
   const data = JSON.parse(raw);
+
+  checkForDuplicateCodes(data);
 
   const summary = { created: 0, skipped: 0, failed: 0, total: 0 };
 
@@ -191,7 +232,7 @@ async function run() {
 
         const result = await createRateCard(product.id, row);
         if (!result.dryRun) {
-          console.log(`  [ok] created: ${row.ad_type}${row.size_dimension ? ` (${row.size_dimension})` : ''}`);
+          console.log(`  [ok] created: ${row.ad_type}${row.size_dimension ? ` (${row.size_dimension})` : ''} ${formatCodes(row)}`);
           summary.created += 1;
         }
       } catch (err) {
