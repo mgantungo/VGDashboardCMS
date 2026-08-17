@@ -37,6 +37,13 @@ const PRODUCT_NAME_MAP = {
   bukedde_ku_wiikendi: 'bukedde ku wiikendi',
 };
 
+function formatError(err) {
+  // Node's fetch wraps the real network error (ECONNREFUSED, ENOTFOUND, cert
+  // errors, etc.) inside err.cause and just says "fetch failed" at the top level.
+  const cause = err && err.cause ? ` | cause: ${err.cause.code || err.cause.message || err.cause}` : '';
+  return `${err.message}${cause}`;
+}
+
 function jsonHeaders() {
   return { 'Content-Type': 'application/json' };
 }
@@ -150,7 +157,7 @@ async function run() {
     try {
       productId = await findProductIdByName(productName);
     } catch (err) {
-      console.error(`  ERROR looking up product: ${err.message}`);
+      console.error(`  ERROR looking up product: ${formatError(err)}`);
       continue;
     }
 
@@ -184,7 +191,7 @@ async function run() {
           summary.created += 1;
         }
       } catch (err) {
-        console.error(`  [fail] ${row.ad_type}: ${err.message}`);
+        console.error(`  [fail] ${row.ad_type}: ${formatError(err)}`);
         summary.failed += 1;
       }
     }
