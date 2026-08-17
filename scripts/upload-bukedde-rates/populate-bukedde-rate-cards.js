@@ -41,15 +41,36 @@ function jsonHeaders() {
   return { 'Content-Type': 'application/json' };
 }
 
-async function findProductIdByName(productName) {
-  const url = `${STRAPI_URL}/api/products?filters[product_name][$eqi]=${encodeURIComponent(productName)}&fields[0]=product_name`;
+async function tryFindProduct(productName, operator) {
+  const url = `${STRAPI_URL}/api/products?filters[product_name][${operator}]=${encodeURIComponent(productName)}&fields[0]=product_name`;
   const res = await fetch(url, { headers: jsonHeaders() });
   if (!res.ok) {
-    throw new Error(`Failed to look up product "${productName}": ${res.status} ${res.statusText}`);
+    const body = await res.text();
+    throw new Error(`Lookup failed (${operator}) for "${productName}": ${res.status} ${res.statusText} - ${body}`);
   }
   const json = await res.json();
-  const match = json.data?.[0];
-  return match ? match.id : null;
+  return { json, url };
+}
+
+async function findProductIdByName(productName) {
+  // Try exact case-insensitive match first, then fall back to a looser
+  // "contains" match in case $eqi is restricted or casing differs.
+  let { json, url } = await tryFindProduct(productName, '$eqi');
+
+  if (!json.data?.length) {
+    ({ json, url } = await tryFindProduct(productName, '$containsi'));
+  }
+
+  if (!json.data?.length) {
+    console.log(`    (debug) no match found. Last query: ${url}`);
+    return null;
+  }
+
+  if (json.data.length > 1) {
+    console.warn(`    (warning) multiple products matched "${productName}", using the first one (id: ${json.data[0].id})`);
+  }
+
+  return json.data[0].id;
 }
 
 async function rateCardExists({ productId, ad_type, size_dimension }) {
