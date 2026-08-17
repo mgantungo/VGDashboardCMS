@@ -1,5 +1,5 @@
 /**
- * scripts/update-bukedde-rate-cards.js
+ * scripts/upload-bukedde-rates/update-bukedde-rate-cards.js
  *
  * Populates the `rate-card` (api::rate-card.rate-card) collection in Strapi
  * with Bukedde and Bukedde Ku Wiikendi rate card data.
@@ -181,6 +181,20 @@ async function updateRateCard(documentId, row) {
   return { dryRun: false };
 }
 
+async function verifyRateCardBelongsToProduct(documentId, expectedProductId) {
+  const url = `${STRAPI_URL}/api/rate-cards/${documentId}?populate=product`;
+  const res = await fetch(url, { headers: jsonHeaders() });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to verify rate-card ${documentId}: ${res.status} ${res.statusText} - ${body}`);
+  }
+  const json = await res.json();
+  // Handle either raw record or { data: {...} } wrapper shape.
+  const record = json && json.data ? json.data : json;
+  const actualProductId = record?.product?.id;
+  return actualProductId === expectedProductId;
+}
+
 function checkForDuplicateCodes(data) {
   const codeMap = new Map(); // code -> [{masthead, ad_type, size_dimension}]
 
@@ -262,6 +276,13 @@ async function run() {
 
         if (match) {
           if (UPDATE_EXISTING) {
+            const belongsToProduct = await verifyRateCardBelongsToProduct(match.documentId, product.id);
+            if (!belongsToProduct) {
+              console.error(`  [fail] "${row.ad_type}${row.size_dimension ? ` (${row.size_dimension})` : ''}" matched documentId ${match.documentId} but it does NOT belong to product ${product.id} (${productName}) — refusing to update. This likely means another product has a rate card with the same ad_type/size_dimension.`);
+              summary.failed += 1;
+              continue;
+            }
+
             const result = await updateRateCard(match.documentId, row);
             if (!result.dryRun) {
               console.log(`  [updated] ${row.ad_type}${row.size_dimension ? ` (${row.size_dimension})` : ''} ${formatCodes(row)}`);
