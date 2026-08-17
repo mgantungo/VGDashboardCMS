@@ -12,54 +12,62 @@
       {
         "section": "Special Position",
         "note": "pages 2 to 7, sports pages",
-        "ad_type": "Front Page Solus 6cm x 6col",
-        "size_dimension": null,
+        "ad_type": "Front Page Solus",
+        "size_dimension": "6cm x 6col",
         "price_fc": 3200000,
         "price_bw": null,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK1001",
+        "black_color_no": null
       },
       {
         "section": "Special Position",
         "note": "pages 2 to 7, sports pages",
-        "ad_type": "Front Page Ear Piece 3cm x 1col",
-        "size_dimension": null,
+        "ad_type": "Front Page Ear Piece",
+        "size_dimension": "3cm x 1col",
         "price_fc": 900000,
         "price_bw": null,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0005E",
+        "black_color_no": null
       },
       {
         "section": "Special Position",
         "note": "pages 2 to 7, sports pages",
-        "ad_type": "Back Page Solus 10cm x 6col",
-        "size_dimension": null,
+        "ad_type": "Back Page Solus",
+        "size_dimension": "10cm x 6col",
         "price_fc": 3561600,
         "price_bw": null,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0004",
+        "black_color_no": null
       },
       {
         "section": "Special Position",
         "note": "pages 2 to 7, sports pages",
-        "ad_type": "Back Page Ear Piece 3cm x 1col",
-        "size_dimension": null,
+        "ad_type": "Back Page Ear Piece",
+        "size_dimension": "3cm x 1col",
         "price_fc": 900000,
         "price_bw": null,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0005F",
+        "black_color_no": null
       },
       {
         "section": "Main Body Display",
@@ -72,7 +80,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0001C",
+        "black_color_no": "ADBK0001BW"
       },
       {
         "section": "Main Body Display",
@@ -85,7 +95,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0002",
+        "black_color_no": "ADBK0002A"
       },
       {
         "section": "Main Body Display",
@@ -98,7 +110,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0002V",
+        "black_color_no": "ADBK0002V1"
       },
       {
         "section": "Main Body Display",
@@ -111,33 +125,39 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0003",
+        "black_color_no": "ADBK0003A"
       },
       {
         "section": "Main Body Display",
         "note": "Rate includes translation charges",
         "ad_type": "10cm x 3col / 12.7cm",
-        "size_dimension": null,
+        "size_dimension": "10cm x 3col / 12.7cm",
         "price_fc": 1626000,
         "price_bw": 1293000,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0005C",
+        "black_color_no": "ADBK0005"
       },
       {
         "section": "Main Body Display",
         "note": "Per centimetre column will only apply for sizes not specified above",
-        "ad_type": "Per Centimetre Column",
-        "size_dimension": null,
+        "ad_type": "Per Centimeter Column",
+        "size_dimension": "Per cm col",
         "price_fc": 54200,
         "price_bw": 43100,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBKCC001C",
+        "black_color_no": "ADBKCC001"
       },
       {
         "section": "Classifieds",
@@ -150,7 +170,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBUK002",
+        "black_color_no": "ADBUK003"
       },
       {
         "section": "Classifieds",
@@ -163,7 +185,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBKSD001C",
+        "black_color_no": "ADBKSD001"
       },
       {
         "section": "Classifieds",
@@ -176,7 +200,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": null,
+        "black_color_no": "ADBK00010"
       },
       {
         "section": "Classifieds",
@@ -189,46 +215,24 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": null,
+        "black_color_no": "ADBK0010"
       },
       {
         "section": "Classifieds",
         "note": null,
         "ad_type": "Classified Photo/Logo",
-        "size_dimension": null,
+        "size_dimension": "each",
         "price_fc": 24000,
         "price_bw": 20000,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
-      },
-      {
-        "section": "Supplements/Special Editorial Sections/Jobs and Tenders",
-        "note": "Rate is inclusive of website www.newvision.co.ug",
-        "ad_type": "Any size up to",
-        "size_dimension": "30cm x 26cm",
-        "price_fc": 6700000,
-        "price_bw": null,
-        "currency": "UGX",
-        "base_unit_of_measure": "ADS",
-        "effective_date": "2024-07-01",
-        "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
-      },
-      {
-        "section": "Supplements/Special Editorial Sections/Jobs and Tenders",
-        "note": "Rate is inclusive of website www.newvision.co.ug",
-        "ad_type": "Per Page Thereafter",
-        "size_dimension": null,
-        "price_fc": 3400000,
-        "price_bw": null,
-        "currency": "UGX",
-        "base_unit_of_measure": "ADS",
-        "effective_date": "2024-07-01",
-        "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0011",
+        "black_color_no": "ADBK0012"
       }
     ]
   },
@@ -240,54 +244,62 @@
       {
         "section": "Special Position",
         "note": "pages 2 to 7, sports pages",
-        "ad_type": "Front Page Solus 6cm x 6col",
-        "size_dimension": null,
+        "ad_type": "Front Page Solus",
+        "size_dimension": "6cm x 6col",
         "price_fc": 3200000,
         "price_bw": null,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK1001",
+        "black_color_no": null
       },
       {
         "section": "Special Position",
         "note": "pages 2 to 7, sports pages",
-        "ad_type": "Front Page Ear Piece 3cm x 1col",
-        "size_dimension": null,
+        "ad_type": "Front Page Ear Piece",
+        "size_dimension": "3cm x 1col",
         "price_fc": 900000,
         "price_bw": null,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0005E",
+        "black_color_no": null
       },
       {
         "section": "Special Position",
         "note": "pages 2 to 7, sports pages",
-        "ad_type": "Back Page Solus 10cm x 6col",
-        "size_dimension": null,
+        "ad_type": "Back Page Solus",
+        "size_dimension": "10cm x 6col",
         "price_fc": 3561600,
         "price_bw": null,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0004",
+        "black_color_no": null
       },
       {
         "section": "Special Position",
         "note": "pages 2 to 7, sports pages",
-        "ad_type": "Back Page Ear Piece 3cm x 1col",
-        "size_dimension": null,
+        "ad_type": "Back Page Ear Piece",
+        "size_dimension": "3cm x 1col",
         "price_fc": 900000,
         "price_bw": null,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0005F",
+        "black_color_no": null
       },
       {
         "section": "Main Body Display",
@@ -300,7 +312,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": 25
+        "surcharge_percentage": 25,
+        "full_color_no": "ADBK0001C",
+        "black_color_no": "ADBK0001BW"
       },
       {
         "section": "Main Body Display",
@@ -313,7 +327,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": 25
+        "surcharge_percentage": 25,
+        "full_color_no": "ADBK0002",
+        "black_color_no": "ADBK0002A"
       },
       {
         "section": "Main Body Display",
@@ -326,7 +342,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": 25
+        "surcharge_percentage": 25,
+        "full_color_no": "ADBK0002V",
+        "black_color_no": "ADBK0002V1"
       },
       {
         "section": "Main Body Display",
@@ -339,46 +357,39 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": 25
+        "surcharge_percentage": 25,
+        "full_color_no": "ADBK0003",
+        "black_color_no": "ADBK0003A"
       },
       {
         "section": "Main Body Display",
         "note": "pages 8 onwards, excluding special supplement, pull-outs section and sports pages",
         "ad_type": "10cm x 3col / 12.7cm",
-        "size_dimension": null,
+        "size_dimension": "10cm x 3col / 12.7cm",
         "price_fc": 1626000,
         "price_bw": 1293000,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": 25
+        "surcharge_percentage": 25,
+        "full_color_no": "ADBK0005C",
+        "black_color_no": "ADBK0005"
       },
       {
         "section": "Main Body Display",
         "note": "pages 8 onwards, excluding special supplement, pull-outs section and sports pages",
-        "ad_type": "Per Centimetre Column",
-        "size_dimension": null,
+        "ad_type": "Per Centimeter Column",
+        "size_dimension": "Per cm col",
         "price_fc": 54200,
         "price_bw": 43100,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": 25
-      },
-      {
-        "section": "Classifieds",
-        "note": null,
-        "ad_type": "Sunday Extra",
-        "size_dimension": null,
-        "price_fc": 22000,
-        "price_bw": 17000,
-        "currency": "UGX",
-        "base_unit_of_measure": "ADS",
-        "effective_date": "2024-07-01",
-        "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 25,
+        "full_color_no": "ADBKCC001C",
+        "black_color_no": "ADBKCC001"
       },
       {
         "section": "Classifieds",
@@ -391,7 +402,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBKSD001C",
+        "black_color_no": "ADBKSD001"
       },
       {
         "section": "Classifieds",
@@ -404,7 +417,9 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": null,
+        "black_color_no": "ADBK00010"
       },
       {
         "section": "Classifieds",
@@ -417,46 +432,24 @@
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": null,
+        "black_color_no": "ADBK0010"
       },
       {
         "section": "Classifieds",
         "note": null,
         "ad_type": "Classified Photo/Logo",
-        "size_dimension": null,
+        "size_dimension": "each",
         "price_fc": 24000,
         "price_bw": 20000,
         "currency": "UGX",
         "base_unit_of_measure": "ADS",
         "effective_date": "2024-07-01",
         "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
-      },
-      {
-        "section": "Loose Leaf Inserts",
-        "note": "Rate per sheet",
-        "ad_type": "Any size up to 30cm x 26cm",
-        "size_dimension": null,
-        "price_fc": 6700000,
-        "price_bw": null,
-        "currency": "UGX",
-        "base_unit_of_measure": "ADS",
-        "effective_date": "2024-07-01",
-        "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
-      },
-      {
-        "section": "Loose Leaf Inserts",
-        "note": "Rate per sheet",
-        "ad_type": "Per Page Thereafter",
-        "size_dimension": null,
-        "price_fc": 3400000,
-        "price_bw": null,
-        "currency": "UGX",
-        "base_unit_of_measure": "ADS",
-        "effective_date": "2024-07-01",
-        "expiry_date": "2026-12-31",
-        "surcharge_percentage": null
+        "surcharge_percentage": 0,
+        "full_color_no": "ADBK0011",
+        "black_color_no": "ADBK0012"
       }
     ]
   }
