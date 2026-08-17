@@ -51,54 +51,54 @@ function jsonHeaders() {
   return { 'Content-Type': 'application/json' };
 }
 
-async function tryFindProduct(productName, operator) {
-  const url = `${STRAPI_URL}/api/products?filters[product_name][${operator}]=${encodeURIComponent(productName)}&fields[0]=product_name`;
+let productListCache = null;
+
+async function fetchAllProducts() {
+  if (productListCache) return productListCache;
+
+  const url = `${STRAPI_URL}/api/products`;
   const res = await fetch(url, { headers: jsonHeaders() });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Lookup failed (${operator}) for "${productName}": ${res.status} ${res.statusText} - ${body}`);
+    throw new Error(`Failed to fetch products list: ${res.status} ${res.statusText} - ${body}`);
   }
   const json = await res.json();
-  return { json, url };
+
+  // This instance's /api/products returns a raw array, not the standard
+  // Strapi { data: [...], meta: {...} } wrapper (likely a custom controller).
+  // Support both shapes just in case that changes later.
+  productListCache = Array.isArray(json) ? json : (json.data || []);
+  return productListCache;
 }
 
-async function findProductIdByName(productName) {
-  // Try exact case-insensitive match first, then fall back to a looser
-  // "contains" match in case $eqi is restricted or casing differs.
-  let { json, url } = await tryFindProduct(productName, '$eqi');
+async function findProductByName(productName) {
+  const products = await fetchAllProducts();
+  const target = productName.trim().toLowerCase();
 
-  if (!json.data?.length) {
-    ({ json, url } = await tryFindProduct(productName, '$containsi'));
-  }
+  const matches = products.filter(
+    (p) => (p.product_name || '').trim().toLowerCase() === target
+  );
 
-  if (!json.data?.length) {
-    console.log(`    (debug) no match found. Last query: ${url}`);
+  if (matches.length === 0) {
+    console.log(`    (debug) no product with product_name matching "${productName}" among ${products.length} products fetched.`);
     return null;
   }
 
-  if (json.data.length > 1) {
-    console.warn(`    (warning) multiple products matched "${productName}", using the first one (id: ${json.data[0].id})`);
+  if (matches.length > 1) {
+    console.warn(`    (warning) multiple products matched "${productName}", using the first one (id: ${matches[0].id})`);
   }
 
-  return json.data[0].id;
+  return matches[0];
 }
 
-async function rateCardExists({ productId, ad_type, size_dimension }) {
-  const params = new URLSearchParams();
-  params.set('filters[product][id][$eq]', productId);
-  params.set('filters[ad_type][$eq]', ad_type);
-  if (size_dimension) {
-    params.set('filters[size_dimension][$eq]', size_dimension);
-  }
-  params.set('fields[0]', 'ad_type');
-
-  const url = `${STRAPI_URL}/api/rate-cards?${params.toString()}`;
-  const res = await fetch(url, { headers: jsonHeaders() });
-  if (!res.ok) {
-    throw new Error(`Failed to check existing rate card for "${ad_type}": ${res.status} ${res.statusText}`);
-  }
-  const json = await res.json();
-  return (json.data?.length || 0) > 0;
+function rateCardExistsLocally(product, { ad_type, size_dimension }) {
+  const existing = product.rate_cards || [];
+  const normalize = (s) => (s || '').trim().toLowerCase();
+  return existing.some(
+    (rc) =>
+      normalize(rc.ad_type) === normalize(ad_type) &&
+      normalize(rc.size_dimension) === normalize(size_dimension)
+  );
 }
 
 async function createRateCard(productId, row) {
@@ -137,6 +137,8 @@ async function createRateCard(productId, row) {
 }
 
 async function run() {
+  console.log(`Using STRAPI_URL: ${STRAPI_URL}`);
+
   if (!fs.existsSync(DATA_FILE)) {
     console.error(`Data file not found: ${DATA_FILE}`);
     process.exit(1);
@@ -156,28 +158,27 @@ async function run() {
 
     console.log(`\n=== ${mastheadInfo.masthead} (product_name: "${productName}") ===`);
 
-    let productId;
+    let product;
     try {
-      productId = await findProductIdByName(productName);
+      product = await findProductByName(productName);
     } catch (err) {
       console.error(`  ERROR looking up product: ${formatError(err)}`);
       continue;
     }
 
-    if (!productId) {
+    if (!product) {
       console.error(`  Product "${productName}" not found in Strapi. Create it first, then re-run.`);
       continue;
     }
 
-    console.log(`  Found product id: ${productId}`);
+    console.log(`  Found product id: ${product.id} (${(product.rate_cards || []).length} existing rate cards)`);
 
     const rows = mastheadInfo.rates || [];
     for (const row of rows) {
       summary.total += 1;
       try {
-        if (SKIP_EXISTING && !DRY_RUN) {
-          const exists = await rateCardExists({
-            productId,
+        if (SKIP_EXISTING) {
+          const exists = rateCardExistsLocally(product, {
             ad_type: row.ad_type,
             size_dimension: row.size_dimension,
           });
@@ -188,7 +189,7 @@ async function run() {
           }
         }
 
-        const result = await createRateCard(productId, row);
+        const result = await createRateCard(product.id, row);
         if (!result.dryRun) {
           console.log(`  [ok] created: ${row.ad_type}${row.size_dimension ? ` (${row.size_dimension})` : ''}`);
           summary.created += 1;
