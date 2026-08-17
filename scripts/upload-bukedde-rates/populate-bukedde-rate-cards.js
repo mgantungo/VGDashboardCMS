@@ -23,7 +23,10 @@ const fs = require('fs');
 const path = require('path');
 
 // ---- Edit this before running if needed ----
-const STRAPI_URL = 'http://localhost:1337';
+// Using 127.0.0.1 instead of localhost avoids a common Node/undici issue where
+// fetch resolves "localhost" to ::1 (IPv6) and gets ECONNREFUSED if Strapi is
+// only listening on IPv4 — even though curl against the same URL works fine.
+const STRAPI_URL = 'http://127.0.0.1:1337';
 // ----------------------------------------------
 
 const DRY_RUN = process.argv.includes('--dry-run');
