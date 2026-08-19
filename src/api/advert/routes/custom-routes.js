@@ -242,6 +242,20 @@ module.exports = {
       }
     },
     {
+      method: 'POST',
+      path: '/design-house/adverts/:id/unmark-complete',
+      handler: 'design-house.unmarkDesignComplete',
+      config: {
+        auth: false,
+        description: 'Reverse an accidental design-complete mark - server re-verifies the BC reference code the client asked the user to confirm',
+        tags: ['Design House'],
+        body: {
+          bcCodeSuffix: { type: 'string', description: 'The advert\'s BC reference code (with or without the B-SO- prefix), typed by the user to confirm', required: true },
+          notes:        { type: 'string', description: 'Optional reason for the reversal', required: false }
+        }
+      }
+    },
+    {
       method: 'GET',
       path: '/design-house/products',
       handler: 'design-house.getProducts',
