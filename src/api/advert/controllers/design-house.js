@@ -494,6 +494,81 @@ module.exports = {
   },
 
   /**
+   * Reverse an accidental "mark design complete" (isApproved: false).
+   * The front end is expected to walk the user through two confirmation
+   * steps before ever calling this - (1) type the advert's BC reference
+   * code, (2) explicit confirm - but that's UX friction only. The actual
+   * safeguard against unmarking the wrong advert lives here: the submitted
+   * code is re-verified server-side against this specific advert's real
+   * bc_reference_number before anything changes.
+   *
+   * BC references follow the "B-SO-<code>" convention (e.g. "B-SO-236997N"
+   * — see the printed booking confirmations). The user only has to type the
+   * <code> portion, not the full "B-SO-" prefix.
+   *
+   * POST /api/design-house/adverts/:id/unmark-complete
+   * Body: { bcCodeSuffix: string, notes?: string }
+   */
+  async unmarkDesignComplete(ctx) {
+    try {
+      const { id } = ctx.params;
+      if (!id) return ctx.badRequest({ success: false, message: 'Advert ID is required' });
+
+      const { bcCodeSuffix, notes } = bodyOf(ctx);
+      if (!bcCodeSuffix || !bcCodeSuffix.trim()) {
+        return ctx.badRequest({ success: false, message: 'Enter the BC reference code to confirm' });
+      }
+
+      const advert = await strapi.entityService.findOne('api::advert.advert', id, {
+        fields: ['id', 'reference_number', 'bc_reference_number', 'advert_title', 'isClosed', 'isApproved'],
+      });
+
+      if (!advert) return ctx.notFound({ success: false, message: `Advert ${id} not found` });
+      if (advert.isClosed) return ctx.badRequest({ success: false, message: 'Advert is already closed' });
+      if (!advert.isApproved) {
+        return ctx.badRequest({ success: false, message: 'This advert is not currently marked as complete' });
+      }
+
+      const fullBcRef = (advert.bc_reference_number || '').trim();
+      const expectedSuffix = fullBcRef.replace(/^b-so-/i, '').trim();
+      const submittedSuffix = bcCodeSuffix.trim().replace(/^b-so-/i, '').trim();
+
+      if (!expectedSuffix || submittedSuffix.toLowerCase() !== expectedSuffix.toLowerCase()) {
+        return ctx.badRequest({ success: false, message: 'BC reference code does not match this advert' });
+      }
+
+      await strapi.entityService.update('api::advert.advert', id, {
+        data: { isApproved: false },
+      });
+
+      try {
+        await strapi.entityService.create('api::comment.comment', {
+          data: {
+            content: notes?.trim()
+              ? `Design completion unmarked (reversed) after verification. ${notes}`
+              : 'Design completion unmarked (reversed) after verification.',
+            advert: id,
+          },
+        });
+      } catch (commentErr) {
+        console.warn('⚠️ Could not create unmark-complete comment:', commentErr.message);
+      }
+
+      return ctx.send({
+        success:          true,
+        message:          'Design completion unmarked',
+        advertId:         id,
+        referenceNumber:  advert.reference_number,
+        isApproved:       false,
+      });
+
+    } catch (error) {
+      console.error('❌ unmarkDesignComplete:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
+    }
+  },
+
+  /**
    * Get design statistics.
    * POST /api/design-house/stats
    * Body: { startDate?: 'YYYY-MM-DD', endDate?: 'YYYY-MM-DD' } — accepted for
