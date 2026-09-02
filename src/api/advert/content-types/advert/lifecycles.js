@@ -124,6 +124,7 @@ function countDates(publishingDates) {
  *   "sectionCommCategory": "SUP"
  * }
  */
+/*
 async function createSalesOrder(advert) {
   const client       = advert.client             || {};
   const salesPersons = advert.vgams_sales_persons || [];
@@ -179,6 +180,100 @@ async function createSalesOrder(advert) {
     sectionCommCategory:    advert.section_commission     || '',
     advertBooking:          true,
     advertReferenceNo:      advert.reference_number
+  };
+
+  console.log('\n');
+  console.log('📤 ===================================================');
+  console.log('📤 STEP 1: POST to Create Sales Order');
+  console.log('📤 ===================================================');
+  console.log('📤 ENDPOINT: POST /salesOrders');
+  console.log('📤 FULL URL:', `${BC_BASE_URL}/salesOrders`);
+  console.log('📤 ---------------------------------------------------');
+  console.log('📤 GENERATED PAYLOAD (mapped from source data):');
+  console.log(JSON.stringify(payload, null, 2));
+  console.log('📤 ===================================================\n');
+
+  const response = await bcFetch(`${BC_BASE_URL}/salesOrders`, payload, 'STEP 1: Create Sales Order');
+  
+  // Log extracted order number
+  const orderNumber = response.number || response.orderNumber || response.no || response.No || null;
+  console.log('\n');
+  console.log('📌 ===================================================');
+  console.log('📌 STEP 1 - Extracted Order Number from Response');
+  console.log('📌 ===================================================');
+  console.log('📌 ORDER NUMBER:', orderNumber || 'NOT FOUND');
+  console.log('📌 This will be used as: bc_reference_number');
+  console.log('📌 ===================================================\n');
+  
+  return response;
+}
+*/
+
+async function createSalesOrder(advert) {
+  const client       = advert.client             || {};
+  const salesPersons = advert.vgams_sales_persons || [];
+
+  // ── Map advert.payment_method → BC paymentOptions code ─────────────────
+  const paymentOptionsMap = {
+    mobile_money: 'MobileMoney',
+    bank_transfer: 'EFT'
+  };
+  const paymentOptions = paymentOptionsMap[advert.payment_method] || '';
+
+  // Log source data being used for mapping
+  console.log('\n');
+  console.log('📋 ===================================================');
+  console.log('📋 STEP 1: Create Sales Order - Source Data Mapping');
+  console.log('📋 ===================================================');
+  console.log('📋 MAPPING RULES:');
+  console.log('📋   sellToCustomerNo        ← client.bc_no');
+  console.log('📋   orderDate               ← advert.start_date');
+  console.log('📋   salespersonCode         ← vgams_sales_persons[0].bc_code');
+  console.log('📋   postingDescription      ← "<advert_title> - <client.company_name>"');
+  console.log('📋   locationCode            ← advert.office_location');
+  console.log('📋   postingDate             ← advert.start_date');
+  console.log('📋   shortcutDimension1Code  ← advert.cost_stream');
+  console.log('📋   shortcutDimension2Code  ← advert.revenue_stream');
+  console.log('📋   externalDocumentN0      ← advert.client_reference_no');
+  console.log('📋   marketSector            ← advert.market_sector');
+  console.log('📋   sectionCommCategory     ← advert.section_commission');
+  console.log('📋   paymentOptions          ← advert.payment_method (mobile_money→MobileMoney, bank_transfer→EFT, other→"")');
+  console.log('📋 ---------------------------------------------------');
+  console.log('📋 SOURCE VALUES:');
+  console.log('📋   client.bc_no:', client.bc_no || '(empty)');
+  console.log('📋   advert.start_date:', advert.start_date || '(empty)');
+  console.log('📋   salesperson.bc_code:', salesPersons[0]?.bc_code || '(empty)');
+  console.log('📋   advert.advert_title:', advert.advert_title || '(empty)');
+  console.log('📋   client.company_name:', client.company_name || '(empty)');
+  console.log('📋   advert.office_location:', advert.office_location || '(empty)');
+  console.log('📋   advert.cost_stream:', advert.cost_stream || '(empty)');
+  console.log('📋   advert.revenue_stream:', advert.revenue_stream || '(empty)');
+  console.log('📋   advert.client_reference_no:', advert.client_reference_no || '(empty)');
+  console.log('📋   advert.market_sector:', advert.market_sector || '(empty)');
+  console.log('📋   advert.section_commission:', advert.section_commission || '(empty)');
+  console.log('📋   advert.payment_method:', advert.payment_method || '(empty)', '→ paymentOptions:', paymentOptions || '(empty)');
+  console.log('📋 ===================================================\n');
+
+  // Use the first sales person's BC code
+  const salespersonCode = salesPersons.length > 0
+    ? (salesPersons[0].bc_code || '')
+    : '';
+
+  const payload = {
+    sellToCustomerNo:       client.bc_no                  || '',
+    orderDate:              advert.start_date              || null,
+    salespersonCode:        salespersonCode,
+    postingDescription:     `${advert.advert_title || ''} - ${client.company_name || ''}`.trim(),
+    locationCode:           advert.office_location         || '',
+    postingDate:            advert.start_date              || null,
+    shortcutDimension1Code: advert.cost_stream            || '',
+    shortcutDimension2Code: advert.revenue_stream         || '',
+    externalDocumentN0:     advert.client_reference_no    || '',
+    marketSector:           advert.market_sector          || '',
+    sectionCommCategory:    advert.section_commission     || '',
+    advertBooking:          true,
+    advertReferenceNo:      advert.reference_number,
+    paymentOptions:         paymentOptions
   };
 
   console.log('\n');
