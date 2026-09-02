@@ -100,6 +100,15 @@ const VALID_ROLES = [
   'finance_team', 'administrator', 'sales_team', 'hr_team',
 ];
 
+// Accounts that cannot be edited or deleted through the admin User
+// Management UI, regardless of who is asking. This is the real
+// enforcement — the frontend disabling the buttons is just UX.
+const PROTECTED_EMAILS = [
+  'vmujuzi@newvision.co.ug',
+  'fssembajjwe@newvision.co.ug',
+  'pikanza@newvision.co.ug',
+];
+
 // ── Controller ────────────────────────────────────────────────────────────────
 module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi }) => ({
 
@@ -451,6 +460,10 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       const target = await strapi.db.query('api::vgams-user.vgams-user').findOne({ where: { id } });
       if (!target) return ctx.notFound('User not found.');
 
+      if (PROTECTED_EMAILS.includes(target.email.toLowerCase())) {
+        return ctx.badRequest('This account is protected and cannot be modified.');
+      }
+
       const data = {};
 
       if (name !== undefined) {
@@ -529,6 +542,10 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
 
       if (target.id === admin.id) {
         return ctx.badRequest('You cannot delete your own account.');
+      }
+
+      if (PROTECTED_EMAILS.includes(target.email.toLowerCase())) {
+        return ctx.badRequest('This account is protected and cannot be deleted.');
       }
 
       await strapi.documents('api::vgams-user.vgams-user').delete({ documentId: target.documentId });
