@@ -1651,6 +1651,7 @@ export interface ApiPagerPublicationPagerPublication
       Schema.Attribute.Required;
     notes: Schema.Attribute.Text;
     pages: Schema.Attribute.Relation<'oneToMany', 'api::pager-page.pager-page'>;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
     publication_code: Schema.Attribute.String & Schema.Attribute.Unique;
     publication_date: Schema.Attribute.Date & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
