@@ -1,0 +1,66 @@
+{
+  "kind": "collectionType",
+  "collectionName": "rate_cards",
+  "info": {
+    "singularName": "rate-card",
+    "pluralName": "rate-cards",
+    "displayName": "CIO Rate Card"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "rate_cards"
+    },
+    "full_color_no": {
+      "type": "string"
+    },
+    "black_color_no": {
+      "type": "string"
+    },
+    "base_unit_of_measure": {
+      "type": "string"
+    },
+    "ad_type": {
+      "type": "string",
+      "required": true
+    },
+    "size_dimension": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "string"
+    },
+    "price_fc": {
+      "type": "decimal"
+    },
+    "price_bw": {
+      "type": "decimal"
+    },
+    "time_slot": {
+      "type": "string"
+    },
+    "currency": {
+      "type": "string",
+      "default": "UGX"
+    },
+    "effective_date": {
+      "type": "date",
+      "required": true
+    },
+    "expiry_date": {
+      "type": "date"
+    },
+    "surcharge_percentage": {
+      "type": "decimal"
+    },
+    "metadata": {
+      "type": "json"
+    }
+  }
+}

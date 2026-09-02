@@ -1,0 +1,69 @@
+{
+  "kind": "collectionType",
+  "collectionName": "invoices",
+  "info": {
+    "singularName": "invoice",
+    "pluralName": "invoices",
+    "displayName": "CIO Invoice"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "invoice_number": {
+      "type": "uid",
+      "targetField": "client"
+    },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client",
+      "inversedBy": "invoices"
+    },
+    "advert": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::advert.advert"
+    },
+    "invoice_date": {
+      "type": "date",
+      "required": true
+    },
+    "due_date": {
+      "type": "date",
+      "required": true
+    },
+    "total_amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "amount_paid": {
+      "type": "decimal",
+      "default": 0
+    },
+    "balance": {
+      "type": "decimal",
+      "required": true
+    },
+    "payment_status": {
+      "type": "enumeration",
+      "enum": [
+        "unpaid",
+        "partial",
+        "paid",
+        "overdue"
+      ],
+      "default": "unpaid"
+    },
+    "payments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment.payment",
+      "mappedBy": "invoice"
+    },
+    "currency": {
+      "type": "string",
+      "default": "UGX"
+    }
+  }
+}

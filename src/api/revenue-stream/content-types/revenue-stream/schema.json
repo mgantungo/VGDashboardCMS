@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "revenue_streams",
+  "info": {
+    "singularName": "revenue-stream",
+    "pluralName": "revenue-streams",
+    "displayName": "CIO Revenue Stream"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string",
+      "unique": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "products": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::product.product",
+      "mappedBy": "revenue_stream"
+    }
+  }
+}

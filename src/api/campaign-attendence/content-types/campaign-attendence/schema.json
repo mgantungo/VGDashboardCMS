@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "campaign_attendences",
+  "info": {
+    "singularName": "campaign-attendence",
+    "pluralName": "campaign-attendences",
+    "displayName": "CampaignAttendence"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "fullName": {
+      "type": "string",
+      "required": true
+    },
+    "promoCode": {
+      "type": "string",
+      "required": true
+    },
+    "uniqueSecret": {
+      "type": "uid",
+      "required": true
+    },
+    "campaigns": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::campaign.campaign",
+      "mappedBy": "campaign_attendences"
+    },
+    "phone": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "email"
+    },
+    "processes": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    }
+  }
+}

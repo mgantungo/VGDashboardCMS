@@ -1,0 +1,81 @@
+{
+  "kind": "collectionType",
+  "collectionName": "authors",
+  "info": {
+    "singularName": "author",
+    "pluralName": "authors",
+    "displayName": "Author",
+    "description": "WordPress Authors",
+    "category": "Harvestmoney"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "username": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "email": {
+      "type": "email",
+      "required": true,
+      "unique": true
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "first_name": {
+      "type": "string",
+      "required": true
+    },
+    "last_name": {
+      "type": "string",
+      "required": true
+    },
+    "bio": {
+      "type": "text"
+    },
+    "avatar_url": {
+      "type": "string"
+    },
+    "wp_id": {
+      "type": "integer",
+      "unique": true
+    },
+    "posts": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::post.post",
+      "inversedBy": "authors"
+    },
+    "publications": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::publication.publication",
+      "inversedBy": "authors"
+    },
+    "accountstatus": {
+      "type": "enumeration",
+      "required": true,
+      "default": "active",
+      "enum": [
+        "active",
+        "suspended",
+        "deleted"
+      ]
+    },
+    "password": {
+      "type": "password",
+      "private": true
+    },
+    "accessToken": {
+      "type": "password"
+    },
+    "tokenGeneratedAt": {
+      "type": "datetime",
+      "private": true
+    }
+  }
+}

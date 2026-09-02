@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "districts",
+  "info": {
+    "singularName": "district",
+    "pluralName": "districts",
+    "displayName": "District",
+    "description": "Administrative districts"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "region": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::region.region",
+      "inversedBy": "districts"
+    },
+    "enumeration_areas": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::enumeration-area.enumeration-area",
+      "mappedBy": "district"
+    },
+    "latlong": {
+      "type": "json"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pager_publications",
+  "info": {
+    "singularName": "pager-publication",
+    "pluralName": "pager-publications",
+    "displayName": "CIO Pager Publication"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "publication_code": {
+      "type": "string",
+      "unique": true
+    },
+    "masthead": {
+      "type": "enumeration",
+      "enum": ["NV", "BK"],
+      "required": true
+    },
+    "publication_date": {
+      "type": "date",
+      "required": true
+    },
+    "sequence": {
+      "type": "integer",
+      "required": true,
+      "default": 1,
+      "min": 1
+    },
+    "total_pages": {
+      "type": "integer",
+      "required": true,
+      "min": 24
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["draft", "in_progress", "locked", "published"],
+      "default": "draft"
+    },
+    "pages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::pager-page.pager-page",
+      "mappedBy": "publication"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "created_by_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-user.vgams-user"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    }
+  }
+}

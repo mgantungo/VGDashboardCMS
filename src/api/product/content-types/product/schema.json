@@ -1,0 +1,64 @@
+{
+  "kind": "collectionType",
+  "collectionName": "products",
+  "info": {
+    "singularName": "product",
+    "pluralName": "products",
+    "displayName": "CIO Product"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "product_name": {
+      "type": "string",
+      "required": true
+    },
+    "product_id": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product-category.product-category",
+      "inversedBy": "products"
+    },
+    "rate_cards": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::rate-card.rate-card",
+      "mappedBy": "product"
+    },
+    "circulation": {
+      "type": "integer"
+    },
+    "readership": {
+      "type": "integer"
+    },
+    "metadata": {
+      "type": "json"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "revenue_stream": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::revenue-stream.revenue-stream",
+      "inversedBy": "products"
+    },
+    "cost_stream": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cost-stream.cost-stream",
+      "inversedBy": "products"
+    }
+  }
+}

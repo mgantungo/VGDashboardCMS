@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "systemusers",
+  "info": {
+    "singularName": "systemuser",
+    "pluralName": "systemusers",
+    "displayName": "systemuser"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "username": {
+      "type": "string"
+    },
+    "userpass": {
+      "type": "password"
+    },
+    "is_active": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    }
+  }
+}

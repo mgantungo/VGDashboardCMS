@@ -1,0 +1,65 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_orders",
+  "info": {
+    "singularName": "sfa-order",
+    "pluralName": "sfa-orders",
+    "displayName": "SFA Order"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "order_number": {
+      "type": "string",
+      "unique": true,
+      "description": "Auto-generated: SFA-ORD-YYYYMM-XXXX"
+    },
+    "opportunity": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::sfa-opportunity.sfa-opportunity",
+      "inversedBy": "order"
+    },
+    "accepted_quotation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-quotation.sfa-quotation"
+    },
+    "confirmation_type": {
+      "type": "enumeration",
+      "enum": ["lpo", "email_confirmation", "signed_quotation"],
+      "required": true
+    },
+    "confirmation_document": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": ["images", "files"]
+    },
+    "converted_date": { "type": "datetime" },
+    "converted_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-agent-profile.sfa-agent-profile",
+      "description": "The agent who converted this opportunity to an order."
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["active", "in_production", "completed", "cancelled"],
+      "default": "active",
+      "required": true
+    },
+    "notes": { "type": "text" },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client",
+      "description": "The confirmed client. Either pre-existing (return order) or created fresh at conversion."
+    },
+    "client_is_new": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when a new client record was created in the clients collection at this order conversion."
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "product_categories",
+  "info": {
+    "singularName": "product-category",
+    "pluralName": "product-categories",
+    "displayName": "CIO Product Category"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "category_name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "product_id": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "category_type": {
+      "type": "enumeration",
+      "enum": [
+        "print",
+        "tv",
+        "radio",
+        "digital",
+        "outdoor",
+        "publishing",
+        "commercial"
+      ],
+      "required": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "products": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::product.product",
+      "mappedBy": "category"
+    }
+  }
+}

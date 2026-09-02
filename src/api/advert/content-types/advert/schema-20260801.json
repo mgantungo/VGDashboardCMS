@@ -1,0 +1,245 @@
+{
+  "kind": "collectionType",
+  "collectionName": "adverts",
+  "info": {
+    "singularName": "advert",
+    "pluralName": "adverts",
+    "displayName": "CIO Advert"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "reference_number": {
+      "type": "uid",
+      "targetField": ""
+    },
+    "bc_reference_number": {
+      "type": "string"
+    },
+    "advert_title": {
+      "type": "string",
+      "required": true
+    },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client",
+      "inversedBy": "adverts"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "rate_card": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::rate-card.rate-card"
+    },
+    "ad_size": {
+      "type": "string",
+      "required": true
+    },
+    "ad_type": {
+      "type": "enumeration",
+      "default": "full_color",
+      "enum": [
+        "full_color",
+        "black_white"
+      ]
+    },
+    "frequency": {
+      "type": "integer",
+      "default": 1,
+      "min": 1
+    },
+    "start_date": {
+      "type": "date",
+      "required": true
+    },
+    "end_date": {
+      "type": "date"
+    },
+    "base_price": {
+      "type": "decimal",
+      "required": true
+    },
+    "surcharge": {
+      "type": "decimal",
+      "default": 0
+    },
+    "discount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "total_amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "payment_method": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "cash",
+        "credit",
+        "pdc",
+        "bank_transfer",
+        "mobile_money"
+      ]
+    },
+    "special_instructions": {
+      "type": "text"
+    },
+    "attachments": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ]
+    },
+    "status": {
+      "type": "enumeration",
+      "default": "draft",
+      "enum": [
+        "draft",
+        "pending_review",
+        "editor_approved",
+        "editor_rejected",
+        "manager_approved",
+        "manager_rejected",
+        "published"
+      ]
+    },
+    "workflow_history": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::workflow-log.workflow-log",
+      "mappedBy": "advert"
+    },
+    "comments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::comment.comment",
+      "mappedBy": "advert"
+    },
+    "created_by_clerk": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "reviewed_by_editor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "approved_by_manager": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "invoice": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::invoice.invoice"
+    },
+    "vgams_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-user.vgams-user",
+      "inversedBy": "adverts"
+    },
+    "isActive": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "isPaid": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "isApproved": {
+      "type": "boolean",
+      "default": false
+    },
+    "isScheduled": {
+      "type": "boolean",
+      "default": false
+    },
+    "hasRun": {
+      "type": "boolean",
+      "default": false
+    },
+    "isClosed": {
+      "type": "boolean",
+      "default": false
+    },
+    "isCanceled": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "advert_daily_schedules": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::advert-daily-schedule.advert-daily-schedule",
+      "inversedBy": "adverts"
+    },
+    "vgams_sales_persons": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::vgams-sales-person.vgams-sales-person",
+      "inversedBy": "adverts"
+    },
+    "publish_onweb": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "revenue_stream": {
+      "type": "string"
+    },
+    "cost_stream": {
+      "type": "string"
+    },
+    "office_location": {
+      "type": "string"
+    },
+    "client_reference_no": {
+      "type": "string"
+    },
+    "publishing_dates": {
+      "type": "json"
+    },
+    "contact_person": {
+      "type": "string"
+    },
+    "contact_number": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "market_sector": {
+      "type": "string"
+    },
+    "section_commission": {
+      "type": "string"
+    },
+    "bc_share_success": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "pager_pages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::pager-page.pager-page",
+      "mappedBy": "adverts"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "enumeration_areas",
+  "info": {
+    "singularName": "enumeration-area",
+    "pluralName": "enumeration-areas",
+    "displayName": "Enumeration Area",
+    "description": "Enumeration Areas (EA)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "district": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::district.district",
+      "inversedBy": "enumeration_areas"
+    },
+    "sub_counties": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sub-county.sub-county",
+      "mappedBy": "enumeration_area"
+    }
+  }
+}

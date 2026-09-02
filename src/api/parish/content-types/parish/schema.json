@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "parishes",
+  "info": {
+    "singularName": "parish",
+    "pluralName": "parishes",
+    "displayName": "Parish",
+    "description": "Parishes and wards"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "sub_county": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sub-county.sub-county",
+      "inversedBy": "parishes"
+    },
+    "polling_stations": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::polling-station.polling-station",
+      "mappedBy": "parish"
+    }
+  }
+}

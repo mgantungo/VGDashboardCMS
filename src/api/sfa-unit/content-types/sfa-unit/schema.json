@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_units",
+  "info": {
+    "singularName": "sfa-unit",
+    "pluralName": "sfa-units",
+    "displayName": "SFA Unit"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "code": { "type": "string", "unique": true },
+    "supervisor": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "agent_profiles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sfa-agent-profile.sfa-agent-profile",
+      "mappedBy": "unit"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "vgams_sales_persons",
+  "info": {
+    "singularName": "vgams-sales-person",
+    "pluralName": "vgams-sales-persons",
+    "displayName": "CIO VGAMS Sales Persons"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "bc_code": {
+      "type": "string",
+      "required": false
+    },
+    "email": {
+      "type": "email",
+      "required": false,
+      "unique": true
+    },
+    "isActive": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "adverts": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::advert.advert",
+      "mappedBy": "vgams_sales_persons"
+    }
+  }
+}

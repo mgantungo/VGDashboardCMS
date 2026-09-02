@@ -1,0 +1,1741 @@
+{
+  "metadata": {
+    "extracted_date": "2026-01-03T14:58:24.747607",
+    "source_document": "Sales_InfoPack_2024_NEW_July.pdf",
+    "version": "2024/2025",
+    "currency": "UGX"
+  },
+  "company_info": {
+    "name": "Vision Group",
+    "legal_name": "New Vision Printing & Publishing Company Limited (NVPPCL)",
+    "established": "March 1986",
+    "website": "www.visiongroup.co.ug",
+    "business_types": [
+      "Print Media",
+      "Broadcast Media",
+      "Digital Media",
+      "Publishing",
+      "Commercial Printing",
+      "Courier Services",
+      "Translation Services",
+      "Experiential Marketing"
+    ]
+  },
+  "payment_terms": {
+    "credit_order": {
+      "requires_approval": true,
+      "approval_authority": "Sales Manager and Credit Manager"
+    },
+    "cash_order": {
+      "payment_required": "Before publication/airing"
+    },
+    "pdcs": {
+      "accepted_for": "New clients",
+      "description": "Post-dated cheques"
+    }
+  },
+  "products": {
+    "newspapers": {
+      "category": "Print Media",
+      "description": "Daily and weekly newspaper advertising",
+      "column_specifications": {
+        "standard_newspapers": {
+          "columns": 6,
+          "column_width_cm": 4.1
+        },
+        "bukedde": {
+          "columns": 5,
+          "column_width_cm": 4.72
+        }
+      },
+      "items": {
+        "new_vision": {
+          "product_id": "NP-NV-001",
+          "name": "New Vision",
+          "description": "Leading English daily newspaper, Monday to Friday",
+          "circulation": "National with East Africa reach (Nairobi, Kigali, Juba, Arusha)",
+          "rate_card": {
+            "special_positions": {
+              "pages_covered": "Pages 2-7, Sports Pages",
+              "rates": [
+                {
+                  "position": "Front Page Solus",
+                  "size": "6cm x 6col",
+                  "price_fc": 6500000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Front Page Ear Piece",
+                  "size": "3cm x 1col",
+                  "price_fc": 1200000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Back Page Solus",
+                  "size": "10cm x 6col",
+                  "price_fc": 3960000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Inside Back Cover",
+                  "size": "26cm x 4col",
+                  "price_fc": 8000000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Back Page Ear Piece",
+                  "size": "3cm x 1col",
+                  "price_fc": 900000,
+                  "price_bw": null
+                }
+              ],
+              "surcharge": {
+                "description": "25% Surcharge For Any Other Nominated Pages",
+                "percentage": 25
+              }
+            },
+            "main_body_display": {
+              "pages_covered": "Pages 8 onwards, excluding special supplements and pull-out sections and sports pages",
+              "rates": [
+                {
+                  "size": "Full Page",
+                  "dimensions": "30cm x 6col",
+                  "price_fc": 9470000,
+                  "price_bw": 8100000
+                },
+                {
+                  "size": "Half Page Horizontal",
+                  "dimensions": "15cm x 6col",
+                  "price_fc": 5400000,
+                  "price_bw": 4080000
+                },
+                {
+                  "size": "Half Page Vertical",
+                  "dimensions": "26cm x 4col",
+                  "price_fc": 7900000,
+                  "price_bw": 6850000
+                },
+                {
+                  "size": "Quarter Page",
+                  "dimensions": "15cm x 3col",
+                  "price_fc": 3150000,
+                  "price_bw": 2100000
+                },
+                {
+                  "size": "10cm x 3col / 12.7cm",
+                  "dimensions": "10cm x 3col / 12.7cm",
+                  "price_fc": 2100000,
+                  "price_bw": 1500000
+                },
+                {
+                  "size": "Per Centimeter Column",
+                  "dimensions": "Per cm col",
+                  "price_fc": 70000,
+                  "price_bw": 50000
+                },
+                {
+                  "size": "Voucher Surcharge",
+                  "dimensions": "N/A",
+                  "price_fc": 930000,
+                  "price_bw": null
+                }
+              ],
+              "note": "Per centimetre column will only apply for sizes not specified above"
+            },
+            "classifieds": {
+              "rates": [
+                {
+                  "type": "Croc's Property & Motor Mart",
+                  "unit": "per cm col",
+                  "price_fc": 35000,
+                  "price_bw": 25000
+                },
+                {
+                  "type": "Classified: Semi-Display",
+                  "unit": "per column",
+                  "price_fc": 40000,
+                  "price_bw": 30000
+                },
+                {
+                  "type": "Classified",
+                  "unit": "per word",
+                  "price_fc": null,
+                  "price_bw": 2200
+                },
+                {
+                  "type": "Letter of Administration",
+                  "unit": "per cm col",
+                  "price_fc": null,
+                  "price_bw": 18000
+                },
+                {
+                  "type": "Classified Photo/Logo",
+                  "unit": "each",
+                  "price_fc": 26000,
+                  "price_bw": 22000
+                }
+              ]
+            },
+            "supplements_special_sections": {
+              "description": "Special Editorial Sections / Jobs And Tenders (Rate Is All Inclusive)",
+              "rates": [
+                {
+                  "size": "Full Page",
+                  "dimensions": "30cm x 6col",
+                  "price_fc": 9950000,
+                  "price_bw": 8500000
+                },
+                {
+                  "size": "Half Page Horizontal",
+                  "dimensions": "15cm x 6col",
+                  "price_fc": 5650000,
+                  "price_bw": 4300000
+                },
+                {
+                  "size": "Half Page Vertical",
+                  "dimensions": "26cm x 4col",
+                  "price_fc": 8300000,
+                  "price_bw": 7200000
+                },
+                {
+                  "size": "Quarter Page",
+                  "dimensions": "15cm x 3col",
+                  "price_fc": 3300000,
+                  "price_bw": 2200000
+                }
+              ]
+            },
+            "loose_leaf_inserts": {
+              "description": "Price Per Sheet",
+              "rates": [
+                {
+                  "size": "Up to 30cm x 26cm",
+                  "price": 9000000
+                },
+                {
+                  "type": "Per page thereafter",
+                  "price": 6000000
+                }
+              ]
+            }
+          }
+        },
+        "weekend_vision": {
+          "product_id": "NP-WV-002",
+          "name": "Weekend Vision",
+          "description": "English weekend newspaper for all ages with sports, entertainment and lifestyle content",
+          "publication_day": "Weekend",
+          "special_features": [
+            "Goal (Sports)",
+            "Homes & Construction",
+            "Intimate"
+          ],
+          "rate_card": {
+            "special_positions": {
+              "rates": [
+                {
+                  "position": "Front Page Solus",
+                  "size": "6cm x 6col",
+                  "price_fc": 5900000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Front Page Ear Piece",
+                  "size": "3cm x 1col",
+                  "price_fc": 1000000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Back Page Solus",
+                  "size": "10cm x 6col",
+                  "price_fc": 3500000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Inside Back Cover",
+                  "size": "26cm x 4col",
+                  "price_fc": 7100000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Back Page Ear Piece",
+                  "size": "3cm x 1col",
+                  "price_fc": 800000,
+                  "price_bw": null
+                }
+              ],
+              "surcharge": {
+                "description": "25% Surcharge for any other nominated pages",
+                "percentage": 25
+              }
+            },
+            "main_body_display": {
+              "rates": [
+                {
+                  "size": "Full Page",
+                  "dimensions": "30cm x 6col",
+                  "price_fc": 7333333,
+                  "price_bw": 6297480
+                },
+                {
+                  "size": "Half Page Horizontal",
+                  "dimensions": "15cm x 6col",
+                  "price_fc": 4158000,
+                  "price_bw": 3193620
+                },
+                {
+                  "size": "Half Page Vertical",
+                  "dimensions": "26cm x 4col",
+                  "price_fc": 5867000,
+                  "price_bw": 5067000
+                }
+              ]
+            }
+          }
+        },
+        "bukedde": {
+          "product_id": "NP-BK-003",
+          "name": "Bukedde",
+          "description": "Nationally circulated Luganda daily newspaper, leading in Central region",
+          "language": "Luganda",
+          "circulation": "National, highest in Central region",
+          "special_features": [
+            "Highest number of exclusive readers",
+            "Various pull-outs covering health, farming, sports, relationships"
+          ],
+          "rate_card": {
+            "special_positions": {
+              "rates": [
+                {
+                  "position": "Front Page Solus",
+                  "size": "6cm x 6col",
+                  "price_fc": 3200000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Front Page Ear Piece",
+                  "size": "3cm x 1col",
+                  "price_fc": 900000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Back Page Solus",
+                  "size": "10cm x 6col",
+                  "price_fc": 3561600,
+                  "price_bw": null
+                },
+                {
+                  "position": "Back Page Ear Piece",
+                  "size": "3cm x 1col",
+                  "price_fc": 900000,
+                  "price_bw": null
+                }
+              ],
+              "surcharge": {
+                "description": "25% loading for any other nominated pages",
+                "percentage": 25
+              }
+            },
+            "main_body_display": {
+              "rates": [
+                {
+                  "size": "Full Page",
+                  "dimensions": "30cm x 6col",
+                  "price_fc": 6500000,
+                  "price_bw": 5280000
+                },
+                {
+                  "size": "Half Page Horizontal",
+                  "dimensions": "15cm x 6col",
+                  "price_fc": 3780000,
+                  "price_bw": 2761500
+                },
+                {
+                  "size": "Half Page Vertical",
+                  "dimensions": "26cm x 4col",
+                  "price_fc": 5190400,
+                  "price_bw": 4208000
+                }
+              ]
+            },
+            "translation_services": {
+              "commercial_translation": {
+                "price_per_page": 120000,
+                "specifications": "A4 page, Font: Times, Size: 12, Spacing: 1.5, Margins: 1 inch"
+              }
+            }
+          }
+        },
+        "bukedde_ku_wiikendi": {
+          "product_id": "NP-BKW-004",
+          "name": "Bukedde Ku Wiikendi",
+          "description": "Bukedde weekend edition",
+          "language": "Luganda",
+          "special_features": [
+            "Teeka Ssente w'olaba",
+            "Ebyemizzanyo",
+            "Emikolo N'embaga"
+          ],
+          "rate_card": {
+            "special_positions": {
+              "pages_covered": "Pages 2-7, Sports Pages",
+              "rates": [
+                {
+                  "position": "Front Page Solus",
+                  "size": "6cm x 6col",
+                  "price_fc": 3200000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Front Page Ear Piece",
+                  "size": "3cm x 1col",
+                  "price_fc": 900000,
+                  "price_bw": null
+                },
+                {
+                  "position": "Back Page Solus",
+                  "size": "10cm x 6col",
+                  "price_fc": 3561600,
+                  "price_bw": null
+                },
+                {
+                  "position": "Back Page Ear Piece",
+                  "size": "3cm x 1col",
+                  "price_fc": 900000,
+                  "price_bw": null
+                }
+              ],
+              "surcharge": {
+                "description": "25% loading for any other nominated pages",
+                "percentage": 25
+              }
+            },
+            "main_body_display": {
+              "rates": [
+                {
+                  "size": "Full Page",
+                  "dimensions": "30cm x 6col",
+                  "price_fc": 6500000,
+                  "price_bw": 5280000
+                },
+                {
+                  "size": "Half Page Horizontal",
+                  "dimensions": "15cm x 6col",
+                  "price_fc": 3780000,
+                  "price_bw": 2761500
+                },
+                {
+                  "size": "Half Page Vertical",
+                  "dimensions": "26cm x 4col",
+                  "price_fc": 5190400,
+                  "price_bw": 4208000
+                },
+                {
+                  "size": "Quarter Page",
+                  "dimensions": "15cm x 3col",
+                  "price_fc": 2490300,
+                  "price_bw": 1993900
+                },
+                {
+                  "size": "10cm x 3col / 12.7cm",
+                  "dimensions": "10cm x 3col / 12.7cm",
+                  "price_fc": 1626000,
+                  "price_bw": 1293000
+                },
+                {
+                  "size": "Per Centimeter Column",
+                  "dimensions": "Per cm col",
+                  "price_fc": 54200,
+                  "price_bw": null
+                }
+              ]
+            }
+          }
+        }
+      },
+      "newspaper_supplements": {
+        "toto": {
+          "product_id": "NP-SUP-TOTO-001",
+          "name": "Toto",
+          "description": "Children's magazine circulated with New Vision every Wednesday",
+          "target_age": "3-13 years",
+          "publication_day": "Wednesday",
+          "content": [
+            "Short stories",
+            "Cartoons",
+            "Picture drawing",
+            "Birthdays",
+            "School activities",
+            "Competitions"
+          ],
+          "rate_card": {
+            "art_paper_rates": [
+              {
+                "position": "Back Cover",
+                "price": null
+              },
+              {
+                "position": "Inside Front & Back Cover",
+                "price": null
+              },
+              {
+                "position": "Full Page",
+                "price": null
+              },
+              {
+                "position": "Two Thirds Vertical",
+                "price": null
+              },
+              {
+                "position": "Half Page",
+                "price": null
+              },
+              {
+                "position": "One Third Horizontal",
+                "price": null
+              },
+              {
+                "position": "Quarter Page",
+                "price": null
+              }
+            ]
+          }
+        },
+        "harvest_money": {
+          "product_id": "NP-SUP-HM-002",
+          "name": "Harvest Money",
+          "description": "Agriculture and agribusiness pullout",
+          "publication_day": "Friday",
+          "focus": [
+            "Agriculture products",
+            "Agribusiness skills",
+            "Best Farmer's Awards"
+          ]
+        },
+        "infrastructure": {
+          "product_id": "NP-SUP-INFRA-003",
+          "name": "Infrastructure Pullout",
+          "description": "Infrastructure development focus",
+          "focus": [
+            "Project updates",
+            "Community impact",
+            "Business opportunities in infrastructure"
+          ]
+        },
+        "oil_and_gas": {
+          "product_id": "NP-SUP-OG-004",
+          "name": "Oil and Gas Pullout",
+          "description": "Weekly pullout on oil and gas sector",
+          "frequency": "Weekly",
+          "focus": [
+            "Industry progress",
+            "Opportunities",
+            "Related projects (airport, pipeline, refinery, industrial park)"
+          ]
+        },
+        "china_new_era": {
+          "product_id": "NP-SUP-CNE-005",
+          "name": "China New Era",
+          "description": "Special insert about China"
+        }
+      }
+    },
+    "digital_media": {
+      "category": "Digital Advertising",
+      "description": "Digital advertising across websites and social media",
+      "items": {
+        "website_advertising": {
+          "product_id": "DM-WEB-001",
+          "pricing_model": "CPM (Cost Per Thousand)",
+          "rate": "USD 1 per 1000 impressions",
+          "rate_card": {
+            "leaderboard_728x90": [
+              {
+                "placement": "New Vision Desktop, all pages",
+                "device": "Desktop",
+                "price_monthly": 3800000
+              },
+              {
+                "placement": "Bukedde Desktop",
+                "device": "Desktop",
+                "price_monthly": 1500000
+              },
+              {
+                "placement": "Harvest Money Desktop",
+                "device": "Desktop",
+                "price_monthly": 1500000
+              },
+              {
+                "placement": "New Vision Desktop & Mobile",
+                "device": "Desktop & Mobile",
+                "price_monthly": 3800000
+              }
+            ]
+          }
+        },
+        "social_media": {
+          "product_id": "DM-SM-001",
+          "description": "Social media advertising on Vision Group platforms",
+          "platforms": {
+            "facebook": {
+              "new_vision_followers": "14M+",
+              "bukedde_followers": "200,000+",
+              "urban_tv_followers": "420,000+",
+              "rates": {
+                "pinned_post": {
+                  "price_per_day": 200000
+                },
+                "sponsored_posts": {
+                  "starting_price_usd": 20,
+                  "note": "Starting from USD 20 onwards"
+                },
+                "video_post": {
+                  "price_per_post": 300000
+                },
+                "live_stream_production": {
+                  "duration": "1-2 hours",
+                  "new_vision_fb": {
+                    "base_price": 1500000,
+                    "additional_hour": 500000
+                  },
+                  "bukedde_fb": {
+                    "base_price": 1000000,
+                    "additional_hour": null
+                  },
+                  "with_video_production": {
+                    "without_production": 3000000,
+                    "with_production": 6000000,
+                    "additional_hour": 2000000
+                  },
+                  "includes": "3 social media posts pre-event, 3 posts per hour during livestream, 1 post after event"
+                }
+              }
+            },
+            "twitter": {
+              "platforms_with_followers": {
+                "new_vision": "14M+",
+                "bukedde": "200,000+",
+                "urban_tv": "420,000+"
+              }
+            }
+          }
+        },
+        "sponsored_content": {
+          "product_id": "DM-SC-001",
+          "content_types": [
+            {
+              "type": "Article with 2 social media posts",
+              "new_vision_price": 2500000,
+              "harvest_money_price": 300000
+            },
+            {
+              "type": "Video",
+              "price": "Custom quote"
+            }
+          ]
+        }
+      }
+    },
+    "television": {
+      "category": "Broadcast Media - TV",
+      "description": "Television advertising across Vision Group TV stations",
+      "items": {
+        "bukedde_tv": {
+          "product_id": "TV-BTD-001",
+          "name": "Bukedde TV",
+          "description": "Uganda's first Luganda TV station, leading in Central region",
+          "language": "Luganda",
+          "coverage": "Central region, National via DSty, Goty, StarTimes, Zuku TV, Azam TV, Free to Air",
+          "reach": "26% of 7,804,666 national TV reach; 32% of 3,371,341 Central Buganda viewership",
+          "rate_card": {
+            "spot_adverts": {
+              "duration": "30 seconds",
+              "rates": [
+                {
+                  "time_slot": "4:30am - 6:00am",
+                  "price": 100000
+                },
+                {
+                  "time_slot": "6:00am - 10:00am",
+                  "price": 120000
+                },
+                {
+                  "time_slot": "10:00am - 4:00pm",
+                  "price": 170000
+                },
+                {
+                  "time_slot": "4:00pm - 7:00pm",
+                  "price": 200000
+                },
+                {
+                  "time_slot": "7:00pm - 8:00pm",
+                  "price": 400000
+                },
+                {
+                  "time_slot": "8:00pm - 9:00pm",
+                  "price": 200000
+                },
+                {
+                  "time_slot": "9:00pm - 11:35pm",
+                  "price": null
+                }
+              ]
+            },
+            "studio_appearances": {
+              "duration": "7-40 minutes",
+              "rates": [
+                {
+                  "time_slot": "6:00am - 6:00pm",
+                  "price": 2000000
+                },
+                {
+                  "time_slot": "4:30pm - 7:00pm",
+                  "price": 2000000
+                }
+              ]
+            },
+            "news_interviews": {
+              "program": "Power Interview",
+              "rates": [
+                {
+                  "time_slot": "12:30pm - 1:00pm",
+                  "price": 3000000
+                },
+                {
+                  "time_slot": "7:00pm - 8:00pm",
+                  "price": 5000000
+                },
+                {
+                  "time_slot": "10:00pm - 11:00pm",
+                  "price": 4000000
+                }
+              ]
+            },
+            "talkshows": {
+              "rates": [
+                {
+                  "time_slot": "10:00am - 11:00am",
+                  "price": 3600000
+                },
+                {
+                  "time_slot": "3:30pm - 4:30pm (Thu & Fri)",
+                  "price": 4500000
+                },
+                {
+                  "time_slot": "11:15pm - 12:15am",
+                  "price": null
+                },
+                {
+                  "time_slot": "6:00pm - 1:00pm (Sat/Sun)",
+                  "price": 5000000
+                },
+                {
+                  "program": "Akabinkano (Mondays)",
+                  "price": 2000000
+                }
+              ]
+            },
+            "squeeze_backs": {
+              "rates": [
+                {
+                  "time_slot": "6am - 6:00pm",
+                  "price": 200000
+                },
+                {
+                  "time_slot": "6:00pm - 11:00pm",
+                  "price": 400000
+                }
+              ]
+            },
+            "pop_ups": {
+              "rates": [
+                {
+                  "time_slot": "6am - 6:00pm",
+                  "price": 100000
+                },
+                {
+                  "time_slot": "6:00pm - 11:00pm",
+                  "price": 200000
+                }
+              ]
+            },
+            "scrolls": {
+              "unit": "Per day",
+              "rates": [
+                {
+                  "time_slot": "6:00am - 6:00pm",
+                  "price": 150000
+                },
+                {
+                  "time_slot": "6:00pm - 11:00pm",
+                  "price": 250000
+                }
+              ]
+            },
+            "documentaries": {
+              "time_slot": "6pm - 11pm",
+              "rates": [
+                {
+                  "duration": "Short commercial clips (5 min)",
+                  "price": 3500000
+                },
+                {
+                  "duration": "Short commercial clips (15 min)",
+                  "price": 6000000
+                }
+              ]
+            },
+            "herbalists": {
+              "duration_options": [
+                "10 mins",
+                "30 mins"
+              ],
+              "rates": [
+                {
+                  "type": "Recorded program - Daytime",
+                  "10min_price": 1000000,
+                  "30min_price": 2000000
+                },
+                {
+                  "type": "After 9:00pm",
+                  "10min_price": 500000,
+                  "30min_price": 1000000
+                }
+              ]
+            },
+            "churches_pastors": {
+              "duration_options": [
+                "24 minutes",
+                "45 minutes"
+              ],
+              "rates": [
+                {
+                  "type": "Day Time",
+                  "24min_price": null,
+                  "45min_price": null
+                }
+              ]
+            }
+          }
+        },
+        "bukedde_tv2": {
+          "product_id": "TV-BTD2-002",
+          "name": "Bukedde TV 2",
+          "description": "Entertainment channel with music, movies, sports and current affairs",
+          "established": 2012,
+          "target_audience": "Male audiences",
+          "reach": "8% of 7,100,000 National TV Viewers (NAMS 2019)",
+          "coverage": "National via satellite",
+          "rate_card": {
+            "news_interviews": {
+              "program": "Power Interview",
+              "rates": [
+                {
+                  "time_slot": "12:30pm - 1:00pm",
+                  "price": 2000000
+                },
+                {
+                  "time_slot": "8:00pm - 9:00pm",
+                  "price": 6000000
+                }
+              ]
+            },
+            "talkshows": {
+              "rates": [
+                {
+                  "time_slot": "10:00am - 11:00am",
+                  "price": 2500000
+                },
+                {
+                  "time_slot": "3:00pm - 6:00pm (Thu & Fri)",
+                  "price": 4000000
+                },
+                {
+                  "time_slot": "7:00pm - 11:00pm",
+                  "price": 6000000
+                }
+              ]
+            },
+            "squeeze_backs": {
+              "rates": [
+                {
+                  "time_slot": "6am - 6:00pm",
+                  "price": 150000
+                },
+                {
+                  "time_slot": "6:00pm - 11:00pm",
+                  "price": 300000
+                }
+              ]
+            },
+            "scrolls": {
+              "unit": "Per day",
+              "rates": [
+                {
+                  "time_slot": "6:00am - 6:00pm",
+                  "price": 100000
+                },
+                {
+                  "time_slot": "6:00pm - 11:00pm",
+                  "price": 200000
+                }
+              ]
+            },
+            "documentaries": {
+              "time_slot": "6pm - 11pm",
+              "rates": [
+                {
+                  "duration": "5-15 minutes",
+                  "price": 4000000
+                },
+                {
+                  "duration": "15-30 minutes",
+                  "price": 7000000
+                }
+              ]
+            }
+          }
+        },
+        "tv_west": {
+          "product_id": "TV-TW-003",
+          "name": "TV West",
+          "description": "Leading regional TV channel in Western Uganda",
+          "location": "Mbarara Town",
+          "language": "Runyakitara (vernacular)",
+          "coverage": "Western Uganda (Ankole, Kigezi, Toro), plus Masaka, Kampala, Nakasongola",
+          "reach": "9% of 7,100,000 TV viewers",
+          "accessibility": "DStv, GOty, Azam TV, Zuku TV, StarTimes",
+          "rate_card": {
+            "news_interviews": {
+              "program": "Power Interview",
+              "rates": [
+                {
+                  "time_slot": "12:30pm - 1:00pm",
+                  "price": 2000000
+                },
+                {
+                  "time_slot": "8:00pm - 9:00pm",
+                  "price": 6000000
+                }
+              ]
+            },
+            "talkshows": {
+              "rates": [
+                {
+                  "time_slot": "10:00am - 11:00am",
+                  "price": 2500000
+                },
+                {
+                  "time_slot": "3:00pm - 6:00pm (Thu & Fri)",
+                  "price": 4000000
+                },
+                {
+                  "time_slot": "7:00pm - 11:00pm",
+                  "price": 6000000
+                }
+              ]
+            },
+            "squeeze_backs": {
+              "rates": [
+                {
+                  "time_slot": "6:00am - 6:00pm",
+                  "price": 100000
+                },
+                {
+                  "time_slot": "6:00pm - 11:00pm",
+                  "price": 200000
+                }
+              ]
+            },
+            "scrolls": {
+              "unit": "Per day",
+              "rates": [
+                {
+                  "time_slot": "6:00am - 6:00pm",
+                  "price": 100000
+                },
+                {
+                  "time_slot": "6:00pm - 11:00pm",
+                  "price": 200000
+                }
+              ]
+            },
+            "documentaries": {
+              "time_slot": "6pm - 11pm",
+              "rates": [
+                {
+                  "duration": "5-15 minutes",
+                  "price": 4000000
+                },
+                {
+                  "duration": "15-30 minutes",
+                  "price": 7000000
+                },
+                {
+                  "duration": "30min - 1 hour",
+                  "price": 9000000
+                }
+              ]
+            }
+          }
+        },
+        "wan_luo_tv": {
+          "product_id": "TV-WL-004",
+          "name": "Wan Luo TV",
+          "description": "TV station targeting Northern Uganda and West Nile",
+          "language": "Luo",
+          "coverage": "Northern Uganda, West Nile, extending to Karamoja and parts of Bugwere, Busoga, Bugisu",
+          "accessibility": "StarTimes Channel 232, DHT, Vision Digital Experience",
+          "rate_card": {
+            "spot_adverts": {
+              "rates": [
+                {
+                  "time_slot": "4:30am - 6:00am",
+                  "30sec": 100000,
+                  "45sec": 150000,
+                  "60sec": 200000
+                },
+                {
+                  "time_slot": "6:00am - 10:00am",
+                  "30sec": 100000,
+                  "45sec": 200000,
+                  "60sec": null
+                }
+              ]
+            },
+            "news_interviews": {
+              "rates": [
+                {
+                  "time_slot": "12:30pm - 1:00pm",
+                  "price": 2000000
+                },
+                {
+                  "time_slot": "8:00pm - 9:00pm",
+                  "price": 6000000
+                }
+              ]
+            },
+            "talkshows": {
+              "rates": [
+                {
+                  "time_slot": "10:00am - 11:00am",
+                  "price": 2500000
+                },
+                {
+                  "time_slot": "3:00pm - 6:00pm (Thu & Fri)",
+                  "price": 4000000
+                },
+                {
+                  "time_slot": "10:00pm - 11:00pm",
+                  "price": 3500000
+                }
+              ]
+            },
+            "squeeze_backs": {
+              "rates": [
+                {
+                  "time_slot": "6am - 6:00pm",
+                  "price": 100000
+                },
+                {
+                  "time_slot": "6:00pm - 11:00pm",
+                  "price": 300000
+                }
+              ]
+            },
+            "scrolls": {
+              "unit": "Per day",
+              "rates": [
+                {
+                  "time_slot": "6:00am - 6:00pm",
+                  "price": 100000
+                },
+                {
+                  "time_slot": "6:00pm - 11:00pm",
+                  "price": 200000
+                }
+              ]
+            },
+            "documentaries": {
+              "rates": [
+                {
+                  "duration": "5-15 minutes",
+                  "price": 4000000
+                },
+                {
+                  "duration": "15-30 minutes",
+                  "price": 7000000
+                },
+                {
+                  "duration": "30min - 1 hour",
+                  "price": 9000000
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "radio": {
+      "category": "Broadcast Media - Radio",
+      "description": "Radio advertising across Vision Group radio stations",
+      "items": {
+        "xfm": {
+          "product_id": "RD-XFM-001",
+          "name": "XFM",
+          "frequency": "94.8 FM Kampala",
+          "language": "English",
+          "target_audience": "18-35 year old English speaking urban youth",
+          "format": "Hit music and outstanding radio personalities",
+          "rate_card": {
+            "spot_messages": {
+              "rates": [
+                {
+                  "time_slot": "1:00am - 6:00am",
+                  "30sec": 14337,
+                  "45sec": 17204,
+                  "60sec": 27240
+                },
+                {
+                  "time_slot": "6:00am - 10:00am",
+                  "30sec": 70800,
+                  "45sec": 88500,
+                  "60sec": 103840
+                },
+                {
+                  "time_slot": "10:00am - 1:00pm",
+                  "30sec": 70800,
+                  "45sec": 82600,
+                  "60sec": 103840
+                },
+                {
+                  "time_slot": "1:00pm - 3:00pm",
+                  "30sec": 59000,
+                  "45sec": 76700,
+                  "60sec": 94400
+                },
+                {
+                  "time_slot": "3:00pm - 7:00pm",
+                  "30sec": 70800,
+                  "45sec": 82600,
+                  "60sec": 103840
+                },
+                {
+                  "time_slot": "7:00pm - 10:00pm",
+                  "30sec": 70800,
+                  "45sec": 82600,
+                  "60sec": 103840
+                },
+                {
+                  "time_slot": "10:00pm - 1:00am",
+                  "30sec": 59000,
+                  "45sec": 76700,
+                  "60sec": 94400
+                },
+                {
+                  "time_slot": "Run of Station",
+                  "30sec": 59000,
+                  "45sec": 70800,
+                  "60sec": 112100
+                }
+              ]
+            },
+            "presenter_mentions": {
+              "duration": "Not more than 45 seconds",
+              "price": 60000
+            },
+            "commercial_production": {
+              "price": "Custom"
+            },
+            "customized_airtime": {
+              "rates": [
+                {
+                  "duration": "15 Minutes",
+                  "price": 590000
+                },
+                {
+                  "duration": "30 Minutes",
+                  "price": 1500000
+                }
+              ]
+            }
+          }
+        },
+        "bukedde_fm": {
+          "product_id": "RD-BFM-002",
+          "name": "Bukedde FM",
+          "frequency": "Kampala 100.5 FM, 106.8 FM Masaka, 96.6 FM Mbarara",
+          "language": "Luganda",
+          "description": "Leading Luganda radio station",
+          "rate_card": {
+            "spot_messages": {
+              "rates": [
+                {
+                  "time_slot": "1:00am - 6:00am",
+                  "30sec": 15000,
+                  "45sec": 18000,
+                  "60sec": 25000
+                },
+                {
+                  "time_slot": "6:00am - 10:00am",
+                  "30sec": 70800,
+                  "45sec": 88500,
+                  "60sec": 112100
+                },
+                {
+                  "time_slot": "10:00am - 1:00pm",
+                  "30sec": 59000,
+                  "45sec": 76700,
+                  "60sec": 94400
+                },
+                {
+                  "time_slot": "1:00pm - 3:00pm",
+                  "30sec": 59000,
+                  "45sec": 76700,
+                  "60sec": 94400
+                },
+                {
+                  "time_slot": "3:00pm - 7:00pm",
+                  "30sec": 70800,
+                  "45sec": 88500,
+                  "60sec": 94400
+                },
+                {
+                  "time_slot": "10:00pm - 1:00am",
+                  "30sec": 47200,
+                  "45sec": 59000,
+                  "60sec": 76700
+                },
+                {
+                  "time_slot": "Run of Station",
+                  "30sec": 59000,
+                  "45sec": 70800,
+                  "60sec": 112100
+                }
+              ]
+            },
+            "presenter_mentions": {
+              "duration": "Not more than 45 seconds",
+              "price": 80000
+            },
+            "commercial_production": {
+              "price": 500000
+            },
+            "commercial_translations": {
+              "unit": "per 50 words",
+              "price": 50000
+            },
+            "customized_airtime": {
+              "rates": [
+                {
+                  "duration": "15 Minutes",
+                  "price": 1200000
+                },
+                {
+                  "duration": "30 Minutes",
+                  "price": 2000000
+                },
+                {
+                  "duration": "1 Hour",
+                  "price": 3000000
+                }
+              ]
+            },
+            "live_link": {
+              "price": 800000
+            },
+            "classified_bonanza": {
+              "max_length": "15 seconds",
+              "packages": [
+                {
+                  "spots": "4 Spots Daily Mon-Fri",
+                  "unit_cost": 25000,
+                  "weekly_cost": 500000,
+                  "monthly_cost": 2000000
+                }
+              ]
+            }
+          }
+        },
+        "radio_west": {
+          "product_id": "RD-RW-003",
+          "name": "Radio West",
+          "frequency": "100.2 FM Mbarara, 94.3 FM Kabale, 106.6 FM Masaka, 95.2 FM Kampala, 91.0 FM Fort Portal",
+          "description": "Western Uganda's number one Radio Station for 15+ years",
+          "coverage": "Ankole, Kigezi, Toro sub-regions, plus Masaka, Kampala, Nakasongola",
+          "reach": "46% of 1,600,000 radio consumers in Ankole Sub-region",
+          "rate_card": {
+            "spot_messages": {
+              "rates": [
+                {
+                  "time_slot": "1:00am - 6:00am",
+                  "30sec": 25000,
+                  "45sec": 30000,
+                  "60sec": 40000
+                },
+                {
+                  "time_slot": "6:00am - 10:00am",
+                  "30sec": 80000,
+                  "45sec": null,
+                  "60sec": null
+                }
+              ]
+            }
+          }
+        },
+        "etop_radio": {
+          "product_id": "RD-ER-004",
+          "name": "Etop Radio",
+          "frequency": "99.4 FM",
+          "location": "Soroti - Eastern Uganda",
+          "language": "Ateso",
+          "coverage": "Teso region, Karamoja, parts of Bugwere, Busoga, Bugisu",
+          "reach": "50% of 1,100,000 radio consumers in Teso region",
+          "rate_card": {
+            "spot_messages": {
+              "rates": [
+                {
+                  "time_slot": "1:00am - 6:00am",
+                  "30sec": 15000,
+                  "45sec": 18000,
+                  "60sec": 25000
+                },
+                {
+                  "time_slot": "6:00am - 10:00am",
+                  "30sec": 56640,
+                  "45sec": 76700,
+                  "60sec": 94400
+                },
+                {
+                  "time_slot": "10:00am - 1:00pm",
+                  "30sec": 56640,
+                  "45sec": 77280,
+                  "60sec": 94400
+                },
+                {
+                  "time_slot": "1:00pm - 3:00pm",
+                  "30sec": 46020,
+                  "45sec": 62030,
+                  "60sec": 87438
+                },
+                {
+                  "time_slot": "3:00pm - 7:00pm",
+                  "30sec": 46020,
+                  "45sec": 69030,
+                  "60sec": 94400
+                }
+              ]
+            },
+            "packages": [
+              {
+                "type": "4 Spots Daily Mon-Fri",
+                "unit_cost": 25000,
+                "weekly_cost": 500000
+              },
+              {
+                "type": "Daily 3 hour Block",
+                "price": 7900000
+              },
+              {
+                "type": "Daily 1 hour Block",
+                "price": 4130000
+              },
+              {
+                "type": "Weekly 3 hour Block",
+                "price": 4248000
+              },
+              {
+                "type": "Weekly 1 hour Block",
+                "price": 3000000
+              }
+            ]
+          }
+        },
+        "arua_one": {
+          "product_id": "RD-A1-005",
+          "name": "Arua One",
+          "frequency": "88.7 FM",
+          "location": "West Nile region",
+          "languages": [
+            "Lugbara",
+            "Swahili",
+            "English"
+          ],
+          "coverage": "Arua, Nebbi, Yumbe, Moyo, Adjumani, Packwach, Koboko, parts of Eastern DRC and South Sudan",
+          "reach": "29% of 1,600,000 radio reach in West Nile",
+          "rate_card": {
+            "spot_messages": {
+              "rates": [
+                {
+                  "time_slot": "1:00am - 6:00am",
+                  "30sec": 15930,
+                  "45sec": 23395,
+                  "60sec": 30264
+                },
+                {
+                  "time_slot": "6:00am - 10:00am",
+                  "30sec": 56640,
+                  "45sec": 76700,
+                  "60sec": 94400
+                },
+                {
+                  "time_slot": "10:00am - 1:00pm",
+                  "30sec": 56640,
+                  "45sec": 77280,
+                  "60sec": 94400
+                },
+                {
+                  "time_slot": "1:00pm - 3:00pm",
+                  "30sec": 46020,
+                  "45sec": null,
+                  "60sec": null
+                }
+              ]
+            },
+            "packages": [
+              {
+                "type": "4 Spots Daily Mon-Fri",
+                "unit_cost": 25000,
+                "weekly_cost": 500000,
+                "monthly_cost": 2000000
+              },
+              {
+                "type": "Daily 3 hour Block",
+                "price": 7900000
+              }
+            ]
+          }
+        }
+      }
+    },
+    "publishing": {
+      "category": "Vision Publishing",
+      "description": "Educational books and instructional materials",
+      "product_id": "PUB-001",
+      "organization": "Full publishing house, member of Uganda Publishing Association (UPA)",
+      "offerings": [
+        "Learner's books",
+        "Teachers guides",
+        "Readers",
+        "Charts",
+        "Curriculum content"
+      ],
+      "flagship_brand": "INTEGRATED WORKBOOKS for primary schools",
+      "rate_card": {
+        "secondary_school_books": [
+          {
+            "subject": "English Language & Literature",
+            "S1": 25000,
+            "S2": 25000,
+            "S3": 25000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Literature in English",
+            "S1": null,
+            "S2": 25000,
+            "S3": 25000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Mathematics",
+            "S1": 25000,
+            "S2": 25000,
+            "S3": null,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Biology",
+            "S1": 25000,
+            "S2": 25000,
+            "S3": 25000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Physics",
+            "S1": 25000,
+            "S2": 25000,
+            "S3": 25000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Chemistry",
+            "S1": 25000,
+            "S2": 25000,
+            "S3": 25000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Geography",
+            "S1": 25000,
+            "S2": null,
+            "S3": 25000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "History & Political Education",
+            "S1": 25000,
+            "S2": null,
+            "S3": 25000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Physical Education",
+            "S1": 25000,
+            "S2": 25000,
+            "S3": 25000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Entrepreneurship",
+            "S1": 22000,
+            "S2": null,
+            "S3": 22000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Kiswahili",
+            "S1": 25000,
+            "S2": null,
+            "S3": 25000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Technology and Design",
+            "S1": 22000,
+            "S2": 22000,
+            "S3": 22000,
+            "S4": 22000,
+            "teachers_guide": 22000
+          },
+          {
+            "subject": "Performing Arts",
+            "S1": 22000,
+            "S2": null,
+            "S3": 22000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Nutrition and Food Technology",
+            "S1": 22000,
+            "S2": 22000,
+            "S3": 22000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Art and Design",
+            "S1": 22000,
+            "S2": 22000,
+            "S3": null,
+            "S4": 22000,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Agriculture",
+            "S1": 22000,
+            "S2": null,
+            "S3": 22000,
+            "S4": null,
+            "teachers_guide": null
+          },
+          {
+            "subject": "Islamic Religious Education",
+            "S1": 22000,
+            "S2": null,
+            "S3": 22000,
+            "S4": null,
+            "teachers_guide": null
+          }
+        ],
+        "upper_primary_books": [
+          {
+            "subject": "Integrated Science",
+            "price": 25000
+          },
+          {
+            "subject": "English - Set of books",
+            "price": 25000
+          }
+        ]
+      }
+    },
+    "courier_services": {
+      "category": "Logistics",
+      "product_id": "CS-001",
+      "name": "Vision Courier",
+      "description": "Daily dispatch and delivery service",
+      "coverage": "All regions of Uganda",
+      "commitment": "24 hours delivery to remote areas",
+      "experience": "36 years delivering newspapers and covering news",
+      "value_proposition": "Fast, professional, first-rate customer experience",
+      "locations": {
+        "kampala": {
+          "address": "Plot 2 Wilson Street, Industrial Area, Kampala",
+          "roads": [
+            "Coronation Road",
+            "Portbell Road",
+            "Entebbe Road"
+          ]
+        },
+        "mbarara": {
+          "address": "Plot X, Stanley Street, Mbarara City"
+        }
+      }
+    },
+    "digital_outdoor": {
+      "category": "Out of Home Advertising",
+      "product_id": "DO-001",
+      "name": "Vision Outdoor",
+      "description": "Digital outdoor advertising with high quality displays",
+      "features": [
+        "Dynamically served visual medium",
+        "Unskippable, targeted, retargeted",
+        "Always above the fold",
+        "Internet-connected screens",
+        "Instant message changes via software",
+        "4K high definition video decoding",
+        "Web publishing and streaming media capability (HTTPS, HLS, RTMP)"
+      ],
+      "network": {
+        "kampala_coverage": "Close to 5 million people by day",
+        "monthly_reach": "Over 40 million people over a month",
+        "locations": "Every major junction in metropolitan areas"
+      },
+      "cities_covered": [
+        "Kampala",
+        "Mbarara"
+      ]
+    },
+    "commercial_printing": {
+      "category": "Printing Services",
+      "product_id": "CP-001",
+      "description": "Commercial printing services for various materials",
+      "services": [
+        "Design services with experienced team",
+        "Distribution services across Uganda",
+        "Quick turnaround for artworks"
+      ],
+      "clients_shown": [
+        "Mastercard Foundation",
+        "Technology & Design"
+      ]
+    },
+    "translation_services": {
+      "category": "Language Services",
+      "product_id": "TS-001",
+      "description": "Translation services for all languages in Uganda and East Africa",
+      "formats": [
+        "Audio",
+        "Visual",
+        "Print"
+      ],
+      "rate_card": {
+        "standard_translation": {
+          "price_per_page": 120000,
+          "note": "Message reach in all languages"
+        }
+      },
+      "philosophy": "Disseminating knowledge as critical social role and public good"
+    },
+    "experiential_marketing": {
+      "category": "Events & Promotions",
+      "product_id": "EM-001",
+      "description": "Promotional truck for experiential marketing",
+      "equipment": "Multi-purpose promotional truck",
+      "features": [
+        "High quality sound and lighting",
+        "Day and night event versatility",
+        "City and town promotional activities"
+      ],
+      "use_cases": [
+        "Drive sales and brand awareness",
+        "Create awareness about new products",
+        "Product sampling with audiences",
+        "Strengthen brand's perceived image"
+      ],
+      "coverage": "Across Uganda"
+    }
+  },
+  "common_terms_and_conditions": {
+    "artwork_requirements": {
+      "print": {
+        "format": "Acrobat PDF (CMYK)",
+        "color_mode": "CMYK for all print artwork",
+        "preflight_compliance": "Required",
+        "design_files": "Editable MS Word files and pictures (.docx) for design purposes"
+      }
+    },
+    "booking_procedures": {
+      "credit_orders": [
+        "Client presents booking request to Booking Officer",
+        "Booking Officer issues Order Number/ID",
+        "Order signed by client",
+        "Presented to Sales Manager for approval",
+        "Credit Manager approval for credit clients",
+        "Discount and rates reviewed",
+        "Value offered assessed",
+        "Availability confirmed (for TV)",
+        "Slot allocation (for TV/Radio)"
+      ],
+      "cash_orders": [
+        "Client presents booking request",
+        "Booking Officer issues Order Number",
+        "Order presented to Sales Manager",
+        "Client pays at Cashier",
+        "Returns Order to Booking Officer",
+        "Advert given to client"
+      ]
+    },
+    "payment_policies": {
+      "credit_approval_required": true,
+      "new_clients_payment": "Cash or Post-Dated Cheques (PDC)",
+      "partial_payments": "Adverts run only for paid portion until full payment",
+      "no_unpaid_adverts": "Only paid adverts should be aired/published"
+    },
+    "regional_business_processes": {
+      "order_form_requirements": [
+        "Well filed with client customer contacts",
+        "Check client exists in Navision system",
+        "Payment details (credit/cash)",
+        "Credit approval process if applicable"
+      ],
+      "verification_by_sales_manager": [
+        "Discount offered reviewed",
+        "New clients to pay cash/PDC",
+        "Ensure only paid adverts are aired",
+        "Partial payments handled appropriately"
+      ]
+    }
+  },
+  "special_notes": {
+    "membership": {
+      "audit_bureau_circulation": "Member of ABC South Africa",
+      "ipsos": "Member - provides media statistics"
+    },
+    "competitive_advantages": [
+      "360 degree media service provider",
+      "Cross platform capacity",
+      "Reach all market segments",
+      "Dominate media landscape",
+      "Cross-media synergies",
+      "Accurate and comparable media statistics"
+    ],
+    "vision_mission": {
+      "vision": "A centre of excellence for customized communication and business solutions",
+      "mission": "To provide transformational content and business solutions that advance society"
+    }
+  }
+}

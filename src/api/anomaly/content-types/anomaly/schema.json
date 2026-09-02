@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "anomalies",
+  "info": {
+    "singularName": "anomaly",
+    "pluralName": "anomalies",
+    "displayName": "Asset Management Anomaly"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "detected_at": {
+      "type": "datetime",
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "required": true,
+      "default": "Invalid information",
+      "enum": [
+        "Unauthorized access",
+        "Late checkout",
+        "Wrong checkout location",
+        "Invalid information"
+      ]
+    },
+    "description": {
+      "type": "text"
+    },
+    "resolved": {
+      "type": "boolean",
+      "required": true
+    },
+    "access_log": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::access-log.access-log",
+      "inversedBy": "anomalies"
+    },
+    "staff": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::staff-table.staff-table",
+      "inversedBy": "anomalies"
+    },
+    "company_asset": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::company-asset.company-asset",
+      "inversedBy": "anomalies"
+    }
+  }
+}

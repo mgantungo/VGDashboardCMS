@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "workflow_logs",
+  "info": {
+    "singularName": "workflow-log",
+    "pluralName": "workflow-logs",
+    "displayName": "CIO Workflow Log"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "advert": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::advert.advert",
+      "inversedBy": "workflow_history"
+    },
+    "action": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "created",
+        "submitted",
+        "reviewed",
+        "approved",
+        "rejected",
+        "revised",
+        "published"
+      ]
+    },
+    "previous_status": {
+      "type": "string"
+    },
+    "new_status": {
+      "type": "string",
+      "required": true
+    },
+    "vgams_users": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::vgams-user.vgams-user",
+      "mappedBy": "workflow_logs"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "timestamp": {
+      "type": "datetime",
+      "required": true
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_agent_profiles",
+  "info": {
+    "singularName": "sfa-agent-profile",
+    "pluralName": "sfa-agent-profiles",
+    "displayName": "SFA Agent Profile"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "vgams_sales_person": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person",
+      "description": "The authorised VGAMS sales person. Email must match AD account and isActive must be true."
+    },
+    "unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-unit.sfa-unit",
+      "inversedBy": "agent_profiles"
+    },
+    "sfa_role": {
+      "type": "enumeration",
+      "enum": ["sales_agent", "supervisor", "manager", "admin"],
+      "default": "sales_agent",
+      "required": true
+    },
+    "employee_code": { "type": "string" },
+    "is_active": { "type": "boolean", "default": true }
+  }
+}

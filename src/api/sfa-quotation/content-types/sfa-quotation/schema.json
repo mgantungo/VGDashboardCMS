@@ -1,0 +1,95 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sfa_quotations",
+  "info": {
+    "singularName": "sfa-quotation",
+    "pluralName": "sfa-quotations",
+    "displayName": "SFA Quotation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "quotation_number": {
+      "type": "string",
+      "unique": true
+    },
+    "opportunity": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-opportunity.sfa-opportunity",
+      "inversedBy": "quotations"
+    },
+    "version": {
+      "type": "integer",
+      "required": true,
+      "default": 1
+    },
+    "status": {
+      "type": "enumeration",
+      "required": true,
+      "default": "draft",
+      "enum": [
+        "draft",
+        "pending_approval",
+        "approved",
+        "sent_to_client",
+        "revised",
+        "rejected",
+        "accepted"
+      ]
+    },
+    "total_amount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "notes": {
+      "type": "text"
+    },
+    "submitted_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-agent-profile.sfa-agent-profile",
+      "description": "The agent who created / submitted this quotation."
+    },
+    "reviewed_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-agent-profile.sfa-agent-profile",
+      "description": "The supervisor or manager who approved or rejected."
+    },
+    "reviewed_at": {
+      "type": "datetime"
+    },
+    "review_comment": {
+      "type": "text"
+    },
+    "pdf_document": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "files"
+      ]
+    },
+    "parent_quotation": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sfa-quotation.sfa-quotation",
+      "description": "The previous version this was revised from."
+    },
+    "items": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sfa-quotation-item.sfa-quotation-item",
+      "mappedBy": "quotation"
+    },
+    "communications": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::sfa-quotation-communication.sfa-quotation-communication",
+      "mappedBy": "quotation"
+    }
+  }
+}

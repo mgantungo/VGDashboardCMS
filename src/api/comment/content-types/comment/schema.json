@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "comments",
+  "info": {
+    "singularName": "comment",
+    "pluralName": "comments",
+    "displayName": "CIO Comment"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "advert": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::advert.advert",
+      "inversedBy": "comments"
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "comment_text": {
+      "type": "text",
+      "required": true
+    },
+    "comment_type": {
+      "type": "enumeration",
+      "default": "general",
+      "enum": [
+        "general",
+        "approval",
+        "rejection",
+        "revision_request"
+      ]
+    },
+    "created_at": {
+      "type": "datetime"
+    }
+  }
+}

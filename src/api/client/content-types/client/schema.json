@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "clients",
+  "info": {
+    "singularName": "client",
+    "pluralName": "clients",
+    "displayName": "CIO Client"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "company_name": {
+      "type": "string",
+      "required": true
+    },
+    "bc_no": {
+      "type": "string"
+    },
+    "contact_person": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email",
+      "required": false
+    },
+    "phone": {
+      "type": "string",
+      "default": "0700000000",
+      "required": true
+    },
+    "address": {
+      "type": "text"
+    },
+    "credit_approved": {
+      "type": "boolean",
+      "default": false
+    },
+    "credit_limit": {
+      "type": "decimal",
+      "default": 0
+    },
+    "payment_terms": {
+      "type": "enumeration",
+      "default": "cash",
+      "enum": [
+        "cash",
+        "credit_7",
+        "credit_15",
+        "credit_30",
+        "pdc"
+      ]
+    },
+    "adverts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::advert.advert",
+      "mappedBy": "client"
+    },
+    "invoices": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::invoice.invoice",
+      "mappedBy": "client"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "clientTin": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "design_files",
+  "info": {
+    "singularName": "design-file",
+    "pluralName": "design-files",
+    "displayName": "CIO Design File"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "advert": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::advert.advert"
+    },
+    "file_name": {
+      "type": "string",
+      "required": true
+    },
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "required": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ]
+    },
+    "file_type": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "design",
+        "brief",
+        "reference",
+        "final"
+      ]
+    },
+    "version": {
+      "type": "integer",
+      "default": 1
+    },
+    "uploaded_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "upload_date": {
+      "type": "datetime",
+      "required": true
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}

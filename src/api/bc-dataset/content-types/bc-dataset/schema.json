@@ -1,0 +1,105 @@
+{
+  "kind": "collectionType",
+  "collectionName": "bc_datasets",
+  "info": {
+    "singularName": "bc-dataset",
+    "pluralName": "bc-datasets",
+    "displayName": "BC-DATASET"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Entry_No": {
+      "type": "biginteger"
+    },
+    "Transaction_No": {
+      "type": "biginteger"
+    },
+    "G_L_Account_No": {
+      "type": "biginteger"
+    },
+    "Posting_Date": {
+      "type": "date"
+    },
+    "Document_Date": {
+      "type": "date"
+    },
+    "Document_Type": {
+      "type": "string"
+    },
+    "Document_No": {
+      "type": "string"
+    },
+    "Source_Code": {
+      "type": "string"
+    },
+    "Job_No": {
+      "type": "string"
+    },
+    "Business_Unit_Code": {
+      "type": "string"
+    },
+    "Reason_Code": {
+      "type": "string"
+    },
+    "Gen_Posting_Type": {
+      "type": "string"
+    },
+    "Gen_Bus_Posting_Group": {
+      "type": "string"
+    },
+    "Gen_Prod_Posting_Group": {
+      "type": "string"
+    },
+    "Tax_Area_Code": {
+      "type": "string"
+    },
+    "Tax_Liable": {
+      "type": "boolean"
+    },
+    "Tax_Group_Code": {
+      "type": "string"
+    },
+    "Use_Tax": {
+      "type": "boolean"
+    },
+    "VAT_Bus_Posting_Group": {
+      "type": "string"
+    },
+    "VAT_Prod_Posting_Group": {
+      "type": "string"
+    },
+    "IC_Partner_Code": {
+      "type": "string"
+    },
+    "Amount": {
+      "type": "biginteger"
+    },
+    "Debit_Amount": {
+      "type": "biginteger"
+    },
+    "Credit_Amount": {
+      "type": "biginteger"
+    },
+    "VAT_Amount": {
+      "type": "biginteger"
+    },
+    "Additional_Currency_Amount": {
+      "type": "biginteger"
+    },
+    "Add_Currency_Debit_Amount": {
+      "type": "biginteger"
+    },
+    "Add_Currency_Credit_Amount": {
+      "type": "biginteger"
+    },
+    "Dimension_Set_ID": {
+      "type": "biginteger"
+    },
+    "G_L_Account_Name": {
+      "type": "string"
+    }
+  }
+}
