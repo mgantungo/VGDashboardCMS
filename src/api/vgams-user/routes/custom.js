@@ -22,6 +22,48 @@ module.exports = {
         policies: [],
         auth: false
       }
+    },
+
+    // ── Admin user management — NEW ──────────────────────────────────────
+    // All require `adminEmail` (body or `x-admin-email` header) identifying
+    // an active administrator; see requireAdmin() in the controller.
+    // These are separate from the default Strapi REST CRUD for vgams-user,
+    // which is already in use elsewhere and is left untouched.
+    {
+      method: 'GET',
+      path: '/vgams-users/admin/list',
+      handler: 'vgams-user.listUsers',
+      config: {
+        policies: [],
+        auth: false
+      }
+    },
+    {
+      method: 'POST',
+      path: '/vgams-users/admin/create',
+      handler: 'vgams-user.createUser',
+      config: {
+        policies: [],
+        auth: false
+      }
+    },
+    {
+      method: 'PUT',
+      path: '/vgams-users/admin/:id',
+      handler: 'vgams-user.updateUserAdmin',
+      config: {
+        policies: [],
+        auth: false
+      }
+    },
+    {
+      method: 'DELETE',
+      path: '/vgams-users/admin/:id',
+      handler: 'vgams-user.deleteUserAdmin',
+      config: {
+        policies: [],
+        auth: false
+      }
     }
   ]
 };

@@ -64,6 +64,42 @@ async function authenticateWithAD(email, password) {
   return adResponse;
 }
 
+// ── Admin-management guard ─────────────────────────────────────────────────────
+// Every /vgams-users/admin/* endpoint requires the caller to identify
+// themselves via `adminEmail` (body or `x-admin-email` header). We look that
+// account up and confirm it is an active administrator before allowing the
+// action. This mirrors the existing SFA branch's "confirm active salesperson"
+// pattern — there is no Strapi JWT in play here, so this check IS the guard.
+async function requireAdmin(ctx) {
+  const adminEmail = (
+    ctx.request.body?.adminEmail ||
+    ctx.request.query?.adminEmail ||
+    ctx.request.header['x-admin-email'] ||
+    ''
+  ).toLowerCase().trim();
+
+  if (!adminEmail) {
+    ctx.forbidden('Administrator email is required to perform this action.');
+    return null;
+  }
+
+  const admin = await strapi.db.query('api::vgams-user.vgams-user').findOne({
+    where: { email: adminEmail },
+  });
+
+  if (!admin || admin.role !== 'administrator' || !admin.isActive) {
+    ctx.forbidden('This action requires an active administrator account.');
+    return null;
+  }
+
+  return admin;
+}
+
+const VALID_ROLES = [
+  'booking_clerk', 'sub_editor', 'advertising_manager', 'design_house',
+  'finance_team', 'administrator', 'sales_team', 'hr_team',
+];
+
 // ── Controller ────────────────────────────────────────────────────────────────
 module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi }) => ({
 
@@ -152,8 +188,6 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       const adUser = adResponse.user ?? {};
 
       // ── ARTICLE-ANALYTICS BRANCH ───────────────────────────────────────
-      // No collection lookup — AD authentication is the only gate.
-      // Any active @newvision.co.ug account that passes AD auth gets access.
       if (loginModule === 'article-analytics') {
         console.log('📊 Article-Analytics login for:', email);
 
@@ -177,8 +211,6 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       }
 
      // ── JOBS-WEBSITE BRANCH ────────────────────────────────────────────
-     // No collection lookup — AD authentication is the only gate.
-     // Any active @newvision.co.ug account that passes AD auth gets access.
       if (loginModule === 'jobs-website') {
         console.log('💼 Jobs-Website login for:', email);
 
@@ -202,8 +234,6 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       }
 
      // ── AIHUB BRANCH ────────────────────────────────────────────
-     // No collection lookup — AD authentication is the only gate.
-     // Any active @newvision.co.ug account that passes AD auth gets access.
       if (loginModule === 'ai_agent_workers') {
         console.log('💼 aihub login for:', email);
 
@@ -227,8 +257,6 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       }
 
       // ── Exhibitor ACCESS BRANCH ───────────────────────────────────────
-      // No collection lookup — AD authentication is the only gate.
-      // Any active @newvision.co.ug account that passes AD auth gets access.
       if (loginModule === 'exhibitor-access') {
         console.log('📊 Exhibitor login for:', email);
 
@@ -321,4 +349,200 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       return ctx.internalServerError('Authentication failed');
     }
   },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  USER MANAGEMENT (Admin Hub) — NEW
+  //  All actions below require a valid, active administrator identified by
+  //  `adminEmail` (see requireAdmin()). None of these rely on the default
+  //  Strapi REST CRUD for vgams-user — those routes are already in use
+  //  elsewhere in the system and are left untouched.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── GET /vgams-users/admin/list ───────────────────────────────────────
+  async listUsers(ctx) {
+    try {
+      const admin = await requireAdmin(ctx);
+      if (!admin) return;
+
+      const users = await strapi.db.query('api::vgams-user.vgams-user').findMany({
+        select: ['id', 'name', 'email', 'role', 'isActive', 'createdAt', 'updatedAt'],
+        orderBy: [{ name: 'asc' }],
+      });
+
+      return { success: true, count: users.length, users };
+
+    } catch (error) {
+      console.error('💥 listUsers error:', error);
+      return ctx.internalServerError('Failed to load users.');
+    }
+  },
+
+  // ── POST /vgams-users/admin/create ────────────────────────────────────
+  async createUser(ctx) {
+    try {
+      const admin = await requireAdmin(ctx);
+      if (!admin) return;
+
+      const { name, email: rawEmail, role, isActive } = ctx.request.body;
+
+      if (!name || !rawEmail || !role) {
+        return ctx.badRequest('Name, email, and role are required.');
+      }
+
+      const email = rawEmail.toLowerCase().trim();
+
+      if (!['newvision.co.ug'].includes(email.split('@')[1])) {
+        return ctx.badRequest('Only company email addresses are permitted.');
+      }
+
+      if (!VALID_ROLES.includes(role)) {
+        return ctx.badRequest(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
+      }
+
+      const existing = await strapi.db.query('api::vgams-user.vgams-user').findOne({ where: { email } });
+      if (existing) {
+        return ctx.badRequest('A VGAMS account with this email already exists.');
+      }
+
+      // Access is actually gated by Active Directory at login time (see
+      // initiateLogin) — the stored `password` field is never read during
+      // authentication. It's schema-required, so we set a random value the
+      // account will never use.
+      const placeholderPassword = require('crypto').randomBytes(24).toString('hex');
+
+      const user = await strapi.documents('api::vgams-user.vgams-user').create({
+        data: {
+          name: name.trim(),
+          email,
+          password: placeholderPassword,
+          role,
+          isActive: isActive !== undefined ? !!isActive : true,
+        },
+      });
+
+      console.log('✅ VGAMS user created:', email, 'role:', role, 'by:', admin.email);
+
+      return {
+        success: true,
+        message: 'User created successfully.',
+        user: {
+          id: user.id, documentId: user.documentId,
+          name: user.name, email: user.email,
+          role: user.role, isActive: user.isActive,
+        },
+      };
+
+    } catch (error) {
+      console.error('💥 createUser error:', error);
+      return ctx.internalServerError('Failed to create user.');
+    }
+  },
+
+  // ── PUT /vgams-users/admin/:id ────────────────────────────────────────
+  // Body: any of { name, email, role, isActive }. Only provided fields change.
+  async updateUserAdmin(ctx) {
+    try {
+      const admin = await requireAdmin(ctx);
+      if (!admin) return;
+
+      const { id } = ctx.params;
+      const { name, email: rawEmail, role, isActive } = ctx.request.body;
+
+      const target = await strapi.db.query('api::vgams-user.vgams-user').findOne({ where: { id } });
+      if (!target) return ctx.notFound('User not found.');
+
+      const data = {};
+
+      if (name !== undefined) {
+        if (!name.trim()) return ctx.badRequest('Name cannot be empty.');
+        data.name = name.trim();
+      }
+
+      if (rawEmail !== undefined) {
+        const email = rawEmail.toLowerCase().trim();
+        if (!['newvision.co.ug'].includes(email.split('@')[1])) {
+          return ctx.badRequest('Only company email addresses are permitted.');
+        }
+        if (email !== target.email) {
+          const dupe = await strapi.db.query('api::vgams-user.vgams-user').findOne({ where: { email } });
+          if (dupe) return ctx.badRequest('A VGAMS account with this email already exists.');
+        }
+        data.email = email;
+      }
+
+      if (role !== undefined) {
+        if (!VALID_ROLES.includes(role)) {
+          return ctx.badRequest(`Invalid role. Must be one of: ${VALID_ROLES.join(', ')}`);
+        }
+        if (target.id === admin.id && role !== 'administrator') {
+          return ctx.badRequest('You cannot remove your own administrator role.');
+        }
+        data.role = role;
+      }
+
+      if (isActive !== undefined) {
+        if (target.id === admin.id && !isActive) {
+          return ctx.badRequest('You cannot deactivate your own account.');
+        }
+        data.isActive = !!isActive;
+      }
+
+      if (Object.keys(data).length === 0) {
+        return ctx.badRequest('No changes provided.');
+      }
+
+      const updated = await strapi.documents('api::vgams-user.vgams-user').update({
+        documentId: target.documentId,
+        data,
+      });
+
+      console.log('✅ VGAMS user updated:', target.email, 'fields:', Object.keys(data).join(', '), 'by:', admin.email);
+
+      return {
+        success: true,
+        message: 'User updated successfully.',
+        user: {
+          id: updated.id, documentId: updated.documentId,
+          name: updated.name, email: updated.email,
+          role: updated.role, isActive: updated.isActive,
+        },
+      };
+
+    } catch (error) {
+      console.error('💥 updateUserAdmin error:', error);
+      return ctx.internalServerError('Failed to update user.');
+    }
+  },
+
+  // ── DELETE /vgams-users/admin/:id ─────────────────────────────────────
+  // Hard delete. Prefer updateUserAdmin with { isActive: false } where
+  // possible — a user with linked adverts/payments/workflow_logs may fail
+  // to delete cleanly depending on relation constraints.
+  async deleteUserAdmin(ctx) {
+    try {
+      const admin = await requireAdmin(ctx);
+      if (!admin) return;
+
+      const { id } = ctx.params;
+      const target = await strapi.db.query('api::vgams-user.vgams-user').findOne({ where: { id } });
+      if (!target) return ctx.notFound('User not found.');
+
+      if (target.id === admin.id) {
+        return ctx.badRequest('You cannot delete your own account.');
+      }
+
+      await strapi.documents('api::vgams-user.vgams-user').delete({ documentId: target.documentId });
+
+      console.log('🗑️ VGAMS user deleted:', target.email, 'by:', admin.email);
+
+      return { success: true, message: 'User deleted successfully.' };
+
+    } catch (error) {
+      console.error('💥 deleteUserAdmin error:', error);
+      return ctx.internalServerError(
+        'Failed to delete user. They may have linked adverts, payments, or workflow logs — consider deactivating instead.'
+      );
+    }
+  },
+
 }));
