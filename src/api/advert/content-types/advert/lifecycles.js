@@ -188,9 +188,11 @@ async function createSalesOrder(advert) {
     marketSector:           advert.market_sector          || '',
     sectionCommCategory:    advert.section_commission     || '',
     advertBooking:          true,
-    advertReferenceNo:      advert.reference_number,
-    paymentOptions:         paymentOptions
+    advertReferenceNo:      advert.reference_number
   };
+
+  //picked from the above section
+    //paymentOptions:         paymentOptions
 
   console.log('\n');
   console.log('📤 ===================================================');
