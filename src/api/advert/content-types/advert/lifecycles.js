@@ -188,7 +188,8 @@ async function createSalesOrder(advert) {
     marketSector:           advert.market_sector          || '',
     sectionCommCategory:    advert.section_commission     || '',
     advertBooking:          true,
-    advertReferenceNo:      advert.reference_number
+    advertReferenceNo:      advert.reference_number,
+    paymentOption:         paymentOptions
   };
 
   //picked from the above section
