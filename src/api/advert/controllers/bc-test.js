@@ -26,6 +26,38 @@ function isValidDateStr(v) {
   return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BC connection helpers — same env vars lifecycles.js uses, so this reflects
+// whatever BC environment the live sync is actually pointed at.
+// ─────────────────────────────────────────────────────────────────────────────
+const BC_BASE_URL = process.env.EXTERNAL_API_BC_BASE_URL || '';
+const BC_USERNAME  = process.env.EXTERNAL_API_USERNAME    || '';
+const BC_PASSWORD  = process.env.EXTERNAL_API_PASSWORD    || '';
+
+function bcAuthHeader() {
+  return 'Basic ' + Buffer.from(`${BC_USERNAME}:${BC_PASSWORD}`).toString('base64');
+}
+
+/**
+ * Pull the property names + types for a given entity type straight out of
+ * BC's OData $metadata document. This is the authoritative list of fields
+ * BC will actually accept/return — it's why BC rejected paymentOptions:
+ * whatever name/case it expects, it isn't what was being sent.
+ */
+function extractEntityProperties(metadataXml, entityTypeNameHint) {
+  const entityTypeBlocks = [...metadataXml.matchAll(/<EntityType Name="([^"]+)"[^>]*>([\s\S]*?)<\/EntityType>/g)];
+
+  const matches = entityTypeBlocks.filter(([, name]) =>
+    name.toLowerCase().includes(entityTypeNameHint.toLowerCase())
+  );
+
+  return matches.map(([, name, body]) => {
+    const properties = [...body.matchAll(/<Property Name="([^"]+)" Type="([^"]+)"[^/]*\/>/g)]
+      .map(([, propName, propType]) => ({ name: propName, type: propType }));
+    return { entityType: name, properties };
+  });
+}
+
 module.exports = {
 
   /**
@@ -180,6 +212,134 @@ module.exports = {
       return ctx.send({ success: true, advert: matches[0] });
     } catch (error) {
       strapi.log.error('❌ bc-test.lookupByBcReference:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * GET /bc/test/sales-order-fields
+   * Fetches BC's $metadata document and extracts the property list for any
+   * entity type whose name matches "salesOrder" (covers both the header
+   * entity and the line entity). Use this to get the exact, correctly-cased
+   * field names BC accepts on POST /salesOrders — including confirming
+   * whether something like paymentOptions exists at all, and under what
+   * name, before wiring it back into lifecycles.js.
+   *
+   * Optional query param: ?entity=salesOrderLine to narrow the match
+   * (defaults to "salesOrder", which will match both header and line types
+   * since line entity names typically contain "SalesOrder" too).
+   */
+  async getSalesOrderFields(ctx) {
+    if (process.env.ALLOW_BC_TEST_BYPASS !== 'true') {
+      return ctx.forbidden({
+        success: false,
+        message: 'Test bypass is disabled. Set ALLOW_BC_TEST_BYPASS=true in .env to enable it.',
+      });
+    }
+
+    if (!BC_BASE_URL || !BC_USERNAME || !BC_PASSWORD) {
+      return ctx.badRequest({
+        success: false,
+        message: 'Missing BC env vars (EXTERNAL_API_BC_BASE_URL / EXTERNAL_API_USERNAME / EXTERNAL_API_PASSWORD)',
+      });
+    }
+
+    try {
+      const entityHint = ctx.query.entity || 'salesOrder';
+      const metadataUrl = `${BC_BASE_URL}/$metadata`;
+
+      const res = await fetch(metadataUrl, {
+        headers: { Authorization: bcAuthHeader() },
+      });
+      const xml = await res.text();
+
+      if (!res.ok) {
+        return ctx.badRequest({
+          success: false,
+          message: `BC $metadata request failed: HTTP ${res.status}`,
+          detail: xml.slice(0, 2000),
+        });
+      }
+
+      const entities = extractEntityProperties(xml, entityHint);
+
+      if (entities.length === 0) {
+        return ctx.send({
+          success: true,
+          message: `No entity types matched "${entityHint}". Returning raw metadata so you can search it manually.`,
+          rawMetadataLength: xml.length,
+          rawMetadata: xml,
+        });
+      }
+
+      strapi.log.warn(`[bc-test] Fetched BC $metadata field list for entity hint "${entityHint}"`);
+
+      return ctx.send({
+        success: true,
+        entityHint,
+        entities,
+      });
+    } catch (error) {
+      strapi.log.error('❌ bc-test.getSalesOrderFields:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * GET /bc/test/sales-order/:number
+   * Fetches a real sales order straight from BC by its number and returns
+   * the raw response untouched — every key BC actually sent back, so you
+   * can see (a) the real casing/shape of fields and (b) whether a field
+   * like paymentOptions is present on a record that has one.
+   */
+  async getSalesOrderByNumber(ctx) {
+    if (process.env.ALLOW_BC_TEST_BYPASS !== 'true') {
+      return ctx.forbidden({
+        success: false,
+        message: 'Test bypass is disabled. Set ALLOW_BC_TEST_BYPASS=true in .env to enable it.',
+      });
+    }
+
+    if (!BC_BASE_URL || !BC_USERNAME || !BC_PASSWORD) {
+      return ctx.badRequest({
+        success: false,
+        message: 'Missing BC env vars (EXTERNAL_API_BC_BASE_URL / EXTERNAL_API_USERNAME / EXTERNAL_API_PASSWORD)',
+      });
+    }
+
+    try {
+      const { number } = ctx.params;
+      if (!number) {
+        return ctx.badRequest({ success: false, message: 'Sales order number is required' });
+      }
+
+      const url = `${BC_BASE_URL}/salesOrders('${number}')`;
+
+      const res = await fetch(url, {
+        headers: { Authorization: bcAuthHeader() },
+      });
+      const text = await res.text();
+
+      let body;
+      try { body = JSON.parse(text); } catch { body = { rawResponse: text }; }
+
+      if (!res.ok) {
+        return ctx.badRequest({
+          success: false,
+          message: `BC returned HTTP ${res.status} for sales order "${number}"`,
+          detail: body,
+        });
+      }
+
+      strapi.log.warn(`[bc-test] Fetched raw BC sales order "${number}" — fields: ${Object.keys(body).join(', ')}`);
+
+      return ctx.send({
+        success: true,
+        fields: Object.keys(body),
+        salesOrder: body,
+      });
+    } catch (error) {
+      strapi.log.error('❌ bc-test.getSalesOrderByNumber:', error);
       return ctx.internalServerError({ success: false, message: error.message });
     }
   },

@@ -552,5 +552,26 @@ module.exports = {
         tags: ['Payment Monitor', 'Test']
       }
     },
+    //testing salesorder endpoint
+    {
+      method: 'GET',
+      path: '/bc/test/sales-order-fields',
+      handler: 'bc-test.getSalesOrderFields',
+      config: {
+        auth: false,
+        description: 'TEST ONLY — list valid field names for BC sales order entity types via $metadata. Gated by ALLOW_BC_TEST_BYPASS=true.',
+        tags: ['Payment Monitor', 'Test']
+      }
+    },
+    {
+      method: 'GET',
+      path: '/bc/test/sales-order/:number',
+      handler: 'bc-test.getSalesOrderByNumber',
+      config: {
+        auth: false,
+        description: 'TEST ONLY — fetch a raw sales order from BC by number to inspect its real fields. Gated by ALLOW_BC_TEST_BYPASS=true.',
+        tags: ['Payment Monitor', 'Test']
+      }
+    },
   ]
 };
