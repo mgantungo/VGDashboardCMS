@@ -189,7 +189,7 @@ async function createSalesOrder(advert) {
     sectionCommCategory:    advert.section_commission     || '',
     advertBooking:          true,
     advertReferenceNo:      advert.reference_number,
-    paymentOption:         paymentOptions
+    paymentOption:          paymentOptions
   };
 
   //picked from the above section
