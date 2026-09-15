@@ -109,6 +109,15 @@ module.exports = {
         auth: false
       }
     },
+    // ── Schedule Range (run date, not booked date — see advert-schedule.js) ─
+    {
+      method: 'GET',
+      path: '/adverts/schedule-range',
+      handler: 'advert-schedule.getScheduleAdverts',
+      config: {
+        auth: false
+      }
+    },
     // ── Payments ──────────────────────────────────────────────────────────
     {
       method: 'POST',
