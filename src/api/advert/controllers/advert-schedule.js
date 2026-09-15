@@ -155,7 +155,7 @@ const transformAdvert = (a) => ({
 });
 
 module.exports = {
-  // ── SCHEDULE RANGE ADVERTS  (GET /adverts/schedule-range) ────────────────
+  // ── SCHEDULE RANGE ADVERTS  (GET /adverts-schedule-range) ────────────────
   // Filters by whether the advert's run window overlaps [startDate,
   // endDate] - not by createdAt. An advert matches if:
   //   - it starts on/before the range's end, AND
