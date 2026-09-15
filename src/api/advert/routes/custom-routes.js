@@ -110,9 +110,13 @@ module.exports = {
       }
     },
     // ── Schedule Range (run date, not booked date — see advert-schedule.js) ─
+    // No slash after "adverts" - deliberately matches the /adverts-by-date-range
+    // naming shape rather than /adverts/<segment>, which collides with the
+    // core GET /adverts/:id route (Strapi matches "schedule-range" as an id,
+    // finds nothing, and 404s - looks identical to a missing route).
     {
       method: 'GET',
-      path: '/adverts/schedule-range',
+      path: '/adverts-schedule-range',
       handler: 'advert-schedule.getScheduleAdverts',
       config: {
         auth: false
