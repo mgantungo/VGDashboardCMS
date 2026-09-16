@@ -7,7 +7,7 @@
 // elsewhere. Isolating this newer, less-tested query path here means a
 // bug in it can't touch that existing endpoint.
 //
-// Powers the "Run Date" filter mode and the Upcoming Bookings calendar on
+// Powers the "Run Date" filter mode and the Run Calendar on
 // the clerk dashboard: adverts whose run window (start_date/end_date)
 // overlaps a given range, regardless of when they were booked.
 //
