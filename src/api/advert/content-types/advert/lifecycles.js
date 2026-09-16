@@ -450,8 +450,37 @@ async function createSalesOrderLine(advert, salesOrderNumber) {
   return response;
 }
 
+// ─── Auto-paid payment methods ─────────────────────────────────────────────────
+// Methods that are settled at the point of booking, so isPaid can be set
+// automatically rather than waiting on a manual finance confirmation.
+const AUTO_PAID_METHODS = ['mobile_money', 'bank_transfer'];
+
 // ─── Lifecycle Hook ───────────────────────────────────────────────────────────
 module.exports = {
+  /**
+   * beforeCreate
+   *
+   * If the advert is being booked with a payment method that is settled
+   * up front (mobile_money, bank_transfer), auto-set isPaid = true before
+   * the record is written. Other payment methods (cash, credit, pdc) are
+   * left untouched — isPaid keeps its schema default (false) unless the
+   * caller explicitly sends a value.
+   */
+  async beforeCreate(event) {
+    const { data } = event.params;
+
+    if (AUTO_PAID_METHODS.includes(data.payment_method)) {
+      data.isPaid = true;
+
+      console.log('\n');
+      console.log('💰 ===================================================');
+      console.log('💰 AUTO-SETTING isPaid = true');
+      console.log('💰 ===================================================');
+      console.log('💰 payment_method:', data.payment_method);
+      console.log('💰 ===================================================\n');
+    }
+  },
+
   /**
    * afterCreate
    *
