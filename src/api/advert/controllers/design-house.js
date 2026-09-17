@@ -180,6 +180,9 @@ const ADVERT_POPULATE = {
   vgams_user: {
     fields: ['id', 'name', 'email', 'role'],
   },
+  handled_by_designer: {
+    fields: ['id', 'name', 'email'],
+  },
   vgams_sales_persons: {
     fields: ['id', 'name', 'email'],
   },
@@ -443,10 +446,37 @@ module.exports = {
 
       const advert = await strapi.entityService.findOne('api::advert.advert', id, {
         fields: ['id', 'reference_number', 'advert_title', 'isClosed', 'isApproved'],
+        populate: {
+          design_batches: {
+            populate: {
+              file_groups: {
+                populate: {
+                  file:    { fields: ['id'] },
+                  adverts: { fields: ['id'] },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!advert) return ctx.notFound({ success: false, message: `Advert ${id} not found` });
       if (advert.isClosed) return ctx.badRequest({ success: false, message: 'Advert is already closed' });
+
+      // Gate: a designer can no longer tick an advert off as handled without
+      // having also produced and pinned its designed file to an ad slot -
+      // "handled" now means both, not either.
+      const hasDesignedFile = (advert.design_batches || []).some(batch =>
+        (batch.file_groups || []).some(group =>
+          !!group.file && (group.adverts || []).some(a => a.id === Number(id))
+        )
+      );
+      if (!hasDesignedFile) {
+        return ctx.badRequest({
+          success: false,
+          message: 'This advert needs a designed file uploaded to an ad slot before it can be marked complete. Add it to a group and upload the PDF first.',
+        });
+      }
 
       // Optionally resolve designer
       let designerUserId = null;
@@ -459,12 +489,20 @@ module.exports = {
         if (users?.length > 0) designerUserId = users[0].id;
       }
 
-      // Mark design as approved
+      const handledAt = new Date();
+
+      // Mark design as approved, and record who/when unconditionally -
+      // previously this only happened as a side-effect comment, and only
+      // when notes were also provided.
       await strapi.entityService.update('api::advert.advert', id, {
-        data: { isApproved: true },
+        data: {
+          isApproved: true,
+          ...(designerUserId ? { handled_by_designer: designerUserId } : {}),
+          handled_at: handledAt,
+        },
       });
 
-      // Log a comment if notes were provided
+      // Log a comment if notes were provided (unchanged existing behavior)
       if (notes?.trim()) {
         try {
           await strapi.entityService.create('api::comment.comment', {
@@ -477,6 +515,22 @@ module.exports = {
         } catch (commentErr) {
           console.warn('⚠️ Could not create design-complete comment:', commentErr.message);
         }
+      }
+
+      // Audit trail - non-blocking, same convention as existing corrections
+      try {
+        await strapi.entityService.create('api::workflow-log.workflow-log', {
+          data: {
+            advert:      id,
+            action:      'design_marked_handled',
+            new_status:  'design_handled',
+            ...(designerUserId ? { vgams_users: [designerUserId] } : {}),
+            notes:       notes?.trim() || null,
+            timestamp:   handledAt,
+          },
+        });
+      } catch (logErr) {
+        console.warn('⚠️ Could not write design_marked_handled workflow-log entry:', logErr.message);
       }
 
       return ctx.send({
@@ -538,7 +592,7 @@ module.exports = {
       }
 
       await strapi.entityService.update('api::advert.advert', id, {
-        data: { isApproved: false },
+        data: { isApproved: false, handled_by_designer: null, handled_at: null },
       });
 
       try {
@@ -552,6 +606,22 @@ module.exports = {
         });
       } catch (commentErr) {
         console.warn('⚠️ Could not create unmark-complete comment:', commentErr.message);
+      }
+
+      // Audit trail - non-blocking, same convention as existing corrections
+      try {
+        await strapi.entityService.create('api::workflow-log.workflow-log', {
+          data: {
+            advert:           id,
+            action:           'design_unmarked_handled',
+            previous_status:  'design_handled',
+            new_status:       'design_pending',
+            notes:            notes?.trim() || null,
+            timestamp:        new Date(),
+          },
+        });
+      } catch (logErr) {
+        console.warn('⚠️ Could not write design_unmarked_handled workflow-log entry:', logErr.message);
       }
 
       return ctx.send({
@@ -635,6 +705,98 @@ module.exports = {
 
     } catch (error) {
       console.error('❌ getDesignStats:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * Per-designer "what have they handled" report for the Design House
+   * dashboard - one row per designer for the date range, each with the
+   * adverts they ticked off and the PDF (if any) it landed on.
+   * POST /api/design-house/reports/by-designer
+   * Body: { startDate: 'YYYY-MM-DD', endDate: 'YYYY-MM-DD' }
+   */
+  async getDesignerReport(ctx) {
+    try {
+      const { startDate, endDate } = bodyOf(ctx);
+      if (!startDate || !endDate) {
+        return ctx.badRequest({ success: false, message: 'startDate and endDate are required' });
+      }
+
+      const adverts = await strapi.entityService.findMany('api::advert.advert', {
+        filters: {
+          isApproved: true,
+          handled_at: { $gte: `${startDate}T00:00:00.000Z`, $lte: `${endDate}T23:59:59.999Z` },
+        },
+        fields: ['id', 'reference_number', 'bc_reference_number', 'advert_title', 'handled_at'],
+        populate: {
+          handled_by_designer: { fields: ['id', 'name', 'email'] },
+          client: { fields: ['id', 'company_name'] },
+          design_batches: {
+            populate: {
+              file_groups: {
+                populate: {
+                  file:    { fields: ['id', 'name', 'url', 'size', 'mime', 'ext'] },
+                  adverts: { fields: ['id'] },
+                },
+              },
+            },
+          },
+        },
+        limit: -1,
+      });
+
+      const byDesigner = new Map();
+
+      for (const advert of adverts) {
+        const designer = advert.handled_by_designer;
+        const key = designer ? designer.id : 'unattributed';
+
+        if (!byDesigner.has(key)) {
+          byDesigner.set(key, {
+            designer: designer ? { id: designer.id, name: designer.name, email: designer.email } : null,
+            handledCount: 0,
+            adverts: [],
+          });
+        }
+
+        // The gate on markDesignComplete means this should always resolve
+        // to a file for anything handled after this change went live -
+        // adverts handled before it may still legitimately come back null.
+        let matchedFile = null;
+        for (const batch of advert.design_batches || []) {
+          for (const group of batch.file_groups || []) {
+            const inGroup = (group.adverts || []).some(a => a.id === advert.id);
+            if (inGroup && group.file) {
+              matchedFile = { id: group.file.id, name: group.file.name, url: group.file.url, size: group.file.size };
+              break;
+            }
+          }
+          if (matchedFile) break;
+        }
+
+        const entry = byDesigner.get(key);
+        entry.handledCount += 1;
+        entry.adverts.push({
+          id:          advert.id,
+          reference:   advert.reference_number,
+          bcReference: advert.bc_reference_number || '',
+          advertTitle: advert.advert_title,
+          clientName:  advert.client?.company_name || '—',
+          handledAt:   advert.handled_at,
+          pdf:         matchedFile, // null => still pending
+        });
+      }
+
+      return ctx.send({
+        success:    true,
+        startDate,
+        endDate,
+        designers:  [...byDesigner.values()].sort((a, b) => b.handledCount - a.handledCount),
+      });
+
+    } catch (error) {
+      console.error('❌ getDesignerReport:', error);
       return ctx.internalServerError({ success: false, message: error.message });
     }
   },

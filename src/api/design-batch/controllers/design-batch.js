@@ -32,6 +32,7 @@ const BATCH_POPULATE = {
       // relation — adverts here come back with bare fields only. Detail
       // views enrich them with a separate query (see enrichFileGroups).
       adverts: { fields: ADVERT_SUMMARY_FIELDS },
+      uploaded_by: { fields: ['id', 'name', 'email'] },
     },
   },
   daily_schedules: { fields: ['id', 'run_date', 'is_published'] },
@@ -303,7 +304,7 @@ module.exports = {
   async addAdvertToFileGroup(ctx) {
     try {
       const { id, groupId } = ctx.params;
-      const { advertId } = ctx.request.body || {};
+      const { advertId, designerEmail } = ctx.request.body || {};
       if (!advertId) return ctx.badRequest({ success: false, message: 'advertId is required' });
 
       const batch = await strapi.entityService.findOne('api::design-batch.design-batch', id, {
@@ -345,6 +346,34 @@ module.exports = {
         data: { file_groups: groups, adverts: [...new Set(groups.flatMap(g => g.adverts))] },
       });
 
+      // Audit trail - non-blocking, same convention as existing corrections.
+      // adverts.manyToMany on a component can't carry per-relation metadata,
+      // so "who added this one" lives here rather than on the schema.
+      let actorUserId = null;
+      if (designerEmail) {
+        const users = await strapi.entityService.findMany('api::vgams-user.vgams-user', {
+          filters: { email: designerEmail },
+          fields:  ['id'],
+          limit:   1,
+        });
+        if (users?.length > 0) actorUserId = users[0].id;
+      }
+      try {
+        const groupLabel = groups.find(g => String(g.id) === String(groupId))?.label || groupId;
+        await strapi.entityService.create('api::workflow-log.workflow-log', {
+          data: {
+            advert:      advertId,
+            action:      'design_group_added',
+            new_status:  'design_group_added',
+            ...(actorUserId ? { vgams_users: [actorUserId] } : {}),
+            notes:       `Added to ad slot "${groupLabel}" in batch ${batch.id}`,
+            timestamp:   new Date(),
+          },
+        });
+      } catch (logErr) {
+        console.warn('⚠️ Could not write design_group_added workflow-log entry:', logErr.message);
+      }
+
       return ctx.send({ success: true, message: 'Advert added to ad slot', fileGroups: updated.file_groups });
     } catch (error) {
       console.error('❌ addAdvertToFileGroup:', error);
@@ -358,6 +387,10 @@ module.exports = {
   async removeAdvertFromFileGroup(ctx) {
     try {
       const { id, groupId, advertId } = ctx.params;
+      // DELETE requests carry this as a query param from the frontend
+      // (?designerEmail=...) rather than a body - accept either.
+      const designerEmail = ctx.query?.designerEmail || (ctx.request.body || {}).designerEmail;
+
       const batch = await strapi.entityService.findOne('api::design-batch.design-batch', id, {
         populate: { file_groups: { populate: { file: { fields: ['id'] }, adverts: { fields: ['id'] } } } },
       });
@@ -375,6 +408,31 @@ module.exports = {
         data: { file_groups: groups, adverts: [...new Set(groups.flatMap(g => g.adverts))] },
       });
 
+      // Audit trail - non-blocking, same convention as existing corrections
+      let actorUserId = null;
+      if (designerEmail) {
+        const users = await strapi.entityService.findMany('api::vgams-user.vgams-user', {
+          filters: { email: designerEmail },
+          fields:  ['id'],
+          limit:   1,
+        });
+        if (users?.length > 0) actorUserId = users[0].id;
+      }
+      try {
+        await strapi.entityService.create('api::workflow-log.workflow-log', {
+          data: {
+            advert:      advertId,
+            action:      'design_group_removed',
+            new_status:  'design_group_removed',
+            ...(actorUserId ? { vgams_users: [actorUserId] } : {}),
+            notes:       `Removed from ad slot ${groupId} in batch ${batch.id}`,
+            timestamp:   new Date(),
+          },
+        });
+      } catch (logErr) {
+        console.warn('⚠️ Could not write design_group_removed workflow-log entry:', logErr.message);
+      }
+
       return ctx.send({ success: true, message: 'Advert removed from ad slot', fileGroups: updated.file_groups });
     } catch (error) {
       console.error('❌ removeAdvertFromFileGroup:', error);
@@ -391,6 +449,7 @@ module.exports = {
       const { id, groupId } = ctx.params;
       const uploaded = ctx.request.files?.file;
       if (!uploaded) return ctx.badRequest({ success: false, message: 'No file provided (field name "file")' });
+      const { designerEmail } = ctx.request.body || {};
 
       const batch = await strapi.entityService.findOne('api::design-batch.design-batch', id, {
         populate: { file_groups: { populate: { file: { fields: ['id'] }, adverts: { fields: ['id'] } } } },
@@ -402,16 +461,60 @@ module.exports = {
         files: uploaded,
       });
 
-      const groups = (batch.file_groups || []).map(g => ({
-        id: g.id,
-        label: g.label,
-        file: String(g.id) === String(groupId) ? result.id : (g.file?.id || null),
-        adverts: (g.adverts || []).map(a => a.id),
-      }));
+      // Resolve uploader once, same lookup convention used everywhere else
+      let uploaderUserId = null;
+      if (designerEmail) {
+        const users = await strapi.entityService.findMany('api::vgams-user.vgams-user', {
+          filters: { email: designerEmail },
+          fields:  ['id'],
+          limit:   1,
+        });
+        if (users?.length > 0) uploaderUserId = users[0].id;
+      }
+      const uploadedAt = new Date();
+
+      let targetGroupAdvertIds = [];
+      const groups = (batch.file_groups || []).map(g => {
+        const isTarget = String(g.id) === String(groupId);
+        if (isTarget) targetGroupAdvertIds = (g.adverts || []).map(a => a.id);
+        return {
+          id: g.id,
+          label: g.label,
+          file: isTarget ? result.id : (g.file?.id || null),
+          adverts: (g.adverts || []).map(a => a.id),
+          // Replacing a file overwrites this to the latest uploader by
+          // design - it's "who uploaded the current file", not history.
+          // The workflow-log entries below carry the history.
+          ...(isTarget ? { uploaded_by: uploaderUserId, uploaded_at: uploadedAt } : {}),
+        };
+      });
 
       const updated = await strapi.entityService.update('api::design-batch.design-batch', id, {
         data: { file_groups: groups },
       });
+
+      // Audit trail - non-blocking. One entry per advert already pinned to
+      // this group at upload time; if the file lands before any advert is
+      // pinned, there's nothing to log yet (the group-add call logs it then).
+      if (targetGroupAdvertIds.length > 0) {
+        try {
+          const groupLabel = groups.find(g => String(g.id) === String(groupId))?.label || groupId;
+          await Promise.all(targetGroupAdvertIds.map(advertId =>
+            strapi.entityService.create('api::workflow-log.workflow-log', {
+              data: {
+                advert:      advertId,
+                action:      'design_file_uploaded',
+                new_status:  'design_file_uploaded',
+                ...(uploaderUserId ? { vgams_users: [uploaderUserId] } : {}),
+                notes:       `File "${result.name}" uploaded to ad slot "${groupLabel}"`,
+                timestamp:   uploadedAt,
+              },
+            })
+          ));
+        } catch (logErr) {
+          console.warn('⚠️ Could not write design_file_uploaded workflow-log entries:', logErr.message);
+        }
+      }
 
       return ctx.send({
         success: true,

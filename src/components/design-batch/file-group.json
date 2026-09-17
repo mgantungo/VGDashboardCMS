@@ -21,6 +21,14 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::advert.advert"
+    },
+    "uploaded_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-user.vgams-user"
+    },
+    "uploaded_at": {
+      "type": "datetime"
     }
   }
 }

@@ -294,6 +294,20 @@ module.exports = {
         }
       }
     },
+    {
+      method: 'POST',
+      path: '/design-house/reports/by-designer',
+      handler: 'design-house.getDesignerReport',
+      config: {
+        auth: false,
+        description: 'Per-designer handled-advert report for the Design House dashboard - counts plus drill-down adverts with their matched PDF',
+        tags: ['Design House'],
+        body: {
+          startDate: { type: 'string', description: 'Start date in YYYY-MM-DD format', required: true, example: '2026-01-01' },
+          endDate:   { type: 'string', description: 'End date in YYYY-MM-DD format', required: true, example: '2026-01-31' }
+        }
+      }
+    },
     // ── Daily Advert Schedules ────────────────────────────────────────────
     {
       method: 'POST',

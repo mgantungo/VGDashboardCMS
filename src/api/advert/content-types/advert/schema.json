@@ -166,6 +166,14 @@
       "type": "boolean",
       "default": false
     },
+    "handled_by_designer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-user.vgams-user"
+    },
+    "handled_at": {
+      "type": "datetime"
+    },
     "isScheduled": {
       "type": "boolean",
       "default": false
