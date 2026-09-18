@@ -12,6 +12,10 @@ const BC_BASE_URL = process.env.EXTERNAL_API_BC_BASE_URL || '';
 const BC_USERNAME = process.env.EXTERNAL_API_USERNAME || '';
 const BC_PASSWORD = process.env.EXTERNAL_API_PASSWORD || '';
 
+// lifecycles.js lives at src/advert/content-types/advert/
+// bc-sync-monitor.js lives at src/advert/controllers/
+const { upsertInvoiceFromBC, createPaymentFromBC } = require('../../controllers/bc-sync-monitor');
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Basic-auth header value */
@@ -539,6 +543,7 @@ module.exports = {
             client:              true,
             rate_card:           true,
             vgams_sales_persons: true,
+            vgams_user:          true,
           },
         }
       );
@@ -640,6 +645,61 @@ module.exports = {
         bc_reference_number: salesOrderNumber,
         bc_share_success: true
       };
+
+      // ── Auto-paid methods: do what a real BC payment confirmation would
+      // do (see bc-sync-monitor.js's updatePaymentStatus), not just flip
+      // isPaid. Reuses the exact same helpers that path uses, so this can't
+      // silently drift from what a genuine confirmation produces. Only
+      // fires here because the BC sales order above just succeeded -
+      // salesOrderNumber is real at this point, nothing is fabricated
+      // against a sync that failed.
+      //
+      // No real BC invoice payload exists yet at booking time (that's a
+      // separate BC entity from the sales order created above) - passing
+      // null lets both helpers fall back to advert.total_amount / today's
+      // date / a BC-{salesOrderNumber} invoice number, same fallback
+      // behavior they already have for a missing invoiceData.
+      if (AUTO_PAID_METHODS.includes(advert.payment_method)) {
+        try {
+          const advertForSettlement = { ...advert, bc_reference_number: salesOrderNumber };
+          const autoInvoiceRecord = await upsertInvoiceFromBC(advertForSettlement, null);
+          // isClosed forced true (not read from real data, since there is
+          // none yet) — the only place that matters is createPaymentFromBC's
+          // cash-specific gate, which never applies here since paymentMethod
+          // is always mobile_money/bank_transfer in this call site.
+          const autoPaymentRecord = await createPaymentFromBC(
+            advertForSettlement, null, autoInvoiceRecord, advert.payment_method, true
+          );
+
+          updateData.paid_at   = new Date();
+          updateData.isActive  = true;
+          if (advert.status === 'draft') {
+            updateData.status = 'published';
+          }
+
+          console.log('\n');
+          console.log('💰 ===================================================');
+          console.log('💰 AUTO-SETTLEMENT (mobile_money/bank_transfer)');
+          console.log('💰 ===================================================');
+          console.log('💰 Invoice:', autoInvoiceRecord?.invoice_number);
+          console.log('💰 Payment ID:', autoPaymentRecord?.id);
+          console.log('💰 status → published:', advert.status === 'draft');
+          console.log('💰 ===================================================\n');
+        } catch (settleError) {
+          // Non-blocking — the bc_reference_number/bc_share_success write
+          // below still has to happen regardless of whether settlement
+          // succeeded. Same convention as the workflow-log writes
+          // elsewhere in this codebase: log it, don't abort the primary
+          // operation over a secondary one.
+          strapi.log.error('[BC Lifecycle] Auto-settlement (invoice/payment/publish) failed:', settleError.message);
+          console.log('\n');
+          console.log('⚠️ ===================================================');
+          console.log('⚠️ AUTO-SETTLEMENT FAILED — bc_reference_number/bc_share_success still saved');
+          console.log('⚠️ ===================================================');
+          console.log('⚠️ Error:', settleError.message);
+          console.log('⚠️ ===================================================\n');
+        }
+      }
       
       console.log('📤 Update Data:', JSON.stringify(updateData, null, 2));
       console.log('📤 ===================================================\n');

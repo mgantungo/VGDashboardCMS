@@ -10,6 +10,13 @@
 
 module.exports = {
 
+  // Exposed so beforeCreate/afterCreate in advert/lifecycles.js can reuse
+  // the exact same invoice/payment creation logic for mobile_money and
+  // bank_transfer (settled at booking) instead of duplicating it - one
+  // implementation, two callers, can't drift apart.
+  upsertInvoiceFromBC,
+  createPaymentFromBC,
+
   /**
    * Get adverts that need payment status check
    * Returns adverts with bc_reference_number where isPaid = false
