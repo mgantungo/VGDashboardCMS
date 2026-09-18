@@ -27,7 +27,12 @@
         "approved",
         "rejected",
         "revised",
-        "published"
+        "published",
+        "design_group_added",
+        "design_group_removed",
+        "design_file_uploaded",
+        "design_marked_handled",
+        "design_unmarked_handled"
       ]
     },
     "previous_status": {
