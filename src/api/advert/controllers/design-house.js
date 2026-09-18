@@ -446,18 +446,6 @@ module.exports = {
 
       const advert = await strapi.entityService.findOne('api::advert.advert', id, {
         fields: ['id', 'reference_number', 'advert_title', 'isClosed', 'isApproved'],
-        populate: {
-          design_batches: {
-            populate: {
-              file_groups: {
-                populate: {
-                  file:    { fields: ['id'] },
-                  adverts: { fields: ['id'] },
-                },
-              },
-            },
-          },
-        },
       });
 
       if (!advert) return ctx.notFound({ success: false, message: `Advert ${id} not found` });
@@ -466,7 +454,31 @@ module.exports = {
       // Gate: a designer can no longer tick an advert off as handled without
       // having also produced and pinned its designed file to an ad slot -
       // "handled" now means both, not either.
-      const hasDesignedFile = (advert.design_batches || []).some(batch =>
+      //
+      // Queried from design-batch directly (filtered to batches containing
+      // this advert), using the same two-level populate shape as
+      // BATCH_POPULATE in design-batch.js's getBatchDetail/listBatches -
+      // that path is proven to work. Traversing the other direction
+      // (advert -> design_batches -> file_groups component -> adverts
+      // relation) adds an extra populate hop through a component that
+      // isn't reliable and was silently returning incomplete data, which
+      // made this gate reject every advert regardless of whether it
+      // actually had a file.
+      const candidateBatches = await strapi.entityService.findMany('api::design-batch.design-batch', {
+        filters: { adverts: { id: Number(id) } },
+        fields:  ['id'],
+        populate: {
+          file_groups: {
+            populate: {
+              file:    { fields: ['id'] },
+              adverts: { fields: ['id'] },
+            },
+          },
+        },
+        limit: -1,
+      });
+
+      const hasDesignedFile = (candidateBatches || []).some(batch =>
         (batch.file_groups || []).some(group =>
           !!group.file && (group.adverts || []).some(a => a.id === Number(id))
         )
