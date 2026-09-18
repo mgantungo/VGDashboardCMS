@@ -814,6 +814,66 @@ module.exports = {
   },
 
   /**
+   * Every open, paid, not-yet-handled advert that would currently fail the
+   * markDesignComplete gate — i.e. not yet sitting in any file group that
+   * has a designed file uploaded. Exists to clear the pre-existing backlog
+   * in one pass rather than each one surfacing as a one-off rejection when
+   * a designer happens to click "Handled" on it.
+   * GET /api/design-house/reports/missing-design-file
+   */
+  async getMissingDesignFile(ctx) {
+    try {
+      const openAdverts = await strapi.entityService.findMany('api::advert.advert', {
+        filters: { isApproved: false, isClosed: false, isCanceled: false, isPaid: true },
+        fields:  ['id', 'reference_number', 'bc_reference_number', 'advert_title', 'start_date'],
+        populate: { client: { fields: ['id', 'company_name'] } },
+        limit: -1,
+      });
+
+      // Same proven query shape as the markDesignComplete gate itself -
+      // build the set of advert ids that ARE covered, once, rather than
+      // re-querying design-batch per advert.
+      const batches = await strapi.entityService.findMany('api::design-batch.design-batch', {
+        fields: ['id'],
+        populate: {
+          file_groups: {
+            populate: {
+              file:    { fields: ['id'] },
+              adverts: { fields: ['id'] },
+            },
+          },
+        },
+        limit: -1,
+      });
+
+      const coveredAdvertIds = new Set();
+      for (const batch of batches || []) {
+        for (const group of batch.file_groups || []) {
+          if (!group.file) continue;
+          for (const a of group.adverts || []) coveredAdvertIds.add(a.id);
+        }
+      }
+
+      const missing = (openAdverts || [])
+        .filter(a => !coveredAdvertIds.has(a.id))
+        .map(a => ({
+          id:          a.id,
+          reference:   a.reference_number,
+          bcReference: a.bc_reference_number || '',
+          advertTitle: a.advert_title,
+          clientName:  a.client?.company_name || '—',
+          startDate:   a.start_date,
+        }));
+
+      return ctx.send({ success: true, count: missing.length, adverts: missing });
+
+    } catch (error) {
+      console.error('❌ getMissingDesignFile:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
+    }
+  },
+
+  /**
    * List active products for the design-house product filter — the design
    * team works across multiple products/mastheads (New Vision, Bukedde, etc.)
    * and needs to scope the queue to one of them.

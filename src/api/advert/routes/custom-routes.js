@@ -308,6 +308,16 @@ module.exports = {
         }
       }
     },
+    {
+      method: 'GET',
+      path: '/design-house/reports/missing-design-file',
+      handler: 'design-house.getMissingDesignFile',
+      config: {
+        auth: false,
+        description: 'Every open, paid, unhandled advert currently blocked by the markDesignComplete gate - not yet pinned to a file group with a designed file',
+        tags: ['Design House']
+      }
+    },
     // ── Daily Advert Schedules ────────────────────────────────────────────
     {
       method: 'POST',
