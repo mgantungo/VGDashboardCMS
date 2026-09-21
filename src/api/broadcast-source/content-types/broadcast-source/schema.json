@@ -4,8 +4,8 @@
   "info": {
     "singularName": "broadcast-source",
     "pluralName": "broadcast-sources",
-    "displayName": "Bill Board Broadcast Source",
-    "description": "A single video source (YouTube/HLS/MP4) that can be assigned to a screen."
+    "displayName": "Broadcast Source",
+    "description": "A single video source (Twitch/YouTube/HLS/MP4) that can be assigned to a screen."
   },
   "options": {
     "draftAndPublish": false
@@ -18,14 +18,14 @@
     },
     "type": {
       "type": "enumeration",
-      "enum": ["youtube", "hls", "mp4"],
+      "enum": ["twitch", "youtube", "hls", "mp4"],
       "required": true,
-      "default": "youtube"
+      "default": "twitch"
     },
     "value": {
       "type": "string",
       "required": true,
-      "description": "YouTube video ID for type=youtube, or full stream/file URL for hls/mp4"
+      "description": "Twitch channel name for type=twitch (stable — no polling needed), YouTube video ID for type=youtube, or full stream/file URL for hls/mp4"
     },
     "isActive": {
       "type": "boolean",
