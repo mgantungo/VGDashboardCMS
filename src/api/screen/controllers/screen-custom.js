@@ -3,6 +3,8 @@
 const SCREEN_UID = 'api::screen.screen';
 const SOURCE_UID = 'api::broadcast-source.broadcast-source';
 
+const VALID_TYPES = ['twitch', 'youtube', 'hls', 'mp4'];
+
 // How long to trust a fetched external broadcast key before re-fetching.
 // Keeps multiple screens sharing the same feed URL from hammering it,
 // and keeps a single screen's own poll cycle cheap. Also used by
@@ -10,8 +12,12 @@ const SOURCE_UID = 'api::broadcast-source.broadcast-source';
 const EXTERNAL_FEED_CACHE_TTL_MS = 30 * 1000;
 const externalFeedCache = new Map(); // url -> { data, expiresAt }
 
-// Where "Fetch live ID" defaults to if the caller doesn't specify a url —
-// the same feed the original PHP script polled for the live broadcast key.
+// Where "Fetch live ID" / the live-sources list default to if the caller
+// doesn't specify a url — the same feed the original PHP script polled
+// for the live broadcast key. This feed is YouTube-specific: it hands
+// back a broadcast_id, which is exactly the kind of ID that changes
+// per-broadcast and needs polling. Twitch is channel-based (stable, no
+// ID to fetch) so it never touches this path — see resolveSource below.
 const DEFAULT_DETECT_URL = 'https://adverts.newvisionapp.com/adverts/items/live_broadcast';
 
 function computeStatus(screen, now) {
@@ -39,8 +45,7 @@ function extractStatus(item) {
 }
 
 /**
- * Fetches the live broadcast key from an external feed like
- * https://adverts.newvisionapp.com/adverts/items/live_broadcast
+ * Fetches the live broadcast key from the newvisionapp YouTube feed.
  * Expects the same shape the original PHP script relied on:
  *   { data: [ { broadcast_id, title, ... } ] }
  * Cached briefly per URL so several screens (or repeated polls) sharing
@@ -72,9 +77,10 @@ async function fetchExternalBroadcast(url) {
 
 /**
  * Decides what a screen should currently be showing.
- * Priority: live external feed (if enabled + configured + reachable) →
- * falls back to whatever was manually pushed/set as the active
- * Broadcast Source if the feed is off, unset, or the fetch fails.
+ * Priority: live external YouTube feed (if enabled + configured +
+ * reachable) → falls back to whatever was manually pushed/set as the
+ * active Broadcast Source (this is the only path Twitch ever takes,
+ * since a Twitch channel is stable and never needs re-fetching).
  */
 async function resolveSource(screen, strapi) {
   if (screen.externalFeedEnabled && screen.externalFeedUrl) {
@@ -87,12 +93,10 @@ async function resolveSource(screen, strapi) {
           value: broadcast.broadcastId,
         };
       }
-      // Feed reachable but returned nothing — fall through to static source
     } catch (err) {
       strapi.log.warn(
         `[screen] external feed fetch failed for "${screen.slug}": ${err.message}`
       );
-      // fall through to static source below
     }
   }
 
@@ -182,11 +186,12 @@ module.exports = ({ strapi }) => ({
 
   /**
    * POST /api/screens/:slug/push
-   * body: { title, type: 'youtube'|'hls'|'mp4', value }
-   * Used by the dashboard's "Push" action. Deactivates any existing
-   * sources on this screen, activates a new one, and turns off the
-   * external feed for this screen so the push actually sticks instead
-   * of being overwritten on the next poll.
+   * body: { title, type: 'twitch'|'youtube'|'hls'|'mp4', value }
+   * For type=twitch, value is a channel name (stable — no ID rotation).
+   * Used by the dashboard's "Push" action and the "Push to all" bulk
+   * action. Deactivates any existing sources on this screen, activates
+   * a new one, and turns off the external feed for this screen so the
+   * push actually sticks instead of being overwritten on the next poll.
    */
   async push(ctx) {
     const { slug } = ctx.params;
@@ -195,8 +200,8 @@ module.exports = ({ strapi }) => ({
     if (!type || !value) {
       return ctx.badRequest('type and value are required');
     }
-    if (!['youtube', 'hls', 'mp4'].includes(type)) {
-      return ctx.badRequest('type must be one of youtube, hls, mp4');
+    if (!VALID_TYPES.includes(type)) {
+      return ctx.badRequest(`type must be one of ${VALID_TYPES.join(', ')}`);
     }
 
     const screen = await strapi.documents(SCREEN_UID).findFirst({
@@ -244,11 +249,10 @@ module.exports = ({ strapi }) => ({
 
   /**
    * GET /api/screens/detect-source?url=<optional feed url>
-   * Calls the live broadcast feed (defaults to the newvisionapp
-   * adverts API — same one the original PHP script polled) and reads
+   * YouTube-only: calls the newvisionapp live broadcast feed and reads
    * back { broadcast_id, title } from the most recent entry. Powers the
-   * dashboard's "Fetch live ID" button so you don't have to manually
-   * copy an ID out of anywhere before pushing/registering it.
+   * dashboard's "Fetch live ID" button for YouTube-type sources. Twitch
+   * has no equivalent — a channel name doesn't need to be "detected".
    */
   async detectSource(ctx) {
     const url = ctx.query.url || DEFAULT_DETECT_URL;
@@ -278,18 +282,8 @@ module.exports = ({ strapi }) => ({
 
   /**
    * GET /api/screens/live-sources?url=<optional feed url>&limit=<n>
-   * Like detectSource, but returns the N most recent entries instead of
-   * just the top one — for when more than one broadcast might be
-   * relevant at once, so the dashboard can show each by title and let
-   * you push the right id to the right screen instead of only ever
-   * getting whatever happens to be newest.
-   *
-   * NOTE: the original PHP script only ever read broadcast_id/title off
-   * this feed, so there's no confirmed field marking an entry as
-   * currently "live"/"active" — each item's `status` is passed through
-   * as-is if the API happens to include one (null otherwise). If you
-   * know the actual field name, tell me and I'll filter on it properly
-   * instead of just listing the N most recent by id.
+   * YouTube-only: the N most recent entries from the feed, for the
+   * dashboard's "Fetch" picker and "Live Streams" panel.
    */
   async listLiveSources(ctx) {
     const url = ctx.query.url || DEFAULT_DETECT_URL;
@@ -325,13 +319,12 @@ module.exports = ({ strapi }) => ({
   /**
    * POST /api/screens/register
    * body: { name, location?, width, height,
-   *         externalFeedUrl?,                     // OR
-   *         streamType?: 'youtube'|'hls'|'mp4', streamValue?, streamTitle? }
+   *         externalFeedUrl?,                     // YouTube auto-feed OR
+   *         streamType?: 'twitch'|'youtube'|'hls'|'mp4', streamValue?, streamTitle? }
    * Used by the dashboard's "Add Screen" form. slug is generated from
    * name (and de-duplicated) — never supplied or hardcoded by the client.
    * Every field describing the actual stream is optional: a screen can be
-   * created with nothing playing yet and given a source later via /push
-   * or by setting externalFeedUrl in the admin.
+   * created with nothing playing yet and given a source later via /push.
    */
   async register(ctx) {
     const {
@@ -348,8 +341,8 @@ module.exports = ({ strapi }) => ({
     if (!name || !width || !height) {
       return ctx.badRequest('name, width and height are required');
     }
-    if (streamType && !['youtube', 'hls', 'mp4'].includes(streamType)) {
-      return ctx.badRequest('streamType must be one of youtube, hls, mp4');
+    if (streamType && !VALID_TYPES.includes(streamType)) {
+      return ctx.badRequest(`streamType must be one of ${VALID_TYPES.join(', ')}`);
     }
 
     const slug = await uniqueSlug(strapi, name);
@@ -393,13 +386,10 @@ module.exports = ({ strapi }) => ({
    * GET /api/screens/status
    * Everything the dashboard needs in one call. Two separate signals:
    *  - broadcastStatus: 'live' | 'offline' — is there actually an active
-   *    source assigned right now (external feed or manual push)? This is
-   *    what the dashboard's main badge should reflect — a freshly pushed
-   *    screen is live immediately, it doesn't need to wait on a check-in.
+   *    source assigned right now (Twitch channel, YouTube feed, or
+   *    manual push)?
    *  - connectionStatus: 'live' | 'stale' | 'offline' — is the physical
-   *    device itself still polling, derived from lastSeenAt vs.
-   *    staleAfter/offlineAfter. Useful to show separately (e.g. "last
-   *    seen 2m ago") but shouldn't drive the main LIVE/OFFLINE badge.
+   *    device itself still polling, derived from lastSeenAt.
    */
   async status(ctx) {
     const screens = await strapi.documents(SCREEN_UID).findMany({
