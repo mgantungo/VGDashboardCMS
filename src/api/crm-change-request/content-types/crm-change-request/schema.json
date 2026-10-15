@@ -1,0 +1,78 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_change_requests",
+  "info": {
+    "singularName": "crm-change-request",
+    "pluralName": "crm-change-requests",
+    "displayName": "CRM Change Request"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-project.crm-project"
+    },
+    "workstream": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-workstream.crm-workstream"
+    },
+    "change_type": {
+      "type": "enumeration",
+      "enum": [
+        "extension",
+        "scope_change",
+        "cancellation",
+        "early_closure",
+        "price_change"
+      ],
+      "default": "extension",
+      "required": true
+    },
+    "reason": {
+      "type": "text"
+    },
+    "price_impact": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "cost_impact": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "new_end_date": {
+      "type": "date"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "applied"
+      ],
+      "default": "pending"
+    },
+    "requested_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "approver": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "client_accepted": {
+      "type": "boolean",
+      "default": false
+    },
+    "decided_at": {
+      "type": "datetime"
+    }
+  }
+}

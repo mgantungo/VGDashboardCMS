@@ -1,0 +1,171 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_proposal_versions",
+  "info": {
+    "singularName": "crm-proposal-version",
+    "pluralName": "crm-proposal-versions",
+    "displayName": "CRM Proposal Version",
+    "description": "Immutable once submitted. Revisions are new versions."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "proposal": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal.crm-proposal",
+      "inversedBy": "versions"
+    },
+    "version_number": {
+      "type": "integer",
+      "required": true
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "in_review",
+        "approved",
+        "submitted",
+        "accepted",
+        "superseded",
+        "rejected",
+        "withdrawn"
+      ],
+      "default": "draft"
+    },
+    "valid_until": {
+      "type": "date"
+    },
+    "executive_summary": {
+      "type": "text"
+    },
+    "requirements": {
+      "type": "text"
+    },
+    "solution": {
+      "type": "text"
+    },
+    "terms": {
+      "type": "text"
+    },
+    "payment_terms_days": {
+      "type": "integer",
+      "default": 30
+    },
+    "currency": {
+      "type": "string",
+      "default": "UGX"
+    },
+    "allocation_method": {
+      "type": "enumeration",
+      "enum": [
+        "selling_price",
+        "contribution",
+        "manual"
+      ],
+      "default": "selling_price"
+    },
+    "package_price": {
+      "type": "biginteger"
+    },
+    "list_total": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "selling_total": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "discount_total": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "net_total": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "cost_total": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "contribution_total": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "margin_pct": {
+      "type": "decimal",
+      "default": 0
+    },
+    "discount_pct": {
+      "type": "decimal",
+      "default": 0
+    },
+    "lines": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-proposal-line.crm-proposal-line",
+      "mappedBy": "version"
+    },
+    "approvals": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-approval-request.crm-approval-request",
+      "mappedBy": "version"
+    },
+    "previous_version": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-version.crm-proposal-version"
+    },
+    "change_reason": {
+      "type": "text"
+    },
+    "change_summary": {
+      "type": "json"
+    },
+    "created_by_profile": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "submitted_at": {
+      "type": "datetime"
+    },
+    "accepted_at": {
+      "type": "datetime"
+    },
+    "accepted_by_contact": {
+      "type": "string"
+    },
+    "acceptance_evidence": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "auto_submit_on_approval": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_frozen": {
+      "type": "boolean",
+      "default": false
+    },
+    "frozen_snapshot": {
+      "type": "json"
+    },
+    "pdf": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    }
+  }
+}

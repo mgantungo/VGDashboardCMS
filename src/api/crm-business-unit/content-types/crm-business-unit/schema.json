@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_business_units",
+  "info": {
+    "singularName": "crm-business-unit",
+    "pluralName": "crm-business-units",
+    "displayName": "CRM Business Unit"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "code": {
+      "type": "string",
+      "unique": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "head": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    }
+  }
+}

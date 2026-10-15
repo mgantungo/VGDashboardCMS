@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_contacts",
+  "info": {
+    "singularName": "crm-contact",
+    "pluralName": "crm-contacts",
+    "displayName": "CRM Contact"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "designation": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email"
+    },
+    "decision_role": {
+      "type": "enumeration",
+      "enum": [
+        "decision_maker",
+        "influencer",
+        "procurement",
+        "finance",
+        "user",
+        "other"
+      ],
+      "default": "other"
+    },
+    "is_primary": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

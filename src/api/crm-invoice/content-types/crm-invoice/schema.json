@@ -1,0 +1,86 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_invoices",
+  "info": {
+    "singularName": "crm-invoice",
+    "pluralName": "crm-invoices",
+    "displayName": "CRM Invoice (finance mirror)",
+    "description": "Mirror of the finance system invoice. Finance stays the source of truth; the existing CMS invoice can be linked."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "billing_item": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-billing-item.crm-billing-item"
+    },
+    "lpo": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-lpo.crm-lpo"
+    },
+    "contract": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-contract.crm-contract"
+    },
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-project.crm-project"
+    },
+    "cms_invoice": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::invoice.invoice"
+    },
+    "number": {
+      "type": "string"
+    },
+    "external_id": {
+      "type": "string"
+    },
+    "issued_on": {
+      "type": "date"
+    },
+    "due_date": {
+      "type": "date"
+    },
+    "amount": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "tax": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "balance": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "requested",
+        "issued",
+        "part_paid",
+        "paid",
+        "overdue",
+        "cancelled",
+        "written_off"
+      ],
+      "default": "requested"
+    },
+    "last_synced_at": {
+      "type": "datetime"
+    }
+  }
+}

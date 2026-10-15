@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_notifications",
+  "info": {
+    "singularName": "crm-notification",
+    "pluralName": "crm-notifications",
+    "displayName": "CRM Notification"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "recipient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "event": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "body": {
+      "type": "text"
+    },
+    "link": {
+      "type": "string"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "in_app",
+        "email",
+        "sms",
+        "whatsapp"
+      ],
+      "default": "in_app"
+    },
+    "delivery": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "sent",
+        "failed",
+        "skipped"
+      ],
+      "default": "sent"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_audit_logs",
+  "info": {
+    "singularName": "crm-audit-log",
+    "pluralName": "crm-audit-logs",
+    "displayName": "CRM Audit Log",
+    "description": "Append-only. Written by the CRM API; not editable from the CRM UI."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "actor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "actor_user_id": {
+      "type": "integer"
+    },
+    "action": {
+      "type": "string",
+      "required": true
+    },
+    "target_uid": {
+      "type": "string"
+    },
+    "target_id": {
+      "type": "string"
+    },
+    "before": {
+      "type": "json"
+    },
+    "after": {
+      "type": "json"
+    },
+    "ip": {
+      "type": "string"
+    },
+    "occurred_at": {
+      "type": "datetime"
+    }
+  }
+}

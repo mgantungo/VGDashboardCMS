@@ -1,0 +1,87 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_lpos",
+  "info": {
+    "singularName": "crm-lpo",
+    "pluralName": "crm-lpos",
+    "displayName": "CRM LPO"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "version": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-version.crm-proposal-version"
+    },
+    "contract": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-contract.crm-contract"
+    },
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-project.crm-project"
+    },
+    "number": {
+      "type": "string"
+    },
+    "issued_on": {
+      "type": "date"
+    },
+    "value": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "valid_until": {
+      "type": "date"
+    },
+    "payment_terms_days": {
+      "type": "integer"
+    },
+    "verification": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "verified",
+        "mismatch",
+        "exception_approved"
+      ],
+      "default": "pending"
+    },
+    "discrepancies": {
+      "type": "json"
+    },
+    "resolution": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "accept_lpo_terms",
+        "amend_requested",
+        "exception"
+      ],
+      "default": "none"
+    },
+    "attachment": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "uploaded_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_proposal_lines",
+  "info": {
+    "singularName": "crm-proposal-line",
+    "pluralName": "crm-proposal-lines",
+    "displayName": "CRM Proposal Line"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "version": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-version.crm-proposal-version",
+      "inversedBy": "lines"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-product.crm-product"
+    },
+    "business_unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-business-unit.crm-business-unit"
+    },
+    "description": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "decimal",
+      "default": 1
+    },
+    "list_price": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "unit_price": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "line_discount": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "selling_price": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "allocated_discount": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "net_price": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "internal_cost": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "third_party_cost": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "other_cost": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "start_date": {
+      "type": "date"
+    },
+    "end_date": {
+      "type": "date"
+    },
+    "duration_type": {
+      "type": "enumeration",
+      "enum": [
+        "one_off",
+        "fixed_term",
+        "long_running"
+      ],
+      "default": "fixed_term"
+    },
+    "provider": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-provider.crm-provider"
+    },
+    "sort": {
+      "type": "integer",
+      "default": 0
+    },
+    "contributors": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-line-contributor.crm-line-contributor",
+      "mappedBy": "line"
+    }
+  }
+}

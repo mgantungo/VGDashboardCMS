@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_profiles",
+  "info": {
+    "singularName": "crm-profile",
+    "pluralName": "crm-profiles",
+    "displayName": "CRM Profile",
+    "description": "Links a login (users-permissions user) to a sales person and a CRM role. The existing VGAMS sales person collection is never modified."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "display_name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "sales_person": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "crm_role": {
+      "type": "enumeration",
+      "enum": [
+        "salesperson",
+        "product_manager",
+        "supervisor",
+        "senior_manager",
+        "executive",
+        "project_manager",
+        "finance",
+        "procurement",
+        "admin"
+      ],
+      "default": "salesperson",
+      "required": true
+    },
+    "team": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-team.crm-team",
+      "inversedBy": "members"
+    },
+    "business_unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-business-unit.crm-business-unit"
+    },
+    "monthly_target": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "discount_authority_pct": {
+      "type": "decimal",
+      "default": 5
+    },
+    "commission_eligible": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_approval_requests",
+  "info": {
+    "singularName": "crm-approval-request",
+    "pluralName": "crm-approval-requests",
+    "displayName": "CRM Approval Request"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "version": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-version.crm-proposal-version",
+      "inversedBy": "approvals"
+    },
+    "policy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-approval-policy.crm-approval-policy"
+    },
+    "trigger_type": {
+      "type": "enumeration",
+      "enum": [
+        "discount",
+        "low_margin",
+        "payment_terms",
+        "third_party",
+        "credit",
+        "contract_variation",
+        "change_request",
+        "early_closure",
+        "lpo_exception"
+      ],
+      "default": "discount",
+      "required": true
+    },
+    "detail": {
+      "type": "string"
+    },
+    "subject_type": {
+      "type": "string"
+    },
+    "subject_id": {
+      "type": "string"
+    },
+    "requested_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "approver_role": {
+      "type": "enumeration",
+      "enum": [
+        "salesperson",
+        "product_manager",
+        "supervisor",
+        "senior_manager",
+        "executive",
+        "project_manager",
+        "finance",
+        "procurement",
+        "admin"
+      ],
+      "default": "supervisor"
+    },
+    "approver": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "decision": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "returned",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "reason": {
+      "type": "text"
+    },
+    "decided_at": {
+      "type": "datetime"
+    },
+    "due_at": {
+      "type": "datetime"
+    },
+    "sla_hours": {
+      "type": "integer",
+      "default": 24
+    }
+  }
+}

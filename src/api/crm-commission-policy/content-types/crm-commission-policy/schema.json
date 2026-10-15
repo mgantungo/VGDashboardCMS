@@ -1,0 +1,84 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_commission_policies",
+  "info": {
+    "singularName": "crm-commission-policy",
+    "pluralName": "crm-commission-policies",
+    "displayName": "CRM Commission Policy"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "version_label": {
+      "type": "string"
+    },
+    "effective_from": {
+      "type": "date"
+    },
+    "effective_to": {
+      "type": "date"
+    },
+    "basis": {
+      "type": "enumeration",
+      "enum": [
+        "gross",
+        "net",
+        "collected"
+      ],
+      "default": "collected"
+    },
+    "payment_trigger": {
+      "type": "enumeration",
+      "enum": [
+        "acceptance",
+        "invoiced",
+        "collected"
+      ],
+      "default": "collected"
+    },
+    "discount_treatment": {
+      "type": "enumeration",
+      "enum": [
+        "net_of_discount",
+        "ignore"
+      ],
+      "default": "net_of_discount"
+    },
+    "cancellation_treatment": {
+      "type": "enumeration",
+      "enum": [
+        "reverse",
+        "keep"
+      ],
+      "default": "reverse"
+    },
+    "bad_debt_treatment": {
+      "type": "enumeration",
+      "enum": [
+        "reverse",
+        "keep"
+      ],
+      "default": "reverse"
+    },
+    "default_rate": {
+      "type": "decimal",
+      "default": 5
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "rules": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-commission-rule.crm-commission-rule",
+      "mappedBy": "policy"
+    }
+  }
+}

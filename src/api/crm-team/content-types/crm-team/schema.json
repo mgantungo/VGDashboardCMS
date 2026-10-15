@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_teams",
+  "info": {
+    "singularName": "crm-team",
+    "pluralName": "crm-teams",
+    "displayName": "CRM Team"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "region": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "business_unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-business-unit.crm-business-unit"
+    },
+    "supervisor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "members": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-profile.crm-profile",
+      "mappedBy": "team"
+    }
+  }
+}

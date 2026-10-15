@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_milestones",
+  "info": {
+    "singularName": "crm-milestone",
+    "pluralName": "crm-milestones",
+    "displayName": "CRM Milestone"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "workstream": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-workstream.crm-workstream",
+      "inversedBy": "milestones"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "baseline_date": {
+      "type": "date"
+    },
+    "revised_date": {
+      "type": "date"
+    },
+    "actual_date": {
+      "type": "date"
+    },
+    "is_billing_trigger": {
+      "type": "boolean",
+      "default": false
+    },
+    "billing_amount": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "done",
+        "missed"
+      ],
+      "default": "pending"
+    },
+    "evidence_note": {
+      "type": "text"
+    }
+  }
+}

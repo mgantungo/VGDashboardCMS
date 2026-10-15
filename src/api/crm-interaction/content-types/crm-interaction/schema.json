@@ -1,0 +1,104 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_interactions",
+  "info": {
+    "singularName": "crm-interaction",
+    "pluralName": "crm-interactions",
+    "displayName": "CRM Interaction"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "opportunity": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-opportunity.crm-opportunity"
+    },
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-project.crm-project"
+    },
+    "sales_person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "logged_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "contacts": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::crm-contact.crm-contact"
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "call",
+        "meeting",
+        "email",
+        "whatsapp",
+        "presentation",
+        "note",
+        "decision",
+        "commitment"
+      ],
+      "default": "meeting",
+      "required": true
+    },
+    "occurred_at": {
+      "type": "datetime"
+    },
+    "outcome": {
+      "type": "enumeration",
+      "enum": [
+        "wants_quote",
+        "positive",
+        "needs_time",
+        "not_interested",
+        "no_answer",
+        "other"
+      ],
+      "default": "other"
+    },
+    "summary": {
+      "type": "text"
+    },
+    "next_action": {
+      "type": "string"
+    },
+    "next_action_type": {
+      "type": "enumeration",
+      "enum": [
+        "send_quote",
+        "call_back",
+        "meet_again",
+        "follow_up",
+        "none"
+      ],
+      "default": "none"
+    },
+    "next_action_due": {
+      "type": "date"
+    },
+    "next_action_done": {
+      "type": "boolean",
+      "default": false
+    },
+    "next_action_owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    }
+  }
+}

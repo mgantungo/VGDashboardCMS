@@ -1,0 +1,78 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_billing_items",
+  "info": {
+    "singularName": "crm-billing-item",
+    "pluralName": "crm-billing-items",
+    "displayName": "CRM Billing Item"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-project.crm-project"
+    },
+    "contract": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-contract.crm-contract"
+    },
+    "workstream": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-workstream.crm-workstream"
+    },
+    "milestone": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-milestone.crm-milestone"
+    },
+    "label": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "trigger_type": {
+      "type": "enumeration",
+      "enum": [
+        "milestone",
+        "monthly",
+        "event",
+        "completion",
+        "upfront"
+      ],
+      "default": "completion"
+    },
+    "due_date": {
+      "type": "date"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "not_billed",
+        "requested",
+        "invoiced",
+        "part_paid",
+        "paid",
+        "overdue",
+        "cancelled"
+      ],
+      "default": "not_billed"
+    },
+    "invoice": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-invoice.crm-invoice"
+    },
+    "lpo_exception_approved": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

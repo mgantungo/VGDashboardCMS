@@ -1,0 +1,63 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_client_assignments",
+  "info": {
+    "singularName": "crm-client-assignment",
+    "pluralName": "crm-client-assignments",
+    "displayName": "CRM Client Assignment",
+    "description": "Who looks after which client, in which role, from when to when."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "sales_person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": [
+        "account_lead",
+        "relationship_owner",
+        "associated_seller"
+      ],
+      "default": "associated_seller",
+      "required": true
+    },
+    "business_unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-business-unit.crm-business-unit"
+    },
+    "start_date": {
+      "type": "date"
+    },
+    "end_date": {
+      "type": "date"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "ended"
+      ],
+      "default": "active"
+    },
+    "assigned_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "reason": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_commission_rules",
+  "info": {
+    "singularName": "crm-commission-rule",
+    "pluralName": "crm-commission-rules",
+    "displayName": "CRM Commission Rule"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "policy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-commission-policy.crm-commission-policy",
+      "inversedBy": "rules"
+    },
+    "name": {
+      "type": "string"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-product.crm-product"
+    },
+    "business_unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-business-unit.crm-business-unit"
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": [
+        "originator",
+        "account_lead",
+        "product_seller",
+        "negotiation_lead",
+        "delivery_coordinator",
+        "supporting",
+        "any"
+      ],
+      "default": "any"
+    },
+    "rate": {
+      "type": "decimal",
+      "default": 5
+    },
+    "role_weight": {
+      "type": "decimal",
+      "default": 100
+    },
+    "cap": {
+      "type": "biginteger"
+    }
+  }
+}

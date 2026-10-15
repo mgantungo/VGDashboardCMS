@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_pipeline_stages",
+  "info": {
+    "singularName": "crm-pipeline-stage",
+    "pluralName": "crm-pipeline-stages",
+    "displayName": "CRM Pipeline Stage",
+    "description": "The 15 configurable stages. simple_step maps each to the 4 steps salespeople see."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "position": {
+      "type": "integer",
+      "required": true,
+      "unique": true
+    },
+    "simple_step": {
+      "type": "enumeration",
+      "enum": [
+        "talking",
+        "quoting",
+        "waiting",
+        "won",
+        "lost"
+      ],
+      "default": "talking",
+      "required": true
+    },
+    "default_probability": {
+      "type": "integer",
+      "default": 10
+    },
+    "required_evidence": {
+      "type": "json"
+    },
+    "is_won": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_lost": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

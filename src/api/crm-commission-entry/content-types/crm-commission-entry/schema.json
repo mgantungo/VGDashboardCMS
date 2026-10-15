@@ -1,0 +1,108 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_commission_entries",
+  "info": {
+    "singularName": "crm-commission-entry",
+    "pluralName": "crm-commission-entries",
+    "displayName": "CRM Commission Entry"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "sales_person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "proposal_line": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-line.crm-proposal-line"
+    },
+    "line_contributor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-line-contributor.crm-line-contributor"
+    },
+    "version": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-version.crm-proposal-version"
+    },
+    "policy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-commission-policy.crm-commission-policy"
+    },
+    "rule": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-commission-rule.crm-commission-rule"
+    },
+    "role": {
+      "type": "string"
+    },
+    "basis_amount": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "rate": {
+      "type": "decimal",
+      "default": 0
+    },
+    "share_pct": {
+      "type": "decimal",
+      "default": 100
+    },
+    "amount": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "eligible_amount": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "paid_amount": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "accrued",
+        "eligible",
+        "approved",
+        "paid",
+        "reversed"
+      ],
+      "default": "accrued"
+    },
+    "period": {
+      "type": "string"
+    },
+    "rule_snapshot": {
+      "type": "json"
+    },
+    "note": {
+      "type": "string"
+    },
+    "approved_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "approved_at": {
+      "type": "datetime"
+    },
+    "paid_at": {
+      "type": "datetime"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_lookups",
+  "info": {
+    "singularName": "crm-lookup",
+    "pluralName": "crm-lookups",
+    "displayName": "CRM Lookup"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "list_type": {
+      "type": "enumeration",
+      "enum": [
+        "industry",
+        "loss_reason",
+        "client_category",
+        "source",
+        "region",
+        "document_type"
+      ],
+      "default": "industry",
+      "required": true
+    },
+    "value": {
+      "type": "string",
+      "required": true
+    },
+    "label": {
+      "type": "string"
+    },
+    "sort": {
+      "type": "integer",
+      "default": 0
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

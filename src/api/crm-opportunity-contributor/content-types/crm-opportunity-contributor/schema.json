@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_opp_contributors",
+  "info": {
+    "singularName": "crm-opportunity-contributor",
+    "pluralName": "crm-opportunity-contributors",
+    "displayName": "CRM Opportunity Contributor"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "opportunity": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-opportunity.crm-opportunity",
+      "inversedBy": "contributors"
+    },
+    "sales_person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": [
+        "originator",
+        "account_lead",
+        "product_seller",
+        "negotiation_lead",
+        "delivery_coordinator",
+        "supporting"
+      ],
+      "default": "supporting",
+      "required": true
+    },
+    "business_unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-business-unit.crm-business-unit"
+    },
+    "expected_products": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::crm-product.crm-product"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "invited",
+        "active",
+        "removed"
+      ],
+      "default": "active"
+    }
+  }
+}

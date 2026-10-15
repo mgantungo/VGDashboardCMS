@@ -1,0 +1,77 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_proposals",
+  "info": {
+    "singularName": "crm-proposal",
+    "pluralName": "crm-proposals",
+    "displayName": "CRM Proposal"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "reference": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "title": {
+      "type": "string"
+    },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "opportunity": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-opportunity.crm-opportunity"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "in_review",
+        "approved",
+        "submitted",
+        "negotiating",
+        "accepted",
+        "rejected",
+        "expired"
+      ],
+      "default": "draft"
+    },
+    "versions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-proposal-version.crm-proposal-version",
+      "mappedBy": "proposal"
+    },
+    "current_version": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-version.crm-proposal-version"
+    },
+    "accepted_version": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-version.crm-proposal-version"
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "sales_person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "lock_token": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

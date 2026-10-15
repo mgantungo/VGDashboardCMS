@@ -1,0 +1,130 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_workstreams",
+  "info": {
+    "singularName": "crm-workstream",
+    "pluralName": "crm-workstreams",
+    "displayName": "CRM Workstream"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-project.crm-project",
+      "inversedBy": "workstreams"
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-product.crm-product"
+    },
+    "provider": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-provider.crm-provider"
+    },
+    "proposal_lines": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::crm-proposal-line.crm-proposal-line"
+    },
+    "duration_type": {
+      "type": "enumeration",
+      "enum": [
+        "one_off",
+        "fixed_term",
+        "long_running"
+      ],
+      "default": "fixed_term"
+    },
+    "planned_start": {
+      "type": "date"
+    },
+    "planned_end": {
+      "type": "date"
+    },
+    "actual_start": {
+      "type": "date"
+    },
+    "actual_end": {
+      "type": "date"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "in_progress",
+        "blocked",
+        "completed",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "is_required": {
+      "type": "boolean",
+      "default": true
+    },
+    "budget": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "forecast_cost": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "committed_cost": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "actual_cost": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "allocated_revenue": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "completion_note": {
+      "type": "text"
+    },
+    "completion_evidence": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "milestones": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-milestone.crm-milestone",
+      "mappedBy": "workstream"
+    },
+    "tasks": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-task.crm-task",
+      "mappedBy": "workstream"
+    },
+    "cost_entries": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-cost-entry.crm-cost-entry",
+      "mappedBy": "workstream"
+    }
+  }
+}

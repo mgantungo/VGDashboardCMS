@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_integration_logs",
+  "info": {
+    "singularName": "crm-integration-log",
+    "pluralName": "crm-integration-logs",
+    "displayName": "CRM Integration Log"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "system": {
+      "type": "string"
+    },
+    "direction": {
+      "type": "enumeration",
+      "enum": [
+        "outbound",
+        "inbound"
+      ],
+      "default": "outbound"
+    },
+    "record_type": {
+      "type": "string"
+    },
+    "record_id": {
+      "type": "string"
+    },
+    "outcome": {
+      "type": "enumeration",
+      "enum": [
+        "queued",
+        "sent",
+        "ok",
+        "failed"
+      ],
+      "default": "queued"
+    },
+    "payload": {
+      "type": "json"
+    },
+    "response": {
+      "type": "json"
+    },
+    "error": {
+      "type": "text"
+    },
+    "attempts": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

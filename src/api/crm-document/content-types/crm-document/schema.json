@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_documents",
+  "info": {
+    "singularName": "crm-document",
+    "pluralName": "crm-documents",
+    "displayName": "CRM Document"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "record_type": {
+      "type": "string"
+    },
+    "record_id": {
+      "type": "string"
+    },
+    "doc_type": {
+      "type": "enumeration",
+      "enum": [
+        "lpo",
+        "contract",
+        "proposal_pdf",
+        "acceptance",
+        "proof_of_publication",
+        "compliance",
+        "evidence",
+        "invoice",
+        "other"
+      ],
+      "default": "other"
+    },
+    "title": {
+      "type": "string"
+    },
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    },
+    "uploaded_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    }
+  }
+}

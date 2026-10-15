@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_payments",
+  "info": {
+    "singularName": "crm-payment",
+    "pluralName": "crm-payments",
+    "displayName": "CRM Payment (finance mirror)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "invoice": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-invoice.crm-invoice"
+    },
+    "amount": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "paid_on": {
+      "type": "date"
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": [
+        "bank",
+        "mobile_money",
+        "cheque",
+        "cash",
+        "offset",
+        "other"
+      ],
+      "default": "bank"
+    },
+    "reference": {
+      "type": "string"
+    },
+    "external_id": {
+      "type": "string"
+    }
+  }
+}

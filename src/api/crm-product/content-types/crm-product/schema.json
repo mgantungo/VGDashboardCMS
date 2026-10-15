@@ -1,0 +1,105 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_products",
+  "info": {
+    "singularName": "crm-product",
+    "pluralName": "crm-products",
+    "displayName": "CRM Product"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string",
+      "unique": true
+    },
+    "short_label": {
+      "type": "string"
+    },
+    "package_note": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "product_type": {
+      "type": "enumeration",
+      "enum": [
+        "internal",
+        "third_party"
+      ],
+      "default": "internal"
+    },
+    "unit": {
+      "type": "enumeration",
+      "enum": [
+        "spot",
+        "insertion",
+        "slot",
+        "day",
+        "week",
+        "month",
+        "event",
+        "item",
+        "package"
+      ],
+      "default": "package"
+    },
+    "list_price": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "floor_price": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "standard_cost": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "tax_rate": {
+      "type": "decimal",
+      "default": 18
+    },
+    "business_unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-business-unit.crm-business-unit"
+    },
+    "preferred_provider": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-provider.crm-provider"
+    },
+    "default_quantity": {
+      "type": "decimal",
+      "default": 1
+    },
+    "default_duration_type": {
+      "type": "enumeration",
+      "enum": [
+        "one_off",
+        "fixed_term",
+        "long_running"
+      ],
+      "default": "fixed_term"
+    },
+    "deliverables": {
+      "type": "text"
+    },
+    "requires_approval": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_opportunities",
+  "info": {
+    "singularName": "crm-opportunity",
+    "pluralName": "crm-opportunities",
+    "displayName": "CRM Opportunity"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "stage": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-pipeline-stage.crm-pipeline-stage"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "open",
+        "won",
+        "lost"
+      ],
+      "default": "open"
+    },
+    "requirements": {
+      "type": "text"
+    },
+    "expected_revenue": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "expected_cost": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "size_band": {
+      "type": "enumeration",
+      "enum": [
+        "under_10m",
+        "between_10m_50m",
+        "over_50m"
+      ]
+    },
+    "probability": {
+      "type": "integer"
+    },
+    "probability_override": {
+      "type": "boolean",
+      "default": false
+    },
+    "decision_date": {
+      "type": "date"
+    },
+    "next_action": {
+      "type": "string"
+    },
+    "next_action_due": {
+      "type": "date"
+    },
+    "loss_reason": {
+      "type": "string"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": [
+        "phone",
+        "desktop",
+        "quick_create",
+        "import",
+        "referral",
+        "web",
+        "other"
+      ],
+      "default": "desktop"
+    },
+    "currency": {
+      "type": "string",
+      "default": "UGX"
+    },
+    "interest_products": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::crm-product.crm-product"
+    },
+    "contributors": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-opportunity-contributor.crm-opportunity-contributor",
+      "mappedBy": "opportunity"
+    },
+    "lead_sales_person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "created_by_profile": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "won_at": {
+      "type": "datetime"
+    },
+    "lost_at": {
+      "type": "datetime"
+    },
+    "last_activity_at": {
+      "type": "datetime"
+    },
+    "overlap_flag": {
+      "type": "boolean",
+      "default": false
+    },
+    "overlap_resolution": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "lead_set",
+        "separate",
+        "merged"
+      ],
+      "default": "none"
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

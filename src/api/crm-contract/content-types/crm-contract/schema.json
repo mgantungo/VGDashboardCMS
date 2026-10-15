@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_contracts",
+  "info": {
+    "singularName": "crm-contract",
+    "pluralName": "crm-contracts",
+    "displayName": "CRM Contract"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "version": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-version.crm-proposal-version"
+    },
+    "reference": {
+      "type": "string",
+      "unique": true
+    },
+    "title": {
+      "type": "string"
+    },
+    "effective_date": {
+      "type": "date"
+    },
+    "expiry_date": {
+      "type": "date"
+    },
+    "renewal_date": {
+      "type": "date"
+    },
+    "payment_terms_days": {
+      "type": "integer"
+    },
+    "value": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "sent",
+        "signed",
+        "active",
+        "expired",
+        "terminated"
+      ],
+      "default": "draft"
+    },
+    "attachment": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    }
+  }
+}

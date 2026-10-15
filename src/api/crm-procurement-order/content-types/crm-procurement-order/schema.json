@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_procurement_orders",
+  "info": {
+    "singularName": "crm-procurement-order",
+    "pluralName": "crm-procurement-orders",
+    "displayName": "CRM Procurement Order"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "provider": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-provider.crm-provider"
+    },
+    "workstream": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-workstream.crm-workstream"
+    },
+    "proposal_line": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-line.crm-proposal-line"
+    },
+    "reference": {
+      "type": "string"
+    },
+    "cost": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "approved",
+        "ordered",
+        "delivered",
+        "invoiced",
+        "paid",
+        "cancelled"
+      ],
+      "default": "draft"
+    },
+    "delivery_confirmed": {
+      "type": "boolean",
+      "default": false
+    },
+    "delivery_confirmed_at": {
+      "type": "datetime"
+    },
+    "external_ref": {
+      "type": "string"
+    }
+  }
+}

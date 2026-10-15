@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_price_rules",
+  "info": {
+    "singularName": "crm-price-rule",
+    "pluralName": "crm-price-rules",
+    "displayName": "CRM Price Rule"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-product.crm-product"
+    },
+    "name": {
+      "type": "string"
+    },
+    "conditions": {
+      "type": "json"
+    },
+    "price": {
+      "type": "biginteger"
+    },
+    "min_quantity": {
+      "type": "decimal"
+    },
+    "valid_from": {
+      "type": "date"
+    },
+    "valid_to": {
+      "type": "date"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

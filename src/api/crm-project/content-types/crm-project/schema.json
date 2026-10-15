@@ -1,0 +1,94 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_projects",
+  "info": {
+    "singularName": "crm-project",
+    "pluralName": "crm-projects",
+    "displayName": "CRM Project"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client"
+    },
+    "version": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-version.crm-proposal-version"
+    },
+    "contract": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-contract.crm-contract"
+    },
+    "opportunity": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-opportunity.crm-opportunity"
+    },
+    "project_manager": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "contracted_value": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "budget": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "start_date": {
+      "type": "date"
+    },
+    "end_date": {
+      "type": "date"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "planned",
+        "active",
+        "on_hold",
+        "completed",
+        "cancelled"
+      ],
+      "default": "active"
+    },
+    "health": {
+      "type": "enumeration",
+      "enum": [
+        "on_track",
+        "at_risk",
+        "off_track"
+      ],
+      "default": "on_track"
+    },
+    "state_overridden": {
+      "type": "boolean",
+      "default": false
+    },
+    "closure_reason": {
+      "type": "text"
+    },
+    "closed_at": {
+      "type": "datetime"
+    },
+    "workstreams": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::crm-workstream.crm-workstream",
+      "mappedBy": "project"
+    }
+  }
+}

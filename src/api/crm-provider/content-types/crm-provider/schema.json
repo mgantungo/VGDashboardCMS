@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_providers",
+  "info": {
+    "singularName": "crm-provider",
+    "pluralName": "crm-providers",
+    "displayName": "CRM Provider"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "services": {
+      "type": "text"
+    },
+    "approval_state": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved",
+        "suspended",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "compliance_expiry": {
+      "type": "date"
+    },
+    "performance_rating": {
+      "type": "integer"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "documents": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files"
+      ]
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_line_contributors",
+  "info": {
+    "singularName": "crm-line-contributor",
+    "pluralName": "crm-line-contributors",
+    "displayName": "CRM Line Contributor"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "line": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-proposal-line.crm-proposal-line",
+      "inversedBy": "contributors"
+    },
+    "sales_person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": [
+        "originator",
+        "account_lead",
+        "product_seller",
+        "negotiation_lead",
+        "delivery_coordinator",
+        "supporting"
+      ],
+      "default": "product_seller",
+      "required": true
+    },
+    "percentage": {
+      "type": "decimal",
+      "default": 100
+    }
+  }
+}

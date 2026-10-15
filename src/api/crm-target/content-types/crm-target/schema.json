@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_targets",
+  "info": {
+    "singularName": "crm-target",
+    "pluralName": "crm-targets",
+    "displayName": "CRM Target"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "profile": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "sales_person": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "team": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-team.crm-team"
+    },
+    "business_unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-business-unit.crm-business-unit"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-product.crm-product"
+    },
+    "period_start": {
+      "type": "date"
+    },
+    "period_end": {
+      "type": "date"
+    },
+    "amount": {
+      "type": "biginteger",
+      "default": "0"
+    }
+  }
+}

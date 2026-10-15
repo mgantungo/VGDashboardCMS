@@ -1,0 +1,71 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_client_profiles",
+  "info": {
+    "singularName": "crm-client-profile",
+    "pluralName": "crm-client-profiles",
+    "displayName": "CRM Client Profile",
+    "description": "CRM-only fields for an existing client (status, category, duplicate key). One per client."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "client": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::client.client"
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "corporate",
+        "sme",
+        "government",
+        "ngo",
+        "agency",
+        "individual"
+      ],
+      "default": "corporate"
+    },
+    "industry": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "lifecycle": {
+      "type": "enumeration",
+      "enum": [
+        "prospect",
+        "active",
+        "dormant",
+        "closed"
+      ],
+      "default": "prospect"
+    },
+    "dedupe_key": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "last_contact_at": {
+      "type": "datetime"
+    },
+    "parent": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-client-profile.crm-client-profile"
+    },
+    "merged_into": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-client-profile.crm-client-profile"
+    }
+  }
+}

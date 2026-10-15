@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_project_contacts",
+  "info": {
+    "singularName": "crm-project-contact",
+    "pluralName": "crm-project-contacts",
+    "displayName": "CRM Project Contact"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-project.crm-project"
+    },
+    "contact": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-contact.crm-contact"
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": [
+        "coordinator",
+        "approver",
+        "finance",
+        "delivery_recipient"
+      ],
+      "default": "coordinator"
+    }
+  }
+}

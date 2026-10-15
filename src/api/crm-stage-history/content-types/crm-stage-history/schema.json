@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_stage_histories",
+  "info": {
+    "singularName": "crm-stage-history",
+    "pluralName": "crm-stage-histories",
+    "displayName": "CRM Stage History"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "opportunity": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-opportunity.crm-opportunity"
+    },
+    "from_stage": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-pipeline-stage.crm-pipeline-stage"
+    },
+    "to_stage": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-pipeline-stage.crm-pipeline-stage"
+    },
+    "changed_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "note": {
+      "type": "string"
+    },
+    "changed_at": {
+      "type": "datetime"
+    }
+  }
+}

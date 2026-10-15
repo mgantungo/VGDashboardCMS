@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_approval_policies",
+  "info": {
+    "singularName": "crm-approval-policy",
+    "pluralName": "crm-approval-policies",
+    "displayName": "CRM Approval Policy",
+    "description": "Thresholds are data: discount % bands, margin floor, payment-term days, third-party and credit flags."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "trigger_type": {
+      "type": "enumeration",
+      "enum": [
+        "discount",
+        "low_margin",
+        "payment_terms",
+        "third_party",
+        "credit",
+        "contract_variation",
+        "change_request",
+        "early_closure",
+        "lpo_exception"
+      ],
+      "default": "discount",
+      "required": true
+    },
+    "min_value": {
+      "type": "decimal"
+    },
+    "max_value": {
+      "type": "decimal"
+    },
+    "approver_role": {
+      "type": "enumeration",
+      "enum": [
+        "salesperson",
+        "product_manager",
+        "supervisor",
+        "senior_manager",
+        "executive",
+        "project_manager",
+        "finance",
+        "procurement",
+        "admin"
+      ],
+      "default": "supervisor",
+      "required": true
+    },
+    "sla_hours": {
+      "type": "integer",
+      "default": 24
+    },
+    "sort": {
+      "type": "integer",
+      "default": 0
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "business_unit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-business-unit.crm-business-unit"
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "kind": "singleType",
+  "collectionName": "crm_settings",
+  "info": {
+    "singularName": "crm-setting",
+    "pluralName": "crm-settings",
+    "displayName": "CRM Settings",
+    "description": "Global CRM settings."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "company_name": {
+      "type": "string",
+      "default": "Vision Group"
+    },
+    "currency": {
+      "type": "string",
+      "default": "UGX"
+    },
+    "default_allocation_method": {
+      "type": "enumeration",
+      "enum": [
+        "selling_price",
+        "contribution",
+        "manual"
+      ],
+      "default": "selling_price"
+    },
+    "salesperson_discount_limit_pct": {
+      "type": "decimal",
+      "default": 5
+    },
+    "min_margin_pct": {
+      "type": "decimal",
+      "default": 35
+    },
+    "standard_payment_terms_days": {
+      "type": "integer",
+      "default": 30
+    },
+    "quote_validity_days": {
+      "type": "integer",
+      "default": 14
+    },
+    "cold_after_days": {
+      "type": "integer",
+      "default": 30
+    },
+    "heavy_load_clients": {
+      "type": "integer",
+      "default": 8
+    },
+    "reminder_days_before_expiry": {
+      "type": "integer",
+      "default": 2
+    }
+  }
+}

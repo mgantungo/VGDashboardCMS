@@ -1,0 +1,87 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_tasks",
+  "info": {
+    "singularName": "crm-task",
+    "pluralName": "crm-tasks",
+    "displayName": "CRM Task"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "workstream": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-workstream.crm-workstream",
+      "inversedBy": "tasks"
+    },
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-project.crm-project"
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "assignee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "supporters": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "start_date": {
+      "type": "date"
+    },
+    "due_date": {
+      "type": "date"
+    },
+    "priority": {
+      "type": "enumeration",
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "urgent"
+      ],
+      "default": "normal"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "in_progress",
+        "awaiting_approval",
+        "blocked",
+        "completed",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "depends_on": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-task.crm-task"
+    },
+    "recurring_rule": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-recurring-rule.crm-recurring-rule"
+    },
+    "evidence_note": {
+      "type": "text"
+    },
+    "completed_at": {
+      "type": "datetime"
+    }
+  }
+}

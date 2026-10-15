@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_required_doc_rules",
+  "info": {
+    "singularName": "crm-required-document-rule",
+    "pluralName": "crm-required-document-rules",
+    "displayName": "CRM Required Document Rule"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "applies_to": {
+      "type": "enumeration",
+      "enum": [
+        "stage",
+        "billing",
+        "project_start",
+        "project_close"
+      ],
+      "default": "stage",
+      "required": true
+    },
+    "stage": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-pipeline-stage.crm-pipeline-stage"
+    },
+    "document_types": {
+      "type": "json"
+    },
+    "blocks": {
+      "type": "boolean",
+      "default": true
+    },
+    "exception_allowed": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

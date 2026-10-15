@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_contract_amendments",
+  "info": {
+    "singularName": "crm-contract-amendment",
+    "pluralName": "crm-contract-amendments",
+    "displayName": "CRM Contract Amendment"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "contract": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-contract.crm-contract"
+    },
+    "description": {
+      "type": "text"
+    },
+    "value_impact": {
+      "type": "biginteger",
+      "default": "0"
+    },
+    "approver": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "decided_at": {
+      "type": "datetime"
+    }
+  }
+}

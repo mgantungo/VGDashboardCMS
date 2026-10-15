@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_commission_disputes",
+  "info": {
+    "singularName": "crm-commission-dispute",
+    "pluralName": "crm-commission-disputes",
+    "displayName": "CRM Commission Dispute"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "entry": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-commission-entry.crm-commission-entry"
+    },
+    "claimant": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "reason": {
+      "type": "text"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "open",
+        "upheld",
+        "rejected"
+      ],
+      "default": "open"
+    },
+    "decision": {
+      "type": "text"
+    },
+    "decided_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-profile.crm-profile"
+    },
+    "decided_at": {
+      "type": "datetime"
+    }
+  }
+}

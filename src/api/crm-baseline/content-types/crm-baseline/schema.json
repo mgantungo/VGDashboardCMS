@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_baselines",
+  "info": {
+    "singularName": "crm-baseline",
+    "pluralName": "crm-baselines",
+    "displayName": "CRM Baseline Snapshot"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-project.crm-project"
+    },
+    "workstream": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-workstream.crm-workstream"
+    },
+    "change_request": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-change-request.crm-change-request"
+    },
+    "label": {
+      "type": "string"
+    },
+    "snapshot": {
+      "type": "json"
+    }
+  }
+}
