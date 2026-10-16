@@ -30,6 +30,8 @@ module.exports = [
 		'https://jobs.co.ug',
 		'https://billboards.visiongroup.co.ug',
 		'https://layoutx.newvision.co.ug',
+		'https://salescrm.visiongroup.co.ug',
+		'https://www.salescrm.visiongroup.co.ug',
 		],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
     },
