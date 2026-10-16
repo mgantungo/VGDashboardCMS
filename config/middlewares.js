@@ -10,6 +10,7 @@ module.exports = [
       headers: '*',
       origin: [	'http://localhost:3130', 
 		'http://localhost:3000',
+		'http://localhost:3879',
 		'http://localhost:3430', 
 		'http://localhost:8080',
 		'http://localhost:3739',
