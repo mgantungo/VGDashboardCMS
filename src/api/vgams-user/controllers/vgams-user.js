@@ -167,7 +167,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
     }
   },
 
-  // ── POST login — standard, SFA, and article-analytics ────────────────────
+  // ── POST login — standard, SFA, article-analytics, … and CRM ────────────
   async initiateLoginPost(ctx) {
     try {
       const { email: rawEmail, password, module: loginModule } = ctx.request.body;
@@ -177,7 +177,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       const email = rawEmail.toLowerCase().trim();
 
       // ── Standard login ─────────────────────────────────────────────────
-      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers' && loginModule !== 'exhibitor-access')) {
+      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers' && loginModule !== 'exhibitor-access' && loginModule !== 'crm')) {
         return await this.initiateLogin(ctx);
       }
 
@@ -288,6 +288,78 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         };
       }
 
+
+      // ── CRM BRANCH ─────────────────────────────────────────────────────
+      // Who may sign in (AD password already verified above, domain already checked):
+      //   - an active vgams-user with role administrator, finance_team or mdsoffice, or
+      //   - an active vgams-sales-person.
+      // The CRM extension (src/api/crm-core) decides this and links/creates the CRM profile,
+      // so the rules live in one place and are re-checked on every CRM request.
+      if (loginModule === 'crm') {
+        console.log('📇 CRM login requested for:', email);
+
+        let access;
+        try {
+          access = strapi.service('api::crm-core.crm-access');
+        } catch (e) {
+          access = null;
+        }
+        if (!access || typeof access.crmLogin !== 'function') {
+          console.log('🚫 CRM: crm-core is not installed on this CMS');
+          return ctx.notFound('The CRM is not installed on this server.');
+        }
+
+        const result = await access.crmLogin(email);
+        if (!result) {
+          console.log('🚫 CRM: not eligible:', email);
+          return ctx.forbidden(
+            'Your account does not have CRM access. You must be an active sales person, ' +
+            'or an active VGAMS administrator, finance or MD\'s office user.'
+          );
+        }
+
+        const { who, profile } = result;
+        if (!profile || profile.is_active === false) {
+          console.log('🚫 CRM: profile disabled for:', email);
+          return ctx.forbidden('Your CRM access has been disabled. Contact a CRM administrator.');
+        }
+        console.log('✅ CRM: signed in as', profile.crm_role, '—', email);
+
+        return {
+          success: true,
+          message: 'CRM login successful',
+          crmUser: {
+            email,
+            name:       who.salesPerson?.name || who.vgamsUser?.name || adUser.displayName || email.split('@')[0],
+            vgamsUser:  who.vgamsUser ? {
+              id:         who.vgamsUser.id,
+              documentId: who.vgamsUser.documentId,
+              name:       who.vgamsUser.name,
+              role:       who.vgamsUser.role,
+            } : null,
+            salesPerson: who.salesPerson ? {
+              id:         who.salesPerson.id,
+              documentId: who.salesPerson.documentId,
+              name:       who.salesPerson.name,
+              email:      who.salesPerson.email,
+              bc_code:    who.salesPerson.bc_code || null,
+            } : null,
+            adProfile: {
+              displayName:   adUser.displayName   ?? null,
+              department:    adUser.department    ?? null,
+              jobTitle:      adUser.jobTitle      ?? null,
+              phone:         adUser.phone         ?? null,
+              accountActive: adUser.accountStatus?.active ?? null,
+            },
+          },
+          crmProfile: {
+            id:         profile.id,
+            documentId: profile.documentId,
+            crm_role:   profile.crm_role,
+          },
+          redirectTo: '/crm',
+        };
+      }
 
       // ── SFA BRANCH ─────────────────────────────────────────────────────
       console.log('🔐 SFA login requested for:', email);

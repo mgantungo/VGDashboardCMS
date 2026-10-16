@@ -5,7 +5,7 @@
     "singularName": "crm-profile",
     "pluralName": "crm-profiles",
     "displayName": "CRM Profile",
-    "description": "Links a login (users-permissions user) to a sales person and a CRM role. The existing VGAMS sales person collection is never modified."
+    "description": "Links a CRM user (VGAMS sales person and/or VGAMS staff user, or a users-permissions login) to a CRM role. The existing VGAMS collections are never modified."
   },
   "options": {
     "draftAndPublish": false
@@ -27,6 +27,11 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::vgams-sales-person.vgams-sales-person"
+    },
+    "vgams_user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::vgams-user.vgams-user"
     },
     "crm_role": {
       "type": "enumeration",

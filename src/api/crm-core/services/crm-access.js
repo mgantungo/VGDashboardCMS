@@ -6,11 +6,24 @@
  */
 const { UID, ROLE_CAN, clean, stripCost, forbid, uniq } = require('../utils/crm-helpers');
 
+const VGU = 'api::vgams-user.vgams-user';
+
+/**
+ * VGAMS staff roles that may sign in to the CRM, and the CRM role they start with.
+ * 'mdsoffice' must also exist in the vgams-user role enumeration before anyone can hold it.
+ */
+const STAFF_ROLES = {
+  administrator: 'admin',
+  finance_team: 'finance',
+  mdsoffice: 'executive',
+};
+
 module.exports = ({ strapi }) => {
   const store = () => strapi.service('api::crm-core.crm-store');
 
   const PROFILE_POPULATE = {
     sales_person: true,
+    vgams_user: { fields: ['name', 'email', 'role', 'isActive'] },
     team: { populate: ['business_unit', 'supervisor'] },
     business_unit: true,
   };
@@ -18,16 +31,11 @@ module.exports = ({ strapi }) => {
   return {
     PROFILE_POPULATE,
 
-    /** Builds the request's CRM context from the signed-in Strapi user. */
-    async context(user) {
-      let profile = await store().first(UID.profile, {
-        filters: { user: { id: user.id } },
-        populate: PROFILE_POPULATE,
-      });
-      if (!profile) profile = await this.autoProvision(user);
+    /** Builds the CRM context object for a profile. `user` is the caller as shown in /me and the audit log. */
+    build(profile, user) {
       const role = profile?.crm_role || null;
       return {
-        user: { id: user.id, documentId: user.documentId, email: user.email, username: user.username },
+        user,
         profile,
         profileId: profile?.documentId || null,
         role,
@@ -41,14 +49,117 @@ module.exports = ({ strapi }) => {
       };
     },
 
+    /** CRM context from a Strapi Users & Permissions login (JWT). */
+    async context(user) {
+      let profile = await store().first(UID.profile, {
+        filters: { user: { id: user.id } },
+        populate: PROFILE_POPULATE,
+      });
+      if (!profile) profile = await this.autoProvision(user);
+      return this.build(profile, { id: user.id, documentId: user.documentId, email: user.email, username: user.username });
+    },
+
     /**
-     * First CRM user becomes CRM admin. Anyone whose login email matches an
-     * existing VGAMS sales person is linked to that sales person automatically.
+     * Who may use the CRM through the VGAMS login (module 'crm'). Read-only on both existing collections.
+     * Eligible when the email is @newvision.co.ug AND either
+     *   - an active vgams-user whose role is in STAFF_ROLES, or
+     *   - an active vgams-sales-person.
+     * Returns { email, vgamsUser, salesPerson } or null.
+     */
+    STAFF_ROLES,
+
+    async eligibleByEmail(rawEmail) {
+      const email = String(rawEmail || '').toLowerCase().trim();
+      if (!email || email.split('@')[1] !== 'newvision.co.ug') return null;
+      const vgamsUser = strapi.contentTypes[VGU] ? await strapi.db.query(VGU).findOne({
+        where: { email: { $eqi: email }, isActive: true, role: { $in: Object.keys(STAFF_ROLES) } },
+        select: ['id', 'documentId', 'name', 'email', 'role', 'isActive'],
+      }) : null;
+      const salesPerson = await strapi.db.query(UID.salesPerson).findOne({
+        where: { email: { $eqi: email }, isActive: true },
+        select: ['id', 'documentId', 'name', 'email', 'bc_code', 'isActive'],
+      });
+      if (!vgamsUser && !salesPerson) return null;
+      return { email, vgamsUser, salesPerson };
+    },
+
+    /** CRM role a new profile starts with. Staff role wins over sales person; CRM_ADMIN_EMAILS can force admin. */
+    startingRole({ email, vgamsUser }) {
+      if (this.adminEmails().includes(email)) return 'admin';
+      if (vgamsUser) return STAFF_ROLES[vgamsUser.role] || 'salesperson';
+      return 'salesperson';
+    },
+
+    /**
+     * Finds (or, on first sign-in, creates) the CRM profile for an eligible person and keeps its
+     * links to the sales person / VGAMS user current. Rights (role, team, BU) are then managed
+     * in CRM Admin → People and are not overwritten on later sign-ins.
+     */
+    async profileForLogin(who) {
+      const s = store();
+      let profile = null;
+      if (who.salesPerson) profile = await s.first(UID.profile, { filters: { sales_person: { documentId: who.salesPerson.documentId } }, populate: PROFILE_POPULATE });
+      if (!profile && who.vgamsUser) profile = await s.first(UID.profile, { filters: { vgams_user: { documentId: who.vgamsUser.documentId } }, populate: PROFILE_POPULATE });
+      if (!profile) {
+        return s.create(UID.profile, {
+          sales_person: who.salesPerson?.documentId || null,
+          vgams_user: who.vgamsUser?.documentId || null,
+          display_name: who.salesPerson?.name || who.vgamsUser?.name || who.email,
+          crm_role: this.startingRole(who),
+        }, PROFILE_POPULATE);
+      }
+      // Fill in a missing link (e.g. a sales person who is later also given a VGAMS staff account).
+      const patch = {};
+      if (who.salesPerson && !profile.sales_person) {
+        const taken = await s.first(UID.profile, { filters: { sales_person: { documentId: who.salesPerson.documentId } } });
+        if (!taken) patch.sales_person = who.salesPerson.documentId;
+      }
+      if (who.vgamsUser && !profile.vgams_user) {
+        const taken = await s.first(UID.profile, { filters: { vgams_user: { documentId: who.vgamsUser.documentId } } });
+        if (!taken) patch.vgams_user = who.vgamsUser.documentId;
+      }
+      if (Object.keys(patch).length) {
+        await s.update(UID.profile, profile.documentId, patch);
+        profile = await s.first(UID.profile, { filters: { documentId: profile.documentId }, populate: PROFILE_POPULATE });
+      }
+      return profile;
+    },
+
+    /** Login payload for the vgams-user controller's 'crm' branch. Throws nothing; returns null when not eligible. */
+    async crmLogin(email) {
+      const who = await this.eligibleByEmail(email);
+      if (!who) return null;
+      const profile = await this.profileForLogin(who);
+      return { who, profile };
+    },
+
+    /** CRM context for a request from the CRM app (gateway). Re-checks eligibility every time. */
+    async contextForLogin(email) {
+      const who = await this.eligibleByEmail(email);
+      if (!who) return null;
+      const profile = await this.profileForLogin(who);
+      const name = who.salesPerson?.name || who.vgamsUser?.name || who.email;
+      return this.build(profile, {
+        id: null, documentId: null, email: who.email, username: name,
+        salesPerson: who.salesPerson?.documentId || null,
+        vgamsUser: who.vgamsUser ? { documentId: who.vgamsUser.documentId, role: who.vgamsUser.role } : null,
+      });
+    },
+
+    /** Emails in CRM_ADMIN_EMAILS (comma separated) start as CRM admin. */
+    adminEmails() {
+      return String(process.env.CRM_ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+    },
+
+    /**
+     * Users & Permissions logins (integrations): anyone in CRM_ADMIN_EMAILS becomes CRM admin; anyone whose
+     * login email matches a VGAMS sales person is linked to that sales person. Nobody else is provisioned.
+     * (CRM staff normally sign in through the VGAMS login instead — see eligibleByEmail.)
      */
     async autoProvision(user) {
       const s = store();
-      const anyProfile = await s.count(UID.profile, {});
-      if (!anyProfile) {
+      const isListedAdmin = Boolean(user.email && this.adminEmails().includes(String(user.email).toLowerCase()));
+      if (isListedAdmin) {
         return s.create(UID.profile, {
           user: user.documentId, display_name: user.username, crm_role: 'admin',
         }, PROFILE_POPULATE);

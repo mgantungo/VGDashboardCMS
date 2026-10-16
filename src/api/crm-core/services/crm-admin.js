@@ -18,23 +18,43 @@ module.exports = ({ strapi }) => {
   return {
     requireAdmin,
 
+    /**
+     * People who can use the CRM:
+     *  - everyone who has signed in through the VGAMS login (sales persons and VGAMS staff);
+     *    their row id is "p:<CRM profile documentId>", and
+     *  - Strapi Users & Permissions logins (integrations), as before.
+     */
     async users(crm, { q } = {}) {
       requireAdmin(crm);
       const where = q ? { $or: [{ username: { $containsi: q } }, { email: { $containsi: q } }] } : {};
       const users = await store().rows(UID.user, { where, select: ['id', 'documentId', 'username', 'email', 'blocked'], orderBy: { username: 'asc' }, limit: 500 });
-      const profiles = await store().find(UID.profile, { populate: ['user', 'sales_person', 'team', 'business_unit'], limit: 2000 });
-      return users.map((u) => {
-        const p = profiles.find((x) => x.user?.id === u.id);
-        return {
-          user: { id: u.documentId, username: u.username, email: u.email, blocked: u.blocked },
-          profile: p ? {
-            id: p.documentId, crm_role: p.crm_role, is_active: p.is_active, monthly_target: num(p.monthly_target), discount_authority_pct: num(p.discount_authority_pct),
-            sales_person: p.sales_person ? { id: p.sales_person.documentId, name: p.sales_person.name } : null,
-            team: p.team ? { id: p.team.documentId, name: p.team.name } : null,
-            business_unit: p.business_unit ? { id: p.business_unit.documentId, name: p.business_unit.name } : null,
-          } : null,
-        };
+      const profiles = await store().find(UID.profile, {
+        populate: { user: true, sales_person: true, vgams_user: { fields: ['name', 'email', 'role', 'isActive'] }, team: true, business_unit: true },
+        limit: 2000,
       });
+      const shape = (p) => (p ? {
+        id: p.documentId, crm_role: p.crm_role, is_active: p.is_active, monthly_target: num(p.monthly_target), discount_authority_pct: num(p.discount_authority_pct),
+        sales_person: p.sales_person ? { id: p.sales_person.documentId, name: p.sales_person.name } : null,
+        vgams_user: p.vgams_user ? { id: p.vgams_user.documentId, name: p.vgams_user.name, role: p.vgams_user.role } : null,
+        team: p.team ? { id: p.team.documentId, name: p.team.name } : null,
+        business_unit: p.business_unit ? { id: p.business_unit.documentId, name: p.business_unit.name } : null,
+      } : null);
+      const rows = users.map((u) => ({
+        user: { id: u.documentId, username: u.username, email: u.email, blocked: u.blocked },
+        profile: shape(profiles.find((x) => x.user?.id === u.id)),
+      }));
+      const needle = q ? String(q).toLowerCase() : '';
+      profiles
+        .filter((p) => !p.user)
+        .map((p) => {
+          const email = p.sales_person?.email || p.vgams_user?.email || '';
+          const name = p.display_name || p.sales_person?.name || p.vgams_user?.name || email;
+          const vgamsActive = p.sales_person?.isActive === true || p.vgams_user?.isActive === true;
+          return { p, email, name, blocked: !vgamsActive };
+        })
+        .filter((r) => !needle || [r.name, r.email].some((v) => String(v || '').toLowerCase().includes(needle)))
+        .forEach((r) => rows.push({ user: { id: `p:${r.p.documentId}`, username: r.name, email: r.email, blocked: r.blocked }, profile: shape(r.p) }));
+      return rows.sort((x, y) => String(x.user.username || '').localeCompare(String(y.user.username || '')));
     },
 
     /** Read-only list of the existing VGAMS sales persons. */
@@ -48,25 +68,40 @@ module.exports = ({ strapi }) => {
 
     async upsertProfile(crm, data) {
       requireAdmin(crm);
-      if (!data.user) fail('Choose the login.');
-      const user = await store().first(UID.user, { filters: { documentId: data.user } });
-      if (!user) fail('Login not found.');
-      if (data.sales_person) {
-        const taken = await store().first(UID.profile, { filters: { sales_person: { documentId: data.sales_person }, user: { documentId: { $ne: data.user } } } });
-        if (taken) fail('That sales person is already linked to another login.');
-      }
-      const existing = await store().first(UID.profile, { filters: { user: { documentId: data.user } } });
+      if (!data.user) fail('Choose the person.');
       const patch = {};
       ['crm_role', 'team', 'business_unit', 'sales_person', 'display_name', 'phone', 'is_active', 'commission_eligible'].forEach((k) => { if (data[k] !== undefined) patch[k] = data[k] || (k === 'is_active' ? false : null); });
       if (data.monthly_target !== undefined) patch.monthly_target = money(data.monthly_target);
       if (data.discount_authority_pct !== undefined) patch.discount_authority_pct = num(data.discount_authority_pct);
-      if (!patch.display_name && data.sales_person) {
-        const sp = await store().one(UID.salesPerson, data.sales_person, { fields: ['name'] });
-        patch.display_name = sp?.name || user.username;
+
+      let existing; let createBase;
+      if (String(data.user).startsWith('p:')) {
+        // Someone who signed in through the VGAMS login: edit their CRM profile directly.
+        existing = await store().first(UID.profile, { filters: { documentId: String(data.user).slice(2) } });
+        if (!existing) fail('CRM profile not found.');
+        if (patch.sales_person) {
+          const taken = await store().first(UID.profile, { filters: { sales_person: { documentId: patch.sales_person }, documentId: { $ne: existing.documentId } } });
+          if (taken) fail('That sales person is already linked to another CRM profile.');
+        }
+        if (existing.documentId === crm.profileId && patch.crm_role && patch.crm_role !== 'admin' && crm.role === 'admin') fail('You cannot remove your own admin role.');
+        if (existing.documentId === crm.profileId && patch.is_active === false) fail('You cannot deactivate your own CRM profile.');
+      } else {
+        const user = await store().first(UID.user, { filters: { documentId: data.user } });
+        if (!user) fail('Login not found.');
+        if (data.sales_person) {
+          const taken = await store().first(UID.profile, { filters: { sales_person: { documentId: data.sales_person }, user: { documentId: { $ne: data.user } } } });
+          if (taken) fail('That sales person is already linked to another login.');
+        }
+        existing = await store().first(UID.profile, { filters: { user: { documentId: data.user } } });
+        if (!patch.display_name && data.sales_person) {
+          const sp = await store().one(UID.salesPerson, data.sales_person, { fields: ['name'] });
+          patch.display_name = sp?.name || user.username;
+        }
+        createBase = { user: data.user, display_name: user.username, crm_role: 'salesperson' };
       }
       let out;
       if (existing) out = await store().update(UID.profile, existing.documentId, patch);
-      else out = await store().create(UID.profile, { user: data.user, display_name: user.username, crm_role: 'salesperson', ...patch });
+      else out = await store().create(UID.profile, { ...createBase, ...patch });
       await audit().log(crm, existing ? 'profile.update' : 'profile.create', UID.profile, out.documentId, existing, patch);
       return out;
     },
