@@ -40,7 +40,8 @@ module.exports = [
 		'https://handle.epapers.visiongroup.co.ug',
 		'https://www.handle.epapers.visiongroup.co.ug',
 		'https://epaperscms.visiongroup.co.ug',
-		'https://www.epaperscms.visiongroup.co.ug'
+		'https://www.epaperscms.visiongroup.co.ug',
+		'http://127.0.0.1:1397'
 		],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
     },
