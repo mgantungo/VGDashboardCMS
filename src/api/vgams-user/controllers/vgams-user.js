@@ -167,7 +167,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
     }
   },
 
-  // ── POST login — standard, SFA, article-analytics, … and CRM ────────────
+  // ── POST login — standard, SFA, article-analytics, … CRM and e-paper ────
   async initiateLoginPost(ctx) {
     try {
       const { email: rawEmail, password, module: loginModule } = ctx.request.body;
@@ -177,7 +177,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       const email = rawEmail.toLowerCase().trim();
 
       // ── Standard login ─────────────────────────────────────────────────
-      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers' && loginModule !== 'exhibitor-access' && loginModule !== 'crm')) {
+      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers' && loginModule !== 'exhibitor-access' && loginModule !== 'crm' && loginModule !== 'epaper_web_for_client')) {
         return await this.initiateLogin(ctx);
       }
 
@@ -285,6 +285,34 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
             },
           },
           redirectTo: '/badge-setup',
+        };
+      }
+
+      // ── E-PAPER (web reader) BRANCH — NEW ──────────────────────────────
+      // Called server-to-server by the e-paper CMS (epaper-user
+      // verifyCredentials) for @newvision.co.ug readers. The e-paper CMS has
+      // already confirmed the person has an active epaper-user account; this
+      // branch only answers "is the AD password right?" (domain check and AD
+      // auth above). No VGAMS account is required.
+      if (loginModule === 'epaper_web_for_client') {
+        console.log('📰 E-paper login for:', email);
+
+        return {
+          success:    true,
+          message:    'Login successful',
+          user: {
+            name:       adUser.displayName || email.split('@')[0],
+            email,
+            role:       'epaper_reader',
+            adProfile: {
+              displayName:   adUser.displayName   ?? null,
+              department:    adUser.department    ?? null,
+              jobTitle:      adUser.jobTitle      ?? null,
+              phone:         adUser.phone         ?? null,
+              accountActive: adUser.accountStatus?.active ?? null,
+            },
+          },
+          redirectTo: '/',
         };
       }
 
