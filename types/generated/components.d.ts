@@ -10,6 +10,11 @@ export interface DesignBatchFileGroup extends Struct.ComponentSchema {
     adverts: Schema.Attribute.Relation<'manyToMany', 'api::advert.advert'>;
     file: Schema.Attribute.Media<'images' | 'files'>;
     label: Schema.Attribute.String;
+    uploaded_at: Schema.Attribute.DateTime;
+    uploaded_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-user.vgams-user'
+    >;
   };
 }
 

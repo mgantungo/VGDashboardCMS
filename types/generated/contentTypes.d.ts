@@ -512,6 +512,11 @@ export interface ApiAdvertAdvert extends Struct.CollectionTypeSchema {
         number
       > &
       Schema.Attribute.DefaultTo<1>;
+    handled_at: Schema.Attribute.DateTime;
+    handled_by_designer: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-user.vgams-user'
+    >;
     hasRun: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     invoice: Schema.Attribute.Relation<'oneToOne', 'api::invoice.invoice'>;
     isActive: Schema.Attribute.Boolean &
@@ -804,8 +809,8 @@ export interface ApiBroadcastSourceBroadcastSource
   extends Struct.CollectionTypeSchema {
   collectionName: 'broadcast_sources';
   info: {
-    description: 'A single video source (YouTube/HLS/MP4) that can be assigned to a screen.';
-    displayName: 'Bill Board Broadcast Source';
+    description: 'A single video source (Twitch/YouTube/HLS/MP4) that can be assigned to a screen.';
+    displayName: 'Broadcast Source';
     pluralName: 'broadcast-sources';
     singularName: 'broadcast-source';
   };
@@ -831,9 +836,9 @@ export interface ApiBroadcastSourceBroadcastSource
     publishedAt: Schema.Attribute.DateTime;
     screen: Schema.Attribute.Relation<'manyToOne', 'api::screen.screen'>;
     title: Schema.Attribute.String & Schema.Attribute.Required;
-    type: Schema.Attribute.Enumeration<['youtube', 'hls', 'mp4']> &
+    type: Schema.Attribute.Enumeration<['twitch', 'youtube', 'hls', 'mp4']> &
       Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<'youtube'>;
+      Schema.Attribute.DefaultTo<'twitch'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1145,6 +1150,2669 @@ export interface ApiCostStreamCostStream extends Struct.CollectionTypeSchema {
     name: Schema.Attribute.String;
     products: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmApprovalPolicyCrmApprovalPolicy
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_approval_policies';
+  info: {
+    description: 'Thresholds are data: discount % bands, margin floor, payment-term days, third-party and credit flags.';
+    displayName: 'CRM Approval Policy';
+    pluralName: 'crm-approval-policies';
+    singularName: 'crm-approval-policy';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    approver_role: Schema.Attribute.Enumeration<
+      [
+        'salesperson',
+        'product_manager',
+        'supervisor',
+        'senior_manager',
+        'executive',
+        'project_manager',
+        'finance',
+        'procurement',
+        'admin',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'supervisor'>;
+    business_unit: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-business-unit.crm-business-unit'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-approval-policy.crm-approval-policy'
+    > &
+      Schema.Attribute.Private;
+    max_value: Schema.Attribute.Decimal;
+    min_value: Schema.Attribute.Decimal;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    sla_hours: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<24>;
+    sort: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    trigger_type: Schema.Attribute.Enumeration<
+      [
+        'discount',
+        'low_margin',
+        'payment_terms',
+        'third_party',
+        'credit',
+        'contract_variation',
+        'change_request',
+        'early_closure',
+        'lpo_exception',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'discount'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmApprovalRequestCrmApprovalRequest
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_approval_requests';
+  info: {
+    displayName: 'CRM Approval Request';
+    pluralName: 'crm-approval-requests';
+    singularName: 'crm-approval-request';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    approver: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    approver_role: Schema.Attribute.Enumeration<
+      [
+        'salesperson',
+        'product_manager',
+        'supervisor',
+        'senior_manager',
+        'executive',
+        'project_manager',
+        'finance',
+        'procurement',
+        'admin',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'supervisor'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    decided_at: Schema.Attribute.DateTime;
+    decision: Schema.Attribute.Enumeration<
+      ['pending', 'approved', 'rejected', 'returned', 'cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    detail: Schema.Attribute.String;
+    due_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-approval-request.crm-approval-request'
+    > &
+      Schema.Attribute.Private;
+    policy: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-approval-policy.crm-approval-policy'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.Text;
+    requested_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    sla_hours: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<24>;
+    subject_id: Schema.Attribute.String;
+    subject_type: Schema.Attribute.String;
+    trigger_type: Schema.Attribute.Enumeration<
+      [
+        'discount',
+        'low_margin',
+        'payment_terms',
+        'third_party',
+        'credit',
+        'contract_variation',
+        'change_request',
+        'early_closure',
+        'lpo_exception',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'discount'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    version: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-version.crm-proposal-version'
+    >;
+  };
+}
+
+export interface ApiCrmAuditLogCrmAuditLog extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_audit_logs';
+  info: {
+    description: 'Append-only. Written by the CRM API; not editable from the CRM UI.';
+    displayName: 'CRM Audit Log';
+    pluralName: 'crm-audit-logs';
+    singularName: 'crm-audit-log';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    action: Schema.Attribute.String & Schema.Attribute.Required;
+    actor: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    actor_user_id: Schema.Attribute.Integer;
+    after: Schema.Attribute.JSON;
+    before: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    ip: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-audit-log.crm-audit-log'
+    > &
+      Schema.Attribute.Private;
+    occurred_at: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    target_id: Schema.Attribute.String;
+    target_uid: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmBaselineCrmBaseline extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_baselines';
+  info: {
+    displayName: 'CRM Baseline Snapshot';
+    pluralName: 'crm-baselines';
+    singularName: 'crm-baseline';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    change_request: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-change-request.crm-change-request'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    label: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-baseline.crm-baseline'
+    > &
+      Schema.Attribute.Private;
+    project: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-project.crm-project'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    snapshot: Schema.Attribute.JSON;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    workstream: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-workstream.crm-workstream'
+    >;
+  };
+}
+
+export interface ApiCrmBillingItemCrmBillingItem
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_billing_items';
+  info: {
+    displayName: 'CRM Billing Item';
+    pluralName: 'crm-billing-items';
+    singularName: 'crm-billing-item';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    contract: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-contract.crm-contract'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    due_date: Schema.Attribute.Date;
+    invoice: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-invoice.crm-invoice'
+    >;
+    label: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-billing-item.crm-billing-item'
+    > &
+      Schema.Attribute.Private;
+    lpo_exception_approved: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    milestone: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-milestone.crm-milestone'
+    >;
+    project: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-project.crm-project'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    state: Schema.Attribute.Enumeration<
+      [
+        'not_billed',
+        'requested',
+        'invoiced',
+        'part_paid',
+        'paid',
+        'overdue',
+        'cancelled',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'not_billed'>;
+    trigger_type: Schema.Attribute.Enumeration<
+      ['milestone', 'monthly', 'event', 'completion', 'upfront']
+    > &
+      Schema.Attribute.DefaultTo<'completion'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    workstream: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-workstream.crm-workstream'
+    >;
+  };
+}
+
+export interface ApiCrmBusinessUnitCrmBusinessUnit
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_business_units';
+  info: {
+    displayName: 'CRM Business Unit';
+    pluralName: 'crm-business-units';
+    singularName: 'crm-business-unit';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    code: Schema.Attribute.String & Schema.Attribute.Unique;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    head: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-business-unit.crm-business-unit'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmChangeRequestCrmChangeRequest
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_change_requests';
+  info: {
+    displayName: 'CRM Change Request';
+    pluralName: 'crm-change-requests';
+    singularName: 'crm-change-request';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    approver: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    change_type: Schema.Attribute.Enumeration<
+      [
+        'extension',
+        'scope_change',
+        'cancellation',
+        'early_closure',
+        'price_change',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'extension'>;
+    client_accepted: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    cost_impact: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    decided_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-change-request.crm-change-request'
+    > &
+      Schema.Attribute.Private;
+    new_end_date: Schema.Attribute.Date;
+    price_impact: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    project: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-project.crm-project'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.Text;
+    requested_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    state: Schema.Attribute.Enumeration<
+      ['pending', 'approved', 'rejected', 'applied']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    workstream: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-workstream.crm-workstream'
+    >;
+  };
+}
+
+export interface ApiCrmClientAssignmentCrmClientAssignment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_client_assignments';
+  info: {
+    description: 'Who looks after which client, in which role, from when to when.';
+    displayName: 'CRM Client Assignment';
+    pluralName: 'crm-client-assignments';
+    singularName: 'crm-client-assignment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    assigned_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    business_unit: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-business-unit.crm-business-unit'
+    >;
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    end_date: Schema.Attribute.Date;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-client-assignment.crm-client-assignment'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.String;
+    role: Schema.Attribute.Enumeration<
+      ['account_lead', 'relationship_owner', 'associated_seller']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'associated_seller'>;
+    sales_person: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+    start_date: Schema.Attribute.Date;
+    state: Schema.Attribute.Enumeration<['active', 'ended']> &
+      Schema.Attribute.DefaultTo<'active'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmClientProfileCrmClientProfile
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_client_profiles';
+  info: {
+    description: 'CRM-only fields for an existing client (status, category, duplicate key). One per client.';
+    displayName: 'CRM Client Profile';
+    pluralName: 'crm-client-profiles';
+    singularName: 'crm-client-profile';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    category: Schema.Attribute.Enumeration<
+      ['corporate', 'sme', 'government', 'ngo', 'agency', 'individual']
+    > &
+      Schema.Attribute.DefaultTo<'corporate'>;
+    client: Schema.Attribute.Relation<'oneToOne', 'api::client.client'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    dedupe_key: Schema.Attribute.String;
+    industry: Schema.Attribute.String;
+    last_contact_at: Schema.Attribute.DateTime;
+    lifecycle: Schema.Attribute.Enumeration<
+      ['prospect', 'active', 'dormant', 'closed']
+    > &
+      Schema.Attribute.DefaultTo<'prospect'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-client-profile.crm-client-profile'
+    > &
+      Schema.Attribute.Private;
+    merged_into: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-client-profile.crm-client-profile'
+    >;
+    notes: Schema.Attribute.Text;
+    parent: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-client-profile.crm-client-profile'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    region: Schema.Attribute.String;
+    source: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmCommissionDisputeCrmCommissionDispute
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_commission_disputes';
+  info: {
+    displayName: 'CRM Commission Dispute';
+    pluralName: 'crm-commission-disputes';
+    singularName: 'crm-commission-dispute';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    claimant: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    decided_at: Schema.Attribute.DateTime;
+    decided_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    decision: Schema.Attribute.Text;
+    entry: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-commission-entry.crm-commission-entry'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-commission-dispute.crm-commission-dispute'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    reason: Schema.Attribute.Text;
+    state: Schema.Attribute.Enumeration<['open', 'upheld', 'rejected']> &
+      Schema.Attribute.DefaultTo<'open'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmCommissionEntryCrmCommissionEntry
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_commission_entries';
+  info: {
+    displayName: 'CRM Commission Entry';
+    pluralName: 'crm-commission-entries';
+    singularName: 'crm-commission-entry';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    approved_at: Schema.Attribute.DateTime;
+    approved_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    basis_amount: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    eligible_amount: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    line_contributor: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-line-contributor.crm-line-contributor'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-commission-entry.crm-commission-entry'
+    > &
+      Schema.Attribute.Private;
+    note: Schema.Attribute.String;
+    paid_amount: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    paid_at: Schema.Attribute.DateTime;
+    period: Schema.Attribute.String;
+    policy: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-commission-policy.crm-commission-policy'
+    >;
+    proposal_line: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-line.crm-proposal-line'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    role: Schema.Attribute.String;
+    rule: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-commission-rule.crm-commission-rule'
+    >;
+    rule_snapshot: Schema.Attribute.JSON;
+    sales_person: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+    share_pct: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<100>;
+    state: Schema.Attribute.Enumeration<
+      ['accrued', 'eligible', 'approved', 'paid', 'reversed']
+    > &
+      Schema.Attribute.DefaultTo<'accrued'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    version: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-version.crm-proposal-version'
+    >;
+  };
+}
+
+export interface ApiCrmCommissionPolicyCrmCommissionPolicy
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_commission_policies';
+  info: {
+    displayName: 'CRM Commission Policy';
+    pluralName: 'crm-commission-policies';
+    singularName: 'crm-commission-policy';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    bad_debt_treatment: Schema.Attribute.Enumeration<['reverse', 'keep']> &
+      Schema.Attribute.DefaultTo<'reverse'>;
+    basis: Schema.Attribute.Enumeration<['gross', 'net', 'collected']> &
+      Schema.Attribute.DefaultTo<'collected'>;
+    cancellation_treatment: Schema.Attribute.Enumeration<['reverse', 'keep']> &
+      Schema.Attribute.DefaultTo<'reverse'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    default_rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<5>;
+    discount_treatment: Schema.Attribute.Enumeration<
+      ['net_of_discount', 'ignore']
+    > &
+      Schema.Attribute.DefaultTo<'net_of_discount'>;
+    effective_from: Schema.Attribute.Date;
+    effective_to: Schema.Attribute.Date;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-commission-policy.crm-commission-policy'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    payment_trigger: Schema.Attribute.Enumeration<
+      ['acceptance', 'invoiced', 'collected']
+    > &
+      Schema.Attribute.DefaultTo<'collected'>;
+    publishedAt: Schema.Attribute.DateTime;
+    rules: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-commission-rule.crm-commission-rule'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    version_label: Schema.Attribute.String;
+  };
+}
+
+export interface ApiCrmCommissionRuleCrmCommissionRule
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_commission_rules';
+  info: {
+    displayName: 'CRM Commission Rule';
+    pluralName: 'crm-commission-rules';
+    singularName: 'crm-commission-rule';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    business_unit: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-business-unit.crm-business-unit'
+    >;
+    cap: Schema.Attribute.BigInteger;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-commission-rule.crm-commission-rule'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    policy: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-commission-policy.crm-commission-policy'
+    >;
+    product: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-product.crm-product'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<5>;
+    role: Schema.Attribute.Enumeration<
+      [
+        'originator',
+        'account_lead',
+        'product_seller',
+        'negotiation_lead',
+        'delivery_coordinator',
+        'supporting',
+        'any',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'any'>;
+    role_weight: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<100>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmContactCrmContact extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_contacts';
+  info: {
+    displayName: 'CRM Contact';
+    pluralName: 'crm-contacts';
+    singularName: 'crm-contact';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    decision_role: Schema.Attribute.Enumeration<
+      [
+        'decision_maker',
+        'influencer',
+        'procurement',
+        'finance',
+        'user',
+        'other',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'other'>;
+    department: Schema.Attribute.String;
+    designation: Schema.Attribute.String;
+    email: Schema.Attribute.Email;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_primary: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-contact.crm-contact'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    phone: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmContractAmendmentCrmContractAmendment
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_contract_amendments';
+  info: {
+    displayName: 'CRM Contract Amendment';
+    pluralName: 'crm-contract-amendments';
+    singularName: 'crm-contract-amendment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    approver: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    contract: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-contract.crm-contract'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    decided_at: Schema.Attribute.DateTime;
+    description: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-contract-amendment.crm-contract-amendment'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    state: Schema.Attribute.Enumeration<['pending', 'approved', 'rejected']> &
+      Schema.Attribute.DefaultTo<'pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    value_impact: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+  };
+}
+
+export interface ApiCrmContractCrmContract extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_contracts';
+  info: {
+    displayName: 'CRM Contract';
+    pluralName: 'crm-contracts';
+    singularName: 'crm-contract';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    attachment: Schema.Attribute.Media<'images' | 'files'>;
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    effective_date: Schema.Attribute.Date;
+    expiry_date: Schema.Attribute.Date;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-contract.crm-contract'
+    > &
+      Schema.Attribute.Private;
+    payment_terms_days: Schema.Attribute.Integer;
+    publishedAt: Schema.Attribute.DateTime;
+    reference: Schema.Attribute.String & Schema.Attribute.Unique;
+    renewal_date: Schema.Attribute.Date;
+    state: Schema.Attribute.Enumeration<
+      ['draft', 'sent', 'signed', 'active', 'expired', 'terminated']
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
+    title: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    value: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    version: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-version.crm-proposal-version'
+    >;
+  };
+}
+
+export interface ApiCrmCostEntryCrmCostEntry
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_cost_entries';
+  info: {
+    displayName: 'CRM Cost Entry';
+    pluralName: 'crm-cost-entries';
+    singularName: 'crm-cost-entry';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    cost_type: Schema.Attribute.Enumeration<
+      ['internal', 'third_party', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'internal'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    entered_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    incurred_on: Schema.Attribute.Date;
+    kind: Schema.Attribute.Enumeration<['committed', 'actual']> &
+      Schema.Attribute.DefaultTo<'actual'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-cost-entry.crm-cost-entry'
+    > &
+      Schema.Attribute.Private;
+    note: Schema.Attribute.String;
+    procurement_order: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-procurement-order.crm-procurement-order'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    source_ref: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    workstream: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-workstream.crm-workstream'
+    >;
+  };
+}
+
+export interface ApiCrmDocumentCrmDocument extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_documents';
+  info: {
+    displayName: 'CRM Document';
+    pluralName: 'crm-documents';
+    singularName: 'crm-document';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    doc_type: Schema.Attribute.Enumeration<
+      [
+        'lpo',
+        'contract',
+        'proposal_pdf',
+        'acceptance',
+        'proof_of_publication',
+        'compliance',
+        'evidence',
+        'invoice',
+        'other',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'other'>;
+    file: Schema.Attribute.Media<'images' | 'files'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-document.crm-document'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    record_id: Schema.Attribute.String;
+    record_type: Schema.Attribute.String;
+    title: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    uploaded_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+  };
+}
+
+export interface ApiCrmIntegrationLogCrmIntegrationLog
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_integration_logs';
+  info: {
+    displayName: 'CRM Integration Log';
+    pluralName: 'crm-integration-logs';
+    singularName: 'crm-integration-log';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    attempts: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    direction: Schema.Attribute.Enumeration<['outbound', 'inbound']> &
+      Schema.Attribute.DefaultTo<'outbound'>;
+    error: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-integration-log.crm-integration-log'
+    > &
+      Schema.Attribute.Private;
+    outcome: Schema.Attribute.Enumeration<['queued', 'sent', 'ok', 'failed']> &
+      Schema.Attribute.DefaultTo<'queued'>;
+    payload: Schema.Attribute.JSON;
+    publishedAt: Schema.Attribute.DateTime;
+    record_id: Schema.Attribute.String;
+    record_type: Schema.Attribute.String;
+    response: Schema.Attribute.JSON;
+    system: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmInteractionCrmInteraction
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_interactions';
+  info: {
+    displayName: 'CRM Interaction';
+    pluralName: 'crm-interactions';
+    singularName: 'crm-interaction';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    contacts: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::crm-contact.crm-contact'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    kind: Schema.Attribute.Enumeration<
+      [
+        'call',
+        'meeting',
+        'email',
+        'whatsapp',
+        'presentation',
+        'note',
+        'decision',
+        'commitment',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'meeting'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-interaction.crm-interaction'
+    > &
+      Schema.Attribute.Private;
+    logged_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    next_action: Schema.Attribute.String;
+    next_action_done: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    next_action_due: Schema.Attribute.Date;
+    next_action_owner: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    next_action_type: Schema.Attribute.Enumeration<
+      ['send_quote', 'call_back', 'meet_again', 'follow_up', 'none']
+    > &
+      Schema.Attribute.DefaultTo<'none'>;
+    occurred_at: Schema.Attribute.DateTime;
+    opportunity: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-opportunity.crm-opportunity'
+    >;
+    outcome: Schema.Attribute.Enumeration<
+      [
+        'wants_quote',
+        'positive',
+        'needs_time',
+        'not_interested',
+        'no_answer',
+        'other',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'other'>;
+    project: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-project.crm-project'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    sales_person: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+    summary: Schema.Attribute.Text;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmInvoiceCrmInvoice extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_invoices';
+  info: {
+    description: 'Mirror of the finance system invoice. Finance stays the source of truth; the existing CMS invoice can be linked.';
+    displayName: 'CRM Invoice (finance mirror)';
+    pluralName: 'crm-invoices';
+    singularName: 'crm-invoice';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    balance: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    billing_item: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-billing-item.crm-billing-item'
+    >;
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    cms_invoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>;
+    contract: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-contract.crm-contract'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    due_date: Schema.Attribute.Date;
+    external_id: Schema.Attribute.String;
+    issued_on: Schema.Attribute.Date;
+    last_synced_at: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-invoice.crm-invoice'
+    > &
+      Schema.Attribute.Private;
+    lpo: Schema.Attribute.Relation<'manyToOne', 'api::crm-lpo.crm-lpo'>;
+    number: Schema.Attribute.String;
+    project: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-project.crm-project'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    state: Schema.Attribute.Enumeration<
+      [
+        'requested',
+        'issued',
+        'part_paid',
+        'paid',
+        'overdue',
+        'cancelled',
+        'written_off',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'requested'>;
+    tax: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmLineContributorCrmLineContributor
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_line_contributors';
+  info: {
+    displayName: 'CRM Line Contributor';
+    pluralName: 'crm-line-contributors';
+    singularName: 'crm-line-contributor';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    line: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-line.crm-proposal-line'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-line-contributor.crm-line-contributor'
+    > &
+      Schema.Attribute.Private;
+    percentage: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<100>;
+    publishedAt: Schema.Attribute.DateTime;
+    role: Schema.Attribute.Enumeration<
+      [
+        'originator',
+        'account_lead',
+        'product_seller',
+        'negotiation_lead',
+        'delivery_coordinator',
+        'supporting',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'product_seller'>;
+    sales_person: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmLookupCrmLookup extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_lookups';
+  info: {
+    displayName: 'CRM Lookup';
+    pluralName: 'crm-lookups';
+    singularName: 'crm-lookup';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    label: Schema.Attribute.String;
+    list_type: Schema.Attribute.Enumeration<
+      [
+        'industry',
+        'loss_reason',
+        'client_category',
+        'source',
+        'region',
+        'document_type',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'industry'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-lookup.crm-lookup'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    sort: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    value: Schema.Attribute.String & Schema.Attribute.Required;
+  };
+}
+
+export interface ApiCrmLpoCrmLpo extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_lpos';
+  info: {
+    displayName: 'CRM LPO';
+    pluralName: 'crm-lpos';
+    singularName: 'crm-lpo';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    attachment: Schema.Attribute.Media<'images' | 'files'>;
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    contract: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-contract.crm-contract'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    discrepancies: Schema.Attribute.JSON;
+    issued_on: Schema.Attribute.Date;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-lpo.crm-lpo'
+    > &
+      Schema.Attribute.Private;
+    number: Schema.Attribute.String;
+    payment_terms_days: Schema.Attribute.Integer;
+    project: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-project.crm-project'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    resolution: Schema.Attribute.Enumeration<
+      ['none', 'accept_lpo_terms', 'amend_requested', 'exception']
+    > &
+      Schema.Attribute.DefaultTo<'none'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    uploaded_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    valid_until: Schema.Attribute.Date;
+    value: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    verification: Schema.Attribute.Enumeration<
+      ['pending', 'verified', 'mismatch', 'exception_approved']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    version: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-version.crm-proposal-version'
+    >;
+  };
+}
+
+export interface ApiCrmMilestoneCrmMilestone
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_milestones';
+  info: {
+    displayName: 'CRM Milestone';
+    pluralName: 'crm-milestones';
+    singularName: 'crm-milestone';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    actual_date: Schema.Attribute.Date;
+    baseline_date: Schema.Attribute.Date;
+    billing_amount: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    evidence_note: Schema.Attribute.Text;
+    is_billing_trigger: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-milestone.crm-milestone'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    revised_date: Schema.Attribute.Date;
+    state: Schema.Attribute.Enumeration<['pending', 'done', 'missed']> &
+      Schema.Attribute.DefaultTo<'pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    workstream: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-workstream.crm-workstream'
+    >;
+  };
+}
+
+export interface ApiCrmNotificationCrmNotification
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_notifications';
+  info: {
+    displayName: 'CRM Notification';
+    pluralName: 'crm-notifications';
+    singularName: 'crm-notification';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    body: Schema.Attribute.Text;
+    channel: Schema.Attribute.Enumeration<
+      ['in_app', 'email', 'sms', 'whatsapp']
+    > &
+      Schema.Attribute.DefaultTo<'in_app'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    delivery: Schema.Attribute.Enumeration<
+      ['pending', 'sent', 'failed', 'skipped']
+    > &
+      Schema.Attribute.DefaultTo<'sent'>;
+    event: Schema.Attribute.String;
+    is_read: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    link: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-notification.crm-notification'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    recipient: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    title: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmOpportunityContributorCrmOpportunityContributor
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_opp_contributors';
+  info: {
+    displayName: 'CRM Opportunity Contributor';
+    pluralName: 'crm-opportunity-contributors';
+    singularName: 'crm-opportunity-contributor';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    business_unit: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-business-unit.crm-business-unit'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    expected_products: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::crm-product.crm-product'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-opportunity-contributor.crm-opportunity-contributor'
+    > &
+      Schema.Attribute.Private;
+    opportunity: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-opportunity.crm-opportunity'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    role: Schema.Attribute.Enumeration<
+      [
+        'originator',
+        'account_lead',
+        'product_seller',
+        'negotiation_lead',
+        'delivery_coordinator',
+        'supporting',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'supporting'>;
+    sales_person: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+    state: Schema.Attribute.Enumeration<['invited', 'active', 'removed']> &
+      Schema.Attribute.DefaultTo<'active'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmOpportunityCrmOpportunity
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_opportunities';
+  info: {
+    displayName: 'CRM Opportunity';
+    pluralName: 'crm-opportunities';
+    singularName: 'crm-opportunity';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    contributors: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-opportunity-contributor.crm-opportunity-contributor'
+    >;
+    created_by_profile: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'UGX'>;
+    decision_date: Schema.Attribute.Date;
+    expected_cost: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    expected_revenue: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    interest_products: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::crm-product.crm-product'
+    >;
+    is_archived: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    last_activity_at: Schema.Attribute.DateTime;
+    lead_sales_person: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-opportunity.crm-opportunity'
+    > &
+      Schema.Attribute.Private;
+    loss_reason: Schema.Attribute.String;
+    lost_at: Schema.Attribute.DateTime;
+    next_action: Schema.Attribute.String;
+    next_action_due: Schema.Attribute.Date;
+    overlap_flag: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    overlap_resolution: Schema.Attribute.Enumeration<
+      ['none', 'lead_set', 'separate', 'merged']
+    > &
+      Schema.Attribute.DefaultTo<'none'>;
+    probability: Schema.Attribute.Integer;
+    probability_override: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    publishedAt: Schema.Attribute.DateTime;
+    requirements: Schema.Attribute.Text;
+    size_band: Schema.Attribute.Enumeration<
+      ['under_10m', 'between_10m_50m', 'over_50m']
+    >;
+    source: Schema.Attribute.Enumeration<
+      ['phone', 'desktop', 'quick_create', 'import', 'referral', 'web', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'desktop'>;
+    stage: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-pipeline-stage.crm-pipeline-stage'
+    >;
+    state: Schema.Attribute.Enumeration<['open', 'won', 'lost']> &
+      Schema.Attribute.DefaultTo<'open'>;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    won_at: Schema.Attribute.DateTime;
+  };
+}
+
+export interface ApiCrmPaymentCrmPayment extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_payments';
+  info: {
+    displayName: 'CRM Payment (finance mirror)';
+    pluralName: 'crm-payments';
+    singularName: 'crm-payment';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    external_id: Schema.Attribute.String;
+    invoice: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-invoice.crm-invoice'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-payment.crm-payment'
+    > &
+      Schema.Attribute.Private;
+    method: Schema.Attribute.Enumeration<
+      ['bank', 'mobile_money', 'cheque', 'cash', 'offset', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'bank'>;
+    paid_on: Schema.Attribute.Date;
+    publishedAt: Schema.Attribute.DateTime;
+    reference: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmPipelineStageCrmPipelineStage
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_pipeline_stages';
+  info: {
+    description: 'The 15 configurable stages. simple_step maps each to the 4 steps salespeople see.';
+    displayName: 'CRM Pipeline Stage';
+    pluralName: 'crm-pipeline-stages';
+    singularName: 'crm-pipeline-stage';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    default_probability: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<10>;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    is_lost: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    is_won: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-pipeline-stage.crm-pipeline-stage'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    position: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    publishedAt: Schema.Attribute.DateTime;
+    required_evidence: Schema.Attribute.JSON;
+    simple_step: Schema.Attribute.Enumeration<
+      ['talking', 'quoting', 'waiting', 'won', 'lost']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'talking'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmPriceRuleCrmPriceRule
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_price_rules';
+  info: {
+    displayName: 'CRM Price Rule';
+    pluralName: 'crm-price-rules';
+    singularName: 'crm-price-rule';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    conditions: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-price-rule.crm-price-rule'
+    > &
+      Schema.Attribute.Private;
+    min_quantity: Schema.Attribute.Decimal;
+    name: Schema.Attribute.String;
+    price: Schema.Attribute.BigInteger;
+    product: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-product.crm-product'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    valid_from: Schema.Attribute.Date;
+    valid_to: Schema.Attribute.Date;
+  };
+}
+
+export interface ApiCrmProcurementOrderCrmProcurementOrder
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_procurement_orders';
+  info: {
+    displayName: 'CRM Procurement Order';
+    pluralName: 'crm-procurement-orders';
+    singularName: 'crm-procurement-order';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    cost: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    delivery_confirmed: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    delivery_confirmed_at: Schema.Attribute.DateTime;
+    external_ref: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-procurement-order.crm-procurement-order'
+    > &
+      Schema.Attribute.Private;
+    proposal_line: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-line.crm-proposal-line'
+    >;
+    provider: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-provider.crm-provider'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    reference: Schema.Attribute.String;
+    state: Schema.Attribute.Enumeration<
+      [
+        'draft',
+        'approved',
+        'ordered',
+        'delivered',
+        'invoiced',
+        'paid',
+        'cancelled',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    workstream: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-workstream.crm-workstream'
+    >;
+  };
+}
+
+export interface ApiCrmProductCrmProduct extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_products';
+  info: {
+    displayName: 'CRM Product';
+    pluralName: 'crm-products';
+    singularName: 'crm-product';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    business_unit: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-business-unit.crm-business-unit'
+    >;
+    code: Schema.Attribute.String & Schema.Attribute.Unique;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    default_duration_type: Schema.Attribute.Enumeration<
+      ['one_off', 'fixed_term', 'long_running']
+    > &
+      Schema.Attribute.DefaultTo<'fixed_term'>;
+    default_quantity: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>;
+    deliverables: Schema.Attribute.Text;
+    description: Schema.Attribute.Text;
+    floor_price: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    list_price: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-product.crm-product'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    package_note: Schema.Attribute.String;
+    preferred_provider: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-provider.crm-provider'
+    >;
+    product_type: Schema.Attribute.Enumeration<['internal', 'third_party']> &
+      Schema.Attribute.DefaultTo<'internal'>;
+    publishedAt: Schema.Attribute.DateTime;
+    requires_approval: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    short_label: Schema.Attribute.String;
+    standard_cost: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    tax_rate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<18>;
+    unit: Schema.Attribute.Enumeration<
+      [
+        'spot',
+        'insertion',
+        'slot',
+        'day',
+        'week',
+        'month',
+        'event',
+        'item',
+        'package',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'package'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmProfileCrmProfile extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_profiles';
+  info: {
+    description: 'Links a CRM user (VGAMS sales person and/or VGAMS staff user, or a users-permissions login) to a CRM role. The existing VGAMS collections are never modified.';
+    displayName: 'CRM Profile';
+    pluralName: 'crm-profiles';
+    singularName: 'crm-profile';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    business_unit: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-business-unit.crm-business-unit'
+    >;
+    commission_eligible: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    crm_role: Schema.Attribute.Enumeration<
+      [
+        'salesperson',
+        'product_manager',
+        'supervisor',
+        'senior_manager',
+        'executive',
+        'project_manager',
+        'finance',
+        'procurement',
+        'admin',
+      ]
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'salesperson'>;
+    discount_authority_pct: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<5>;
+    display_name: Schema.Attribute.String;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-profile.crm-profile'
+    > &
+      Schema.Attribute.Private;
+    monthly_target: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    phone: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    sales_person: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+    team: Schema.Attribute.Relation<'manyToOne', 'api::crm-team.crm-team'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    vgams_user: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::vgams-user.vgams-user'
+    >;
+  };
+}
+
+export interface ApiCrmProjectContactCrmProjectContact
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_project_contacts';
+  info: {
+    displayName: 'CRM Project Contact';
+    pluralName: 'crm-project-contacts';
+    singularName: 'crm-project-contact';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    contact: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-contact.crm-contact'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-project-contact.crm-project-contact'
+    > &
+      Schema.Attribute.Private;
+    project: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-project.crm-project'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    role: Schema.Attribute.Enumeration<
+      ['coordinator', 'approver', 'finance', 'delivery_recipient']
+    > &
+      Schema.Attribute.DefaultTo<'coordinator'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmProjectCrmProject extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_projects';
+  info: {
+    displayName: 'CRM Project';
+    pluralName: 'crm-projects';
+    singularName: 'crm-project';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    budget: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    closed_at: Schema.Attribute.DateTime;
+    closure_reason: Schema.Attribute.Text;
+    contract: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-contract.crm-contract'
+    >;
+    contracted_value: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    end_date: Schema.Attribute.Date;
+    health: Schema.Attribute.Enumeration<['on_track', 'at_risk', 'off_track']> &
+      Schema.Attribute.DefaultTo<'on_track'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-project.crm-project'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    opportunity: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-opportunity.crm-opportunity'
+    >;
+    project_manager: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    start_date: Schema.Attribute.Date;
+    state: Schema.Attribute.Enumeration<
+      ['planned', 'active', 'on_hold', 'completed', 'cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'active'>;
+    state_overridden: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    version: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-version.crm-proposal-version'
+    >;
+    workstreams: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-workstream.crm-workstream'
+    >;
+  };
+}
+
+export interface ApiCrmProposalLineCrmProposalLine
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_proposal_lines';
+  info: {
+    displayName: 'CRM Proposal Line';
+    pluralName: 'crm-proposal-lines';
+    singularName: 'crm-proposal-line';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    allocated_discount: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    business_unit: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-business-unit.crm-business-unit'
+    >;
+    contributors: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-line-contributor.crm-line-contributor'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.String;
+    duration_type: Schema.Attribute.Enumeration<
+      ['one_off', 'fixed_term', 'long_running']
+    > &
+      Schema.Attribute.DefaultTo<'fixed_term'>;
+    end_date: Schema.Attribute.Date;
+    internal_cost: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    line_discount: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    list_price: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-proposal-line.crm-proposal-line'
+    > &
+      Schema.Attribute.Private;
+    net_price: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    other_cost: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    product: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-product.crm-product'
+    >;
+    provider: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-provider.crm-provider'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    quantity: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>;
+    selling_price: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    sort: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    start_date: Schema.Attribute.Date;
+    third_party_cost: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    unit_price: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    version: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-version.crm-proposal-version'
+    >;
+  };
+}
+
+export interface ApiCrmProposalVersionCrmProposalVersion
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_proposal_versions';
+  info: {
+    description: 'Immutable once submitted. Revisions are new versions.';
+    displayName: 'CRM Proposal Version';
+    pluralName: 'crm-proposal-versions';
+    singularName: 'crm-proposal-version';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    acceptance_evidence: Schema.Attribute.Media<'images' | 'files'>;
+    accepted_at: Schema.Attribute.DateTime;
+    accepted_by_contact: Schema.Attribute.String;
+    allocation_method: Schema.Attribute.Enumeration<
+      ['selling_price', 'contribution', 'manual']
+    > &
+      Schema.Attribute.DefaultTo<'selling_price'>;
+    approvals: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-approval-request.crm-approval-request'
+    >;
+    auto_submit_on_approval: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    change_reason: Schema.Attribute.Text;
+    change_summary: Schema.Attribute.JSON;
+    contribution_total: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    cost_total: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    created_by_profile: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'UGX'>;
+    discount_pct: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    discount_total: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    executive_summary: Schema.Attribute.Text;
+    frozen_snapshot: Schema.Attribute.JSON;
+    is_frozen: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    lines: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-proposal-line.crm-proposal-line'
+    >;
+    list_total: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-proposal-version.crm-proposal-version'
+    > &
+      Schema.Attribute.Private;
+    margin_pct: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    net_total: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    package_price: Schema.Attribute.BigInteger;
+    payment_terms_days: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<30>;
+    pdf: Schema.Attribute.Media<'images' | 'files'>;
+    previous_version: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-version.crm-proposal-version'
+    >;
+    proposal: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal.crm-proposal'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    requirements: Schema.Attribute.Text;
+    selling_total: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    solution: Schema.Attribute.Text;
+    state: Schema.Attribute.Enumeration<
+      [
+        'draft',
+        'in_review',
+        'approved',
+        'submitted',
+        'accepted',
+        'superseded',
+        'rejected',
+        'withdrawn',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
+    submitted_at: Schema.Attribute.DateTime;
+    terms: Schema.Attribute.Text;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    valid_until: Schema.Attribute.Date;
+    version_number: Schema.Attribute.Integer & Schema.Attribute.Required;
+  };
+}
+
+export interface ApiCrmProposalCrmProposal extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_proposals';
+  info: {
+    displayName: 'CRM Proposal';
+    pluralName: 'crm-proposals';
+    singularName: 'crm-proposal';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    accepted_version: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-version.crm-proposal-version'
+    >;
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    current_version: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-proposal-version.crm-proposal-version'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-proposal.crm-proposal'
+    > &
+      Schema.Attribute.Private;
+    lock_token: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    opportunity: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-opportunity.crm-opportunity'
+    >;
+    owner: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    reference: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    sales_person: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+    state: Schema.Attribute.Enumeration<
+      [
+        'draft',
+        'in_review',
+        'approved',
+        'submitted',
+        'negotiating',
+        'accepted',
+        'rejected',
+        'expired',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
+    title: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    versions: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-proposal-version.crm-proposal-version'
+    >;
+  };
+}
+
+export interface ApiCrmProviderCrmProvider extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_providers';
+  info: {
+    displayName: 'CRM Provider';
+    pluralName: 'crm-providers';
+    singularName: 'crm-provider';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    approval_state: Schema.Attribute.Enumeration<
+      ['pending', 'approved', 'suspended', 'rejected']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    compliance_expiry: Schema.Attribute.Date;
+    contact_name: Schema.Attribute.String;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    documents: Schema.Attribute.Media<'images' | 'files', true>;
+    email: Schema.Attribute.Email;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-provider.crm-provider'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    notes: Schema.Attribute.Text;
+    performance_rating: Schema.Attribute.Integer;
+    phone: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    services: Schema.Attribute.Text;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmRecurringRuleCrmRecurringRule
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_recurring_rules';
+  info: {
+    displayName: 'CRM Recurring Rule';
+    pluralName: 'crm-recurring-rules';
+    singularName: 'crm-recurring-rule';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    assignee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    day_of_month: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
+    end_date: Schema.Attribute.Date;
+    frequency: Schema.Attribute.Enumeration<
+      ['weekly', 'monthly', 'quarterly']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'monthly'>;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    last_generated_for: Schema.Attribute.Date;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-recurring-rule.crm-recurring-rule'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    start_date: Schema.Attribute.Date;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    workstream: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-workstream.crm-workstream'
+    >;
+  };
+}
+
+export interface ApiCrmRequiredDocumentRuleCrmRequiredDocumentRule
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_required_doc_rules';
+  info: {
+    displayName: 'CRM Required Document Rule';
+    pluralName: 'crm-required-document-rules';
+    singularName: 'crm-required-document-rule';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    applies_to: Schema.Attribute.Enumeration<
+      ['stage', 'billing', 'project_start', 'project_close']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'stage'>;
+    blocks: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    document_types: Schema.Attribute.JSON;
+    exception_allowed: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-required-document-rule.crm-required-document-rule'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    stage: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-pipeline-stage.crm-pipeline-stage'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmSettingCrmSetting extends Struct.SingleTypeSchema {
+  collectionName: 'crm_settings';
+  info: {
+    description: 'Global CRM settings.';
+    displayName: 'CRM Settings';
+    pluralName: 'crm-settings';
+    singularName: 'crm-setting';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    cold_after_days: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<30>;
+    company_name: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'Vision Group'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'UGX'>;
+    default_allocation_method: Schema.Attribute.Enumeration<
+      ['selling_price', 'contribution', 'manual']
+    > &
+      Schema.Attribute.DefaultTo<'selling_price'>;
+    heavy_load_clients: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<8>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-setting.crm-setting'
+    > &
+      Schema.Attribute.Private;
+    min_margin_pct: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<35>;
+    publishedAt: Schema.Attribute.DateTime;
+    quote_validity_days: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<14>;
+    reminder_days_before_expiry: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<2>;
+    salesperson_discount_limit_pct: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<5>;
+    standard_payment_terms_days: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<30>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmStageHistoryCrmStageHistory
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_stage_histories';
+  info: {
+    displayName: 'CRM Stage History';
+    pluralName: 'crm-stage-histories';
+    singularName: 'crm-stage-history';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    changed_at: Schema.Attribute.DateTime;
+    changed_by: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    from_stage: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-pipeline-stage.crm-pipeline-stage'
+    >;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-stage-history.crm-stage-history'
+    > &
+      Schema.Attribute.Private;
+    note: Schema.Attribute.String;
+    opportunity: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-opportunity.crm-opportunity'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    to_stage: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-pipeline-stage.crm-pipeline-stage'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmTargetCrmTarget extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_targets';
+  info: {
+    displayName: 'CRM Target';
+    pluralName: 'crm-targets';
+    singularName: 'crm-target';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    amount: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    business_unit: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-business-unit.crm-business-unit'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-target.crm-target'
+    > &
+      Schema.Attribute.Private;
+    period_end: Schema.Attribute.Date;
+    period_start: Schema.Attribute.Date;
+    product: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-product.crm-product'
+    >;
+    profile: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    sales_person: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::vgams-sales-person.vgams-sales-person'
+    >;
+    team: Schema.Attribute.Relation<'manyToOne', 'api::crm-team.crm-team'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmTaskCrmTask extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_tasks';
+  info: {
+    displayName: 'CRM Task';
+    pluralName: 'crm-tasks';
+    singularName: 'crm-task';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    assignee: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    completed_at: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    depends_on: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-task.crm-task'
+    >;
+    description: Schema.Attribute.Text;
+    due_date: Schema.Attribute.Date;
+    evidence_note: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-task.crm-task'
+    > &
+      Schema.Attribute.Private;
+    priority: Schema.Attribute.Enumeration<
+      ['low', 'normal', 'high', 'urgent']
+    > &
+      Schema.Attribute.DefaultTo<'normal'>;
+    project: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-project.crm-project'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    recurring_rule: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-recurring-rule.crm-recurring-rule'
+    >;
+    start_date: Schema.Attribute.Date;
+    state: Schema.Attribute.Enumeration<
+      [
+        'pending',
+        'in_progress',
+        'awaiting_approval',
+        'blocked',
+        'completed',
+        'cancelled',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    supporters: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::crm-profile.crm-profile'
+    >;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    workstream: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-workstream.crm-workstream'
+    >;
+  };
+}
+
+export interface ApiCrmTeamCrmTeam extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_teams';
+  info: {
+    displayName: 'CRM Team';
+    pluralName: 'crm-teams';
+    singularName: 'crm-team';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    business_unit: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-business-unit.crm-business-unit'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-team.crm-team'
+    > &
+      Schema.Attribute.Private;
+    members: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-profile.crm-profile'
+    >;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    region: Schema.Attribute.String;
+    supervisor: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCrmWorkstreamCrmWorkstream
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_workstreams';
+  info: {
+    displayName: 'CRM Workstream';
+    pluralName: 'crm-workstreams';
+    singularName: 'crm-workstream';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    actual_cost: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    actual_end: Schema.Attribute.Date;
+    actual_start: Schema.Attribute.Date;
+    allocated_revenue: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    budget: Schema.Attribute.BigInteger & Schema.Attribute.DefaultTo<'0'>;
+    committed_cost: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    completion_evidence: Schema.Attribute.Media<'images' | 'files', true>;
+    completion_note: Schema.Attribute.Text;
+    cost_entries: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-cost-entry.crm-cost-entry'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    duration_type: Schema.Attribute.Enumeration<
+      ['one_off', 'fixed_term', 'long_running']
+    > &
+      Schema.Attribute.DefaultTo<'fixed_term'>;
+    forecast_cost: Schema.Attribute.BigInteger &
+      Schema.Attribute.DefaultTo<'0'>;
+    is_required: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-workstream.crm-workstream'
+    > &
+      Schema.Attribute.Private;
+    milestones: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::crm-milestone.crm-milestone'
+    >;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    owner: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-profile.crm-profile'
+    >;
+    planned_end: Schema.Attribute.Date;
+    planned_start: Schema.Attribute.Date;
+    product: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-product.crm-product'
+    >;
+    project: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-project.crm-project'
+    >;
+    proposal_lines: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::crm-proposal-line.crm-proposal-line'
+    >;
+    provider: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::crm-provider.crm-provider'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    state: Schema.Attribute.Enumeration<
+      ['pending', 'in_progress', 'blocked', 'completed', 'cancelled']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    tasks: Schema.Attribute.Relation<'oneToMany', 'api::crm-task.crm-task'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -3017,6 +5685,7 @@ export interface ApiVgamsUserVgamsUser extends Struct.CollectionTypeSchema {
         'sub_editor',
         'advertising_manager',
         'design_house',
+        'design_house_manager',
         'finance_team',
         'administrator',
         'sales_team',
@@ -3055,6 +5724,11 @@ export interface ApiWorkflowLogWorkflowLog extends Struct.CollectionTypeSchema {
         'rejected',
         'revised',
         'published',
+        'design_group_added',
+        'design_group_removed',
+        'design_file_uploaded',
+        'design_marked_handled',
+        'design_unmarked_handled',
       ]
     > &
       Schema.Attribute.Required;
@@ -3607,6 +6281,54 @@ declare module '@strapi/strapi' {
       'api::comment.comment': ApiCommentComment;
       'api::company-asset.company-asset': ApiCompanyAssetCompanyAsset;
       'api::cost-stream.cost-stream': ApiCostStreamCostStream;
+      'api::crm-approval-policy.crm-approval-policy': ApiCrmApprovalPolicyCrmApprovalPolicy;
+      'api::crm-approval-request.crm-approval-request': ApiCrmApprovalRequestCrmApprovalRequest;
+      'api::crm-audit-log.crm-audit-log': ApiCrmAuditLogCrmAuditLog;
+      'api::crm-baseline.crm-baseline': ApiCrmBaselineCrmBaseline;
+      'api::crm-billing-item.crm-billing-item': ApiCrmBillingItemCrmBillingItem;
+      'api::crm-business-unit.crm-business-unit': ApiCrmBusinessUnitCrmBusinessUnit;
+      'api::crm-change-request.crm-change-request': ApiCrmChangeRequestCrmChangeRequest;
+      'api::crm-client-assignment.crm-client-assignment': ApiCrmClientAssignmentCrmClientAssignment;
+      'api::crm-client-profile.crm-client-profile': ApiCrmClientProfileCrmClientProfile;
+      'api::crm-commission-dispute.crm-commission-dispute': ApiCrmCommissionDisputeCrmCommissionDispute;
+      'api::crm-commission-entry.crm-commission-entry': ApiCrmCommissionEntryCrmCommissionEntry;
+      'api::crm-commission-policy.crm-commission-policy': ApiCrmCommissionPolicyCrmCommissionPolicy;
+      'api::crm-commission-rule.crm-commission-rule': ApiCrmCommissionRuleCrmCommissionRule;
+      'api::crm-contact.crm-contact': ApiCrmContactCrmContact;
+      'api::crm-contract-amendment.crm-contract-amendment': ApiCrmContractAmendmentCrmContractAmendment;
+      'api::crm-contract.crm-contract': ApiCrmContractCrmContract;
+      'api::crm-cost-entry.crm-cost-entry': ApiCrmCostEntryCrmCostEntry;
+      'api::crm-document.crm-document': ApiCrmDocumentCrmDocument;
+      'api::crm-integration-log.crm-integration-log': ApiCrmIntegrationLogCrmIntegrationLog;
+      'api::crm-interaction.crm-interaction': ApiCrmInteractionCrmInteraction;
+      'api::crm-invoice.crm-invoice': ApiCrmInvoiceCrmInvoice;
+      'api::crm-line-contributor.crm-line-contributor': ApiCrmLineContributorCrmLineContributor;
+      'api::crm-lookup.crm-lookup': ApiCrmLookupCrmLookup;
+      'api::crm-lpo.crm-lpo': ApiCrmLpoCrmLpo;
+      'api::crm-milestone.crm-milestone': ApiCrmMilestoneCrmMilestone;
+      'api::crm-notification.crm-notification': ApiCrmNotificationCrmNotification;
+      'api::crm-opportunity-contributor.crm-opportunity-contributor': ApiCrmOpportunityContributorCrmOpportunityContributor;
+      'api::crm-opportunity.crm-opportunity': ApiCrmOpportunityCrmOpportunity;
+      'api::crm-payment.crm-payment': ApiCrmPaymentCrmPayment;
+      'api::crm-pipeline-stage.crm-pipeline-stage': ApiCrmPipelineStageCrmPipelineStage;
+      'api::crm-price-rule.crm-price-rule': ApiCrmPriceRuleCrmPriceRule;
+      'api::crm-procurement-order.crm-procurement-order': ApiCrmProcurementOrderCrmProcurementOrder;
+      'api::crm-product.crm-product': ApiCrmProductCrmProduct;
+      'api::crm-profile.crm-profile': ApiCrmProfileCrmProfile;
+      'api::crm-project-contact.crm-project-contact': ApiCrmProjectContactCrmProjectContact;
+      'api::crm-project.crm-project': ApiCrmProjectCrmProject;
+      'api::crm-proposal-line.crm-proposal-line': ApiCrmProposalLineCrmProposalLine;
+      'api::crm-proposal-version.crm-proposal-version': ApiCrmProposalVersionCrmProposalVersion;
+      'api::crm-proposal.crm-proposal': ApiCrmProposalCrmProposal;
+      'api::crm-provider.crm-provider': ApiCrmProviderCrmProvider;
+      'api::crm-recurring-rule.crm-recurring-rule': ApiCrmRecurringRuleCrmRecurringRule;
+      'api::crm-required-document-rule.crm-required-document-rule': ApiCrmRequiredDocumentRuleCrmRequiredDocumentRule;
+      'api::crm-setting.crm-setting': ApiCrmSettingCrmSetting;
+      'api::crm-stage-history.crm-stage-history': ApiCrmStageHistoryCrmStageHistory;
+      'api::crm-target.crm-target': ApiCrmTargetCrmTarget;
+      'api::crm-task.crm-task': ApiCrmTaskCrmTask;
+      'api::crm-team.crm-team': ApiCrmTeamCrmTeam;
+      'api::crm-workstream.crm-workstream': ApiCrmWorkstreamCrmWorkstream;
       'api::department.department': ApiDepartmentDepartment;
       'api::design-batch.design-batch': ApiDesignBatchDesignBatch;
       'api::design-file.design-file': ApiDesignFileDesignFile;
