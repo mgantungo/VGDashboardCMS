@@ -177,7 +177,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       const email = rawEmail.toLowerCase().trim();
 
       // ── Standard login ─────────────────────────────────────────────────
-      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers' && loginModule !== 'exhibitor-access' && loginModule !== 'crm' && loginModule !== 'epaper_web_for_client')) {
+      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers' && loginModule !== 'exhibitor-access' && loginModule !== 'crm' && loginModule !== 'epaper_web_for_client' && loginModule !== 'epaper_handle')) {
         return await this.initiateLogin(ctx);
       }
 
@@ -316,6 +316,33 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         };
       }
 
+      // ── E-PAPER HANDLE (editorial admin) BRANCH — NEW ──────────────────
+      // Called server-to-server by the e-paper CMS (handle-admin login) for
+      // handle.epapers.visiongroup.co.ug admins. The e-paper CMS has already
+      // confirmed the person is an active handle admin and decides their role
+      // there; this branch only answers "is the AD password right?" (domain
+      // check and AD auth above). No VGAMS account is required.
+      if (loginModule === 'epaper_handle') {
+        console.log('🗞️ E-paper handle login for:', email);
+
+        return {
+          success:    true,
+          message:    'Login successful',
+          user: {
+            name:       adUser.displayName || email.split('@')[0],
+            email,
+            role:       'epaper_handle_admin',
+            adProfile: {
+              displayName:   adUser.displayName   ?? null,
+              department:    adUser.department    ?? null,
+              jobTitle:      adUser.jobTitle      ?? null,
+              phone:         adUser.phone         ?? null,
+              accountActive: adUser.accountStatus?.active ?? null,
+            },
+          },
+          redirectTo: '/',
+        };
+      }
 
       // ── CRM BRANCH ─────────────────────────────────────────────────────
       // Who may sign in (AD password already verified above, domain already checked):
