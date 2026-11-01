@@ -86,6 +86,11 @@ const transformAdvert = (a) => ({
   hasRun:      a.hasRun,
   isClosed:    a.isClosed,
 
+  // ── Workflow re-order (additive keys, mirrors advert.js) ───────────────
+  printAdClass:      a.print_ad_class || null,
+  productionCleared: !!a.production_cleared,
+  invoiceStage:      a.invoice_stage || 'not_ready',
+
   // ── Timestamps ─────────────────────────────────────────────────────────
   createdAt:  a.createdAt,
   updatedAt:  a.updatedAt,

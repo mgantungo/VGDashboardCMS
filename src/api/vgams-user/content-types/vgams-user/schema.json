@@ -44,7 +44,8 @@
         "finance_team",
         "administrator",
         "sales_team",
-        "hr_team"
+        "hr_team",
+        "invoicing_officer"
       ]
     },
     "isActive": {

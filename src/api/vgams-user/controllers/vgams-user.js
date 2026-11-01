@@ -98,6 +98,7 @@ async function requireAdmin(ctx) {
 const VALID_ROLES = [
   'booking_clerk', 'sub_editor', 'advertising_manager', 'design_house',
   'finance_team', 'administrator', 'sales_team', 'hr_team',
+  'invoicing_officer',
 ];
 
 // Accounts that cannot be edited or deleted through the admin User
@@ -132,14 +133,20 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       catch (e) { return ctx.unauthorized(e.message); }
 
       const roleDisplayNames = {
-        booking_clerk: 'Booking Clerk', sub_editor: 'Sub-Editor',
+        booking_clerk: 'Booking Clerk', sub_editor: 'Copy Desk',
         advertising_manager: 'Advertising Manager', design_house: 'Design House',
         finance_team: 'Finance Team', administrator: 'Administrator',
+        invoicing_officer: 'Invoicing Officer',
       };
       const roleRedirects = {
-        booking_clerk: '/dashboard/booking', sub_editor: '/dashboard/review',
+        booking_clerk: '/dashboard/booking',
+        // Copy Desk moves to its new page once VGAMS_COPYDESK_V2=on (Phase 3)
+        sub_editor: String(process.env.VGAMS_COPYDESK_V2 || '').toLowerCase() === 'on'
+          ? '/dashboard/copy-desk'
+          : '/dashboard/review',
         design_house: '/dashboard/design', finance_team: '/dashboard/finance',
         advertising_manager: '/dashboard/approval', administrator: '/dashboard/admin',
+        invoicing_officer: '/dashboard/invoicing',
       };
       const adUser = adResponse.user ?? {};
 

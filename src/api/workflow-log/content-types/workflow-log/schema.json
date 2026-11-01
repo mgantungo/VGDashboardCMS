@@ -32,7 +32,15 @@
         "design_group_removed",
         "design_file_uploaded",
         "design_marked_handled",
-        "design_unmarked_handled"
+        "design_unmarked_handled",
+        "production_cleared",
+        "layout_confirmed",
+        "layout_reopened",
+        "artwork_attached",
+        "artwork_carried",
+        "artwork_dropped",
+        "invoice_confirmed",
+        "invoiced"
       ]
     },
     "previous_status": {

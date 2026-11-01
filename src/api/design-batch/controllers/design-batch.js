@@ -10,6 +10,18 @@
  * editable/reusable for other dates afterwards.
  */
 
+// Workflow re-order: production gate + placement/invoice helpers
+const {
+  passesGate,
+  isClearedGate,
+  placementsFor,
+  recomputeInvoiceStages,
+  logWorkflow,
+  findActor,
+  isISODate,
+  reply,
+} = require('../../_vgams-helpers/vgams-workflow');
+
 function formatFileSize(bytes) {
   if (!bytes) return '0 B';
   const k = 1024;
@@ -314,12 +326,17 @@ module.exports = {
       if (!batch) return ctx.notFound({ success: false, message: `Batch ${id} not found` });
 
       const advert = await strapi.entityService.findOne('api::advert.advert', advertId, {
-        fields: ['id', 'publishing_dates', 'isPaid', 'isCanceled'],
+        fields: ['id', 'publishing_dates', 'isPaid', 'isCanceled', 'production_cleared'],
         populate: { advert_daily_schedules: { fields: ['id', 'run_date'] } },
       });
       if (!advert) return ctx.notFound({ success: false, message: `Advert ${advertId} not found` });
-      if (!advert.isPaid || advert.isCanceled) {
-        return ctx.badRequest({ success: false, message: 'Advert must be paid and not cancelled' });
+      if (!passesGate(advert) || advert.isCanceled) {
+        return ctx.badRequest({
+          success: false,
+          message: isClearedGate()
+            ? 'Advert must be cleared for production and not cancelled'
+            : 'Advert must be paid and not cancelled',
+        });
       }
 
       const scheduleStatus = strapi.service('api::advert.schedule-status');
@@ -654,6 +671,157 @@ module.exports = {
       return ctx.send({ success: true, message: 'Batch marked ready', status: batch.status });
     } catch (error) {
       console.error('❌ markReady:', error);
+      return ctx.internalServerError({ success: false, message: error.message });
+    }
+  },
+
+  /**
+   * POST /design-batches/:id/attach-multi
+   * Body: { runDates?: string[] | 'all_pending', runTime?, userEmail? }
+   *
+   * Workflow re-order: the batch-level version of "carry artwork forward".
+   * The batch's own target_run_date is always attached (exactly as /attach
+   * does). Each extra date gets its own schedule row per ad slot, holding
+   * the same file and carried_from → the target-date row, but only for the
+   * adverts in that slot that are actually booked to run on that date.
+   * /attach itself is left untouched.
+   */
+  async attachMulti(ctx) {
+    try {
+      const { id } = ctx.params;
+      const body = ctx.request.body || {};
+      const runTime = body.runTime || null;
+
+      const batch = await strapi.entityService.findOne('api::design-batch.design-batch', id, {
+        populate: {
+          file_groups: {
+            populate: {
+              file: { fields: ['id'] },
+              adverts: { fields: ['id', 'publishing_dates', 'isCanceled'] },
+            },
+          },
+        },
+      });
+      if (!batch) return reply(ctx, 404, { success: false, message: `Batch ${id} not found` });
+
+      const targetDate = batch.target_run_date;
+      const groupsWithAdverts = (batch.file_groups || []).filter(g => (g.adverts || []).length > 0);
+      if (groupsWithAdverts.length === 0) {
+        return reply(ctx, 400, { success: false, message: 'Batch has no ad slots with adverts to attach' });
+      }
+
+      // Every date any advert in the batch is booked for, from the target date on
+      const bookedDates = [...new Set(groupsWithAdverts.flatMap(g =>
+        (g.adverts || []).flatMap(a => (Array.isArray(a.publishing_dates) ? a.publishing_dates : []))
+      ))].filter(d => isISODate(d) && d >= targetDate).sort();
+
+      let requested;
+      if (body.runDates === 'all_pending' || body.runDates === undefined) {
+        requested = bookedDates;
+      } else if (Array.isArray(body.runDates)) {
+        requested = body.runDates.filter(isISODate);
+      } else {
+        return reply(ctx, 400, { success: false, message: "runDates must be an array of YYYY-MM-DD or 'all_pending'" });
+      }
+      const runDates = [...new Set([targetDate, ...requested])].sort();
+
+      const scheduleStatus = strapi.service('api::advert.schedule-status');
+      const affectedAdvertIds = new Set();
+      const results = [];
+
+      for (const group of groupsWithAdverts) {
+        const fileId = group.file?.id || null;
+        let targetRowId = null;
+
+        for (const runDate of runDates) {
+          const advertIds = (group.adverts || [])
+            .filter(a => !a.isCanceled)
+            .filter(a => runDate === targetDate
+              || (Array.isArray(a.publishing_dates) && a.publishing_dates.includes(runDate)))
+            .map(a => a.id);
+          if (advertIds.length === 0) continue;
+
+          let row = (await strapi.entityService.findMany('api::advert-daily-schedule.advert-daily-schedule', {
+            filters: { run_date: runDate, source_file_group_id: group.id },
+            populate: { adverts: { fields: ['id'] } },
+            limit: 1,
+          }))[0];
+
+          const previousIds = row ? (row.adverts || []).map(a => a.id) : [];
+          const carried = runDate !== targetDate && targetRowId ? { carried_from: targetRowId } : {};
+
+          if (!row) {
+            row = await strapi.entityService.create('api::advert-daily-schedule.advert-daily-schedule', {
+              data: {
+                run_date: runDate,
+                run_time: JSON.stringify([runTime || '00:00 AM']),
+                is_published: false,
+                adverts: advertIds,
+                media: fileId ? [fileId] : [],
+                source_batches: { connect: [id] },
+                source_file_group_id: group.id,
+                artwork_dropped: false,
+                ...carried,
+              },
+            });
+          } else {
+            row = await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', row.id, {
+              data: {
+                adverts: {
+                  connect: advertIds.filter(aid => !previousIds.includes(aid)),
+                  disconnect: previousIds.filter(aid => !advertIds.includes(aid)),
+                },
+                media: fileId ? [fileId] : [],
+                source_batches: { connect: [id] },
+                artwork_dropped: false,
+                ...carried,
+              },
+            });
+          }
+          if (runDate === targetDate) targetRowId = row.id;
+
+          // If Copy Desk already placed these adverts for this date, mirror the page
+          const placements = await placementsFor(strapi, advertIds, [runDate]);
+          const page = advertIds.map(aid => placements.get(aid)?.[0]?.pageNumber).find(n => n);
+          if (page) {
+            await strapi.entityService.update('api::advert-daily-schedule.advert-daily-schedule', row.id, {
+              data: { page },
+            });
+          }
+
+          advertIds.forEach(aid => affectedAdvertIds.add(aid));
+          previousIds.forEach(aid => affectedAdvertIds.add(aid));
+          results.push({ groupId: group.id, label: group.label || null, runDate, scheduleId: row.id, advertIds, advertCount: advertIds.length, carried: !!carried.carried_from });
+        }
+      }
+
+      await strapi.entityService.update('api::design-batch.design-batch', id, { data: { status: 'attached' } });
+
+      const ids = [...affectedAdvertIds];
+      const advertStatuses = await scheduleStatus.recomputeMany(ids);
+      const invoiceStages = await recomputeInvoiceStages(strapi, ids);
+
+      const actor = await findActor(strapi, ctx);
+      for (const aid of ids) {
+        const dates = results.filter(r => r.advertIds.includes(aid)).map(r => r.runDate);
+        await logWorkflow(strapi, {
+          advertId: aid,
+          action: 'artwork_attached',
+          actorId: actor?.id || null,
+          notes: `Batch ${batch.id} attached to ${[...new Set(dates)].join(', ')}`,
+        });
+      }
+
+      return ctx.send({
+        success: true,
+        message: `Batch attached to ${runDates.length} date(s)`,
+        runDates,
+        rows: results,
+        advertStatuses,
+        invoiceStages,
+      });
+    } catch (error) {
+      console.error('❌ attachMulti:', error);
       return ctx.internalServerError({ success: false, message: error.message });
     }
   },

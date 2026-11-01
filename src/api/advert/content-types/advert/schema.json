@@ -254,6 +254,50 @@
       "relation": "manyToMany",
       "target": "api::design-batch.design-batch",
       "mappedBy": "adverts"
+    },
+    "print_ad_class": {
+      "type": "enumeration",
+      "enum": [
+        "display",
+        "classified"
+      ]
+    },
+    "production_cleared": {
+      "type": "boolean",
+      "default": false
+    },
+    "production_cleared_at": {
+      "type": "datetime"
+    },
+    "production_cleared_by": {
+      "type": "enumeration",
+      "enum": [
+        "auto_payment_method",
+        "payment_recorded",
+        "manual_override",
+        "backfill"
+      ]
+    },
+    "invoice_stage": {
+      "type": "enumeration",
+      "default": "not_ready",
+      "enum": [
+        "not_ready",
+        "ready",
+        "confirmed",
+        "invoiced"
+      ]
+    },
+    "invoice_confirmed_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-user.vgams-user"
+    },
+    "invoice_confirmed_at": {
+      "type": "datetime"
+    },
+    "invoiced_at": {
+      "type": "datetime"
     }
   }
 }

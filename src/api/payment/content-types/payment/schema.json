@@ -32,7 +32,9 @@
         "cash",
         "bank_transfer",
         "cheque",
-        "mobile_money"
+        "mobile_money",
+        "credit",
+        "pdc"
       ]
     },
     "reference_number": {

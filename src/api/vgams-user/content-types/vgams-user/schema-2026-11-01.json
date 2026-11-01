@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "vgams_users",
+  "info": {
+    "singularName": "vgams-user",
+    "pluralName": "vgams-users",
+    "displayName": "CIO VGAMS Users",
+    "description": "Vision Group Advertising Management System Users"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 100,
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "required": true,
+      "minLength": 3,
+      "maxLength": 150,
+      "unique": true
+    },
+    "password": {
+      "type": "password",
+      "private": true,
+      "required": true,
+      "minLength": 6
+    },
+    "role": {
+      "type": "enumeration",
+      "required": true,
+      "default": "booking_clerk",
+      "enum": [
+        "booking_clerk",
+        "sub_editor",
+        "advertising_manager",
+        "design_house",
+        "design_house_manager",
+        "finance_team",
+        "administrator",
+        "sales_team",
+        "hr_team"
+      ]
+    },
+    "isActive": {
+      "type": "boolean",
+      "required": true,
+      "default": true
+    },
+    "adverts": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::advert.advert",
+      "mappedBy": "vgams_user"
+    },
+    "workflow_logs": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::workflow-log.workflow-log",
+      "inversedBy": "vgams_users"
+    },
+    "adpayments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment.payment",
+      "mappedBy": "vgams_user"
+    }
+  }
+}

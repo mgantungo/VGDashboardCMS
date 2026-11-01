@@ -1,5 +1,10 @@
 'use strict';
 
+// Production gate: VGAMS_PRODUCTION_GATE=cleared makes every queue below use
+// production_cleared (set at booking for every payment method) instead of
+// isPaid. Unset / 'paid' keeps the original behaviour exactly.
+const { gateFilter } = require('../../_vgams-helpers/vgams-workflow');
+
 /**
  * Design House Controller
  * Handles all design house operations for adverts ready for design work.
@@ -118,6 +123,10 @@ function transformAdvert(advert, today, scheduleStatus) {
     status:              advert.status,
     isActive:            advert.isActive,
     isPaid:              advert.isPaid,
+    // Workflow re-order (additive keys)
+    printAdClass:        advert.print_ad_class || null,
+    productionCleared:   !!advert.production_cleared,
+    invoiceStage:        advert.invoice_stage || 'not_ready',
     isApproved:          advert.isApproved,   // design approved → next stage
     isScheduled:         advert.isScheduled,  // derived by schedule-status, never blindly flipped
     hasRun:              advert.hasRun,
@@ -154,6 +163,7 @@ const ADVERT_FIELDS = [
   'publishing_dates',
   'status',
   'isActive', 'isPaid', 'isClosed', 'isCanceled', 'isApproved',
+  'print_ad_class', 'production_cleared', 'invoice_stage',
   'hasRun', 'isScheduled',
   'publish_onweb', 'revenue_stream', 'cost_stream',
   'office_location', 'client_reference_no',
@@ -233,7 +243,7 @@ module.exports = {
 
       // Cheap DB-level filter — publishing_dates itself can't be queried in SQL
       const filters = {
-        isPaid:     true,
+        ...gateFilter(),            // was isPaid: true — see _vgams-helpers/vgams-workflow.js
         hasRun:     false,
         isCanceled: false,
         ...productFilter(productId, scope),
@@ -322,8 +332,7 @@ module.exports = {
       // against publishing_dates in JS below.
       const raw = await strapi.entityService.findMany('api::advert.advert', {
         filters: {
-          isPaid:     true,
-          isActive:   true,
+          ...gateFilter({ withActive: true }),   // was isPaid: true, isActive: true
           isCanceled: false,
           ...productFilter(productId, scope),
         },
@@ -664,7 +673,7 @@ module.exports = {
       const scheduleStatus = strapi.service('api::advert.schedule-status');
 
       const baseFilter = {
-        isPaid: true, hasRun: false, isCanceled: false,
+        ...gateFilter(), hasRun: false, isCanceled: false,
         ...productFilter(productId, scope),
       };
 
@@ -681,7 +690,7 @@ module.exports = {
         // isScheduled is now correctly maintained by schedule-status, safe to trust directly
         strapi.entityService.findMany('api::advert.advert', {
           filters: {
-            isPaid: true, isCanceled: false, isScheduled: true,
+            ...gateFilter(), isCanceled: false, isScheduled: true,
             ...productFilter(productId, scope),
           },
           fields:  ['id'],
@@ -824,7 +833,7 @@ module.exports = {
   async getMissingDesignFile(ctx) {
     try {
       const openAdverts = await strapi.entityService.findMany('api::advert.advert', {
-        filters: { isApproved: false, isClosed: false, isCanceled: false, isPaid: true },
+        filters: { isApproved: false, isClosed: false, isCanceled: false, ...gateFilter() },
         fields:  ['id', 'reference_number', 'bc_reference_number', 'advert_title', 'start_date'],
         populate: { client: { fields: ['id', 'company_name'] } },
         limit: -1,

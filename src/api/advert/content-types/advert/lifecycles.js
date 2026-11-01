@@ -459,6 +459,14 @@ async function createSalesOrderLine(advert, salesOrderNumber) {
 // automatically rather than waiting on a manual finance confirmation.
 const AUTO_PAID_METHODS = ['mobile_money', 'bank_transfer'];
 
+// ─── Workflow re-order helpers (production clearance + print ad class) ────────
+const {
+  CLEARED_METHODS,
+  classifyFromRateCard,
+  normaliseAdClass,
+  relationId,
+} = require('../../../_vgams-helpers/vgams-workflow');
+
 // ─── Lifecycle Hook ───────────────────────────────────────────────────────────
 module.exports = {
   /**
@@ -482,6 +490,53 @@ module.exports = {
       console.log('💰 ===================================================');
       console.log('💰 payment_method:', data.payment_method);
       console.log('💰 ===================================================\n');
+    }
+
+    // ── Workflow re-order: production clearance ─────────────────────────────
+    // Every booking is cleared for Copy Desk and Design House at booking,
+    // whatever the payment method (decision 1 Nov 2026 — financial controls
+    // run before the clerk books). isPaid above is untouched, so Finance
+    // still sees unpaid credit / cash / PDC as outstanding.
+    // (Not guarded on "unset": Strapi has already applied the schema default
+    // production_cleared=false to `data` by the time this hook runs.)
+    if (CLEARED_METHODS.includes(data.payment_method)) {
+      data.production_cleared    = true;
+      data.production_cleared_at = new Date();
+      data.production_cleared_by = 'auto_payment_method';
+    }
+
+    // ── Workflow re-order: Display vs Classified ────────────────────────────
+    // Only print adverts carry a class. If the booking form sent one, keep it
+    // (normalised); if not, derive it from the rate card with the same rule
+    // the frontend has always used. Non-print adverts never keep a class.
+    try {
+      const productId = relationId(data.product);
+      let isPrint = false;
+      if (productId) {
+        const product = await strapi.db.query('api::product.product').findOne({
+          where:    { id: productId },
+          populate: { category: true },
+        });
+        isPrint = product?.category?.category_type === 'print';
+      }
+
+      if (!isPrint) {
+        if (productId) data.print_ad_class = null;
+      } else {
+        const given = normaliseAdClass(data.print_ad_class);
+        if (given) {
+          data.print_ad_class = given;
+        } else {
+          const rateCardId = relationId(data.rate_card);
+          const rateCard = rateCardId
+            ? await strapi.db.query('api::rate-card.rate-card').findOne({ where: { id: rateCardId } })
+            : null;
+          data.print_ad_class = classifyFromRateCard(rateCard) || 'display';
+        }
+      }
+    } catch (classErr) {
+      // Never block a booking over the class — the backfill script can fill it later.
+      console.warn('⚠️ print_ad_class could not be derived at create:', classErr.message);
     }
   },
 

@@ -83,6 +83,11 @@ const transformAdvert = (a) => ({
   hasRun:      a.hasRun,
   isClosed:    a.isClosed,
 
+  // ── Workflow re-order (additive keys) ──────────────────────────────────
+  printAdClass:      a.print_ad_class || null,
+  productionCleared: !!a.production_cleared,
+  invoiceStage:      a.invoice_stage || 'not_ready',
+
   // ── Timestamps ─────────────────────────────────────────────────────────
   createdAt:  a.createdAt,
   updatedAt:  a.updatedAt,
@@ -267,6 +272,9 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
           section_commission: 'ADV',
           status:              data.status || 'draft',
           publishing_dates:    publishingDates,
+          // Display vs Classified (print only) — lifecycle validates it against
+          // the product category and derives it from the rate card if absent.
+          print_ad_class:      data.printAdClass || null,
         }
       });
       console.log('✅ Advert created – ID:', advert.id);
@@ -439,6 +447,13 @@ module.exports = createCoreController('api::advert.advert', ({ strapi }) => ({
       ];
       const updateData = {};
       allowedFields.forEach(field => { if (data[field] !== undefined) updateData[field] = data[field]; });
+
+      // Display vs Classified may be corrected on a draft (print adverts only)
+      const incomingClass = data.print_ad_class ?? data.printAdClass;
+      if (incomingClass !== undefined) {
+        const v = String(incomingClass || '').toLowerCase();
+        updateData.print_ad_class = (v === 'display' || v === 'classified') ? v : null;
+      }
 
       // Rebuild publishing_dates if dates are provided
       if (data.publishingDates !== undefined || data.datesList !== undefined ||

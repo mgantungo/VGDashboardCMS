@@ -167,7 +167,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
     }
   },
 
-  // ── POST login — standard, SFA, and article-analytics ────────────────────
+  // ── POST login — standard, SFA, article-analytics, … CRM and e-paper ────
   async initiateLoginPost(ctx) {
     try {
       const { email: rawEmail, password, module: loginModule } = ctx.request.body;
@@ -177,7 +177,7 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
       const email = rawEmail.toLowerCase().trim();
 
       // ── Standard login ─────────────────────────────────────────────────
-      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers' && loginModule !== 'exhibitor-access')) {
+      if (!loginModule || (loginModule !== 'sfa' && loginModule !== 'article-analytics' && loginModule !== 'jobs-website' && loginModule !== 'ai_agent_workers' && loginModule !== 'exhibitor-access' && loginModule !== 'crm' && loginModule !== 'epaper_web_for_client' && loginModule !== 'epaper_handle')) {
         return await this.initiateLogin(ctx);
       }
 
@@ -288,6 +288,133 @@ module.exports = createCoreController('api::vgams-user.vgams-user', ({ strapi })
         };
       }
 
+      // ── E-PAPER (web reader) BRANCH — NEW ──────────────────────────────
+      // Called server-to-server by the e-paper CMS (epaper-user
+      // verifyCredentials) for @newvision.co.ug readers. The e-paper CMS has
+      // already confirmed the person has an active epaper-user account; this
+      // branch only answers "is the AD password right?" (domain check and AD
+      // auth above). No VGAMS account is required.
+      if (loginModule === 'epaper_web_for_client') {
+        console.log('📰 E-paper login for:', email);
+
+        return {
+          success:    true,
+          message:    'Login successful',
+          user: {
+            name:       adUser.displayName || email.split('@')[0],
+            email,
+            role:       'epaper_reader',
+            adProfile: {
+              displayName:   adUser.displayName   ?? null,
+              department:    adUser.department    ?? null,
+              jobTitle:      adUser.jobTitle      ?? null,
+              phone:         adUser.phone         ?? null,
+              accountActive: adUser.accountStatus?.active ?? null,
+            },
+          },
+          redirectTo: '/',
+        };
+      }
+
+      // ── E-PAPER HANDLE (editorial admin) BRANCH — NEW ──────────────────
+      // Called server-to-server by the e-paper CMS (handle-admin login) for
+      // handle.epapers.visiongroup.co.ug admins. The e-paper CMS has already
+      // confirmed the person is an active handle admin and decides their role
+      // there; this branch only answers "is the AD password right?" (domain
+      // check and AD auth above). No VGAMS account is required.
+      if (loginModule === 'epaper_handle') {
+        console.log('🗞️ E-paper handle login for:', email);
+
+        return {
+          success:    true,
+          message:    'Login successful',
+          user: {
+            name:       adUser.displayName || email.split('@')[0],
+            email,
+            role:       'epaper_handle_admin',
+            adProfile: {
+              displayName:   adUser.displayName   ?? null,
+              department:    adUser.department    ?? null,
+              jobTitle:      adUser.jobTitle      ?? null,
+              phone:         adUser.phone         ?? null,
+              accountActive: adUser.accountStatus?.active ?? null,
+            },
+          },
+          redirectTo: '/',
+        };
+      }
+
+      // ── CRM BRANCH ─────────────────────────────────────────────────────
+      // Who may sign in (AD password already verified above, domain already checked):
+      //   - an active vgams-user with role administrator, finance_team or mdsoffice, or
+      //   - an active vgams-sales-person.
+      // The CRM extension (src/api/crm-core) decides this and links/creates the CRM profile,
+      // so the rules live in one place and are re-checked on every CRM request.
+      if (loginModule === 'crm') {
+        console.log('📇 CRM login requested for:', email);
+
+        let access;
+        try {
+          access = strapi.service('api::crm-core.crm-access');
+        } catch (e) {
+          access = null;
+        }
+        if (!access || typeof access.crmLogin !== 'function') {
+          console.log('🚫 CRM: crm-core is not installed on this CMS');
+          return ctx.notFound('The CRM is not installed on this server.');
+        }
+
+        const result = await access.crmLogin(email);
+        if (!result) {
+          console.log('🚫 CRM: not eligible:', email);
+          return ctx.forbidden(
+            'Your account does not have CRM access. You must be an active sales person, ' +
+            'or an active VGAMS administrator, finance or MD\'s office user.'
+          );
+        }
+
+        const { who, profile } = result;
+        if (!profile || profile.is_active === false) {
+          console.log('🚫 CRM: profile disabled for:', email);
+          return ctx.forbidden('Your CRM access has been disabled. Contact a CRM administrator.');
+        }
+        console.log('✅ CRM: signed in as', profile.crm_role, '—', email);
+
+        return {
+          success: true,
+          message: 'CRM login successful',
+          crmUser: {
+            email,
+            name:       who.salesPerson?.name || who.vgamsUser?.name || adUser.displayName || email.split('@')[0],
+            vgamsUser:  who.vgamsUser ? {
+              id:         who.vgamsUser.id,
+              documentId: who.vgamsUser.documentId,
+              name:       who.vgamsUser.name,
+              role:       who.vgamsUser.role,
+            } : null,
+            salesPerson: who.salesPerson ? {
+              id:         who.salesPerson.id,
+              documentId: who.salesPerson.documentId,
+              name:       who.salesPerson.name,
+              email:      who.salesPerson.email,
+              bc_code:    who.salesPerson.bc_code || null,
+            } : null,
+            adProfile: {
+              displayName:   adUser.displayName   ?? null,
+              department:    adUser.department    ?? null,
+              jobTitle:      adUser.jobTitle      ?? null,
+              phone:         adUser.phone         ?? null,
+              accountActive: adUser.accountStatus?.active ?? null,
+            },
+          },
+          crmProfile: {
+            id:         profile.id,
+            documentId: profile.documentId,
+            crm_role:   profile.crm_role,
+          },
+          redirectTo: '/crm',
+        };
+      }
 
       // ── SFA BRANCH ─────────────────────────────────────────────────────
       console.log('🔐 SFA login requested for:', email);

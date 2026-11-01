@@ -1,0 +1,59 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payments",
+  "info": {
+    "singularName": "payment",
+    "pluralName": "payments",
+    "displayName": "CIO Payment"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "invoice": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::invoice.invoice",
+      "inversedBy": "payments"
+    },
+    "payment_date": {
+      "type": "date",
+      "required": true
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "payment_method": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "cash",
+        "bank_transfer",
+        "cheque",
+        "mobile_money"
+      ]
+    },
+    "reference_number": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "vgams_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-user.vgams-user",
+      "inversedBy": "adpayments"
+    },
+    "receipt_file": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "files",
+        "images"
+      ]
+    }
+  }
+}

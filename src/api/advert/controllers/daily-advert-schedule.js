@@ -741,8 +741,10 @@ async getFullSchedules(ctx) {
             'id', 'advert_title', 'start_date', 'end_date',
             'frequency', 'ad_size', 'ad_type', 'special_instructions',
             'contact_person', 'contact_number', 'contact_email',
+            'print_ad_class', 'payment_method',
           ],
         },
+        carried_from: { fields: ['id', 'run_date'] },
         source_batches: {
           populate: {
             file_groups: {
@@ -773,6 +775,9 @@ async getFullSchedules(ctx) {
         contact_person:        advert.contact_person || client.contact_person || null,
         contact_number:        advert.contact_number || client.phone          || null,
         contact_email:         advert.contact_email  || client.email          || null,
+        // Workflow re-order (additive keys)
+        print_ad_class:        advert.print_ad_class || null,
+        payment_method:        advert.payment_method || null,
       };
     };
 
@@ -810,6 +815,12 @@ async getFullSchedules(ctx) {
         is_published: schedule.is_published,
         page:         schedule.page || 0,
         media:        schedule.media || [],
+        // Workflow re-order (additive keys)
+        artwork_dropped:        !!schedule.artwork_dropped,
+        artwork_dropped_reason: schedule.artwork_dropped_reason || null,
+        carried_from:           schedule.carried_from
+          ? { schedule_id: schedule.carried_from.id, run_date: schedule.carried_from.run_date }
+          : null,
 
         fileGroups,
         ungroupedAdverts,
