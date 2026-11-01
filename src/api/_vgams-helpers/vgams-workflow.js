@@ -258,7 +258,7 @@ async function artworkFor(strapi, advertIds = []) {
  * Per-date production state for one advert, joining its booked dates with
  * Copy Desk placement and Design House artwork.
  */
-function runDateStates(publishingDates = [], placements = [], artwork = []) {
+function runDateStates(publishingDates = [], placements = [], artwork = [], clearances = []) {
   const dates = [...new Set([
     ...(Array.isArray(publishingDates) ? publishingDates : []),
     ...artwork.map(a => a.runDate),
@@ -267,7 +267,10 @@ function runDateStates(publishingDates = [], placements = [], artwork = []) {
   return dates.map(date => {
     const placement = placements.find(p => p.publicationDate === date) || null;
     const art = artwork.find(a => a.runDate === date) || null;
+    const cl = (clearances || []).find(c => c.runDate === date && c.status !== 'deferred') || null;
     return {
+      // Copy Desk clearance for this run date (null = awaiting Copy Desk)
+      clearance: cl,
       date,
       placed: !!placement,
       locked: !!placement?.locked,
@@ -283,6 +286,198 @@ function runDateStates(publishingDates = [], placements = [], artwork = []) {
       invoiceable: !!placement?.locked && !!art?.hasMedia,
     };
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Copy Desk clearance (advert-clearance) and layout status
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CLEARANCE_UID = 'api::copy-desk.advert-clearance';
+const PRESET_UID = 'api::ad-size-preset.ad-size-preset';
+
+/**
+ * Booked size from free text such as "26cm x 4col", "4 col x 20 cm",
+ * "3cm x 1col". Only explicit units count — "4 x 20" is ambiguous and
+ * returns null rather than a guess.
+ */
+function parseBookedSize(text) {
+  const s = String(text || '').toLowerCase();
+  const cm = s.match(/(\d+(?:\.\d+)?)\s*cm\b/);
+  const col = s.match(/(\d+(?:\.\d+)?)\s*col/);
+  if (!cm || !col) return null;
+  return { columns: Number(col[1]), heightCm: Number(cm[1]) };
+}
+
+function sizeLabelOf(columns, heightCm) {
+  if (!columns || !heightCm) return null;
+  return `${Number(columns)} col × ${Number(heightCm)} cm`;
+}
+
+function shapeClearance(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    runDate: row.run_date,
+    status: row.status,
+    sizeMode: row.size_mode,
+    presetId: row.size_preset?.id ?? null,
+    presetName: row.size_preset?.name ?? null,
+    sizeLabel: row.size_label || null,
+    columns: row.columns !== null && row.columns !== undefined ? Number(row.columns) : null,
+    heightCm: row.height_cm !== null && row.height_cm !== undefined ? Number(row.height_cm) : null,
+    pageFraction: row.page_fraction !== null && row.page_fraction !== undefined ? Number(row.page_fraction) : null,
+    sizeDiffersReason: row.size_differs_reason || null,
+    publicationId: row.publication?.id ?? null,
+    pageNumber: row.page_number ?? null,
+    position: row.position || null,
+    clearedBy: row.cleared_by?.name || row.cleared_by?.email || null,
+    clearedAt: row.cleared_at || null,
+    changedAt: row.changed_at || null,
+    changeNote: row.change_note || null,
+    withdrawnReason: row.withdrawn_reason || null,
+    deferredTo: row.deferred_to || null,
+    deferReason: row.defer_reason || null,
+    updatedAt: row.updatedAt || null,
+  };
+}
+
+/** advertId → [shaped clearance rows], optionally only for some dates. */
+async function clearancesFor(strapi, advertIds = [], dates = null) {
+  const ids = [...new Set(advertIds.map(Number).filter(Boolean))];
+  const out = new Map(ids.map(id => [id, []]));
+  if (ids.length === 0) return out;
+  const filters = { advert: { id: { $in: ids } } };
+  if (Array.isArray(dates) && dates.length > 0) filters.run_date = { $in: dates };
+  const rows = await strapi.entityService.findMany(CLEARANCE_UID, {
+    filters,
+    populate: {
+      advert: { fields: ['id'] },
+      size_preset: { fields: ['id', 'name'] },
+      publication: { fields: ['id'] },
+      cleared_by: { fields: ['id', 'name', 'email'] },
+    },
+    sort: { run_date: 'asc' },
+    limit: -1,
+  });
+  for (const row of rows) {
+    const aid = row.advert?.id;
+    if (out.has(aid)) out.get(aid).push(shapeClearance(row));
+  }
+  return out;
+}
+
+/**
+ * Keep clearances in step with the Pager. Called after an advert is placed
+ * on, moved to, or removed from a page for publicationDate. A clearance that
+ * already had a page and now gets a different one (or none) is marked
+ * 'changed' so Design House notices; a first placement just fills the page in.
+ */
+async function syncClearancePlacement(strapi, advertIds, publicationDate, publicationId, pageNumber) {
+  if (!publicationDate) return;
+  try {
+    const rows = await strapi.entityService.findMany(CLEARANCE_UID, {
+      filters: { run_date: publicationDate, advert: { id: { $in: advertIds.map(Number) } }, status: { $in: ['cleared', 'changed'] } },
+      populate: { publication: { fields: ['id'] } },
+      limit: -1,
+    });
+    for (const row of rows) {
+      const hadPage = row.page_number !== null && row.page_number !== undefined;
+      const samePage = hadPage && Number(row.page_number) === Number(pageNumber) && (row.publication?.id ?? null) === (publicationId ?? null);
+      if (samePage) continue;
+      const data = {
+        page_number: pageNumber ?? null,
+        publication: publicationId ?? null,
+      };
+      if (hadPage) {
+        data.status = 'changed';
+        data.changed_at = new Date();
+        data.change_note = pageNumber ? `Moved from page ${row.page_number} to page ${pageNumber}` : `Removed from page ${row.page_number}`;
+      } else if (row.status === 'changed' && pageNumber) {
+        // Taken off a page earlier, now placed again: say where it went
+        const prev = String(row.change_note || '').match(/page (\d+)/);
+        data.changed_at = new Date();
+        data.change_note = prev ? `Moved from page ${prev[1]} to page ${pageNumber}` : `Now on page ${pageNumber}`;
+      }
+      await strapi.entityService.update(CLEARANCE_UID, row.id, { data });
+    }
+  } catch (err) {
+    console.warn('⚠️ syncClearancePlacement failed:', err.message);
+  }
+}
+
+function shapePreset(p) {
+  const columns = p.columns !== null && p.columns !== undefined ? Number(p.columns) : null;
+  const heightCm = p.height_cm !== null && p.height_cm !== undefined ? Number(p.height_cm) : null;
+  return {
+    id: p.id,
+    name: p.name,
+    appliesTo: p.applies_to || 'display',
+    orientation: p.orientation || 'any',
+    columns,
+    heightCm,
+    pageFraction: p.page_fraction !== null && p.page_fraction !== undefined ? Number(p.page_fraction) : null,
+    productId: p.product?.id ?? null,
+    sortOrder: p.sort_order ?? 100,
+    label: columns && heightCm ? `${p.name} · ${columns} col × ${heightCm} cm` : p.name,
+  };
+}
+
+/**
+ * Active presets for a product: its own presets first, then the shared ones
+ * (no product). A shared preset with the same name as a product preset is
+ * hidden, so a masthead can override e.g. "Half page vertical".
+ */
+async function presetsFor(strapi, productId = null) {
+  const rows = await strapi.entityService.findMany(PRESET_UID, {
+    filters: { is_active: true },
+    populate: { product: { fields: ['id'] } },
+    sort: { sort_order: 'asc' },
+    limit: -1,
+  });
+  const own = rows.filter(r => productId && r.product && Number(r.product.id) === Number(productId));
+  const shared = rows.filter(r => !r.product);
+  const ownNames = new Set(own.map(r => String(r.name).toLowerCase()));
+  return [...own, ...shared.filter(r => !ownNames.has(String(r.name).toLowerCase()))]
+    .map(shapePreset)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+/** Preset whose columns × cm equal the booked size, if any. */
+function matchPreset(presets, size) {
+  if (!size) return null;
+  return presets.find(p => p.columns && p.heightCm
+    && Number(p.columns) === Number(size.columns) && Number(p.heightCm) === Number(size.heightCm)) || null;
+}
+
+/**
+ * The layout(s) for a run date that apply to a product: publications on that
+ * date whose product is this product, or that have no product set.
+ */
+async function layoutsFor(strapi, date, productId = null) {
+  const pubs = await strapi.entityService.findMany('api::pager-publication.pager-publication', {
+    filters: { publication_date: date },
+    fields: ['id', 'publication_code', 'publication_date', 'masthead', 'status', 'total_pages'],
+    populate: { product: { fields: ['id', 'product_name'] } },
+    limit: -1,
+  });
+  return pubs.filter(p => !productId || !p.product || Number(p.product.id) === Number(productId));
+}
+
+/** { date: { status: 'none'|'open'|'confirmed', layouts: [...] } } */
+async function layoutStatusFor(strapi, dates = [], productId = null) {
+  const out = {};
+  for (const date of [...new Set(dates.filter(isISODate))]) {
+    const layouts = await layoutsFor(strapi, date, productId);
+    const locked = layouts.filter(l => LOCKED_STATUSES.includes(l.status));
+    out[date] = {
+      status: layouts.length === 0 ? 'none' : (locked.length > 0 ? 'confirmed' : 'open'),
+      layouts: layouts.map(l => ({
+        id: l.id, code: l.publication_code, masthead: l.masthead, status: l.status,
+        totalPages: l.total_pages, productId: l.product?.id ?? null, productName: l.product?.product_name ?? null,
+      })),
+    };
+  }
+  return out;
 }
 
 /**
@@ -367,4 +562,17 @@ module.exports = {
   reply,
   todayISO,
   isISODate,
+  // copy desk clearance
+  CLEARANCE_UID,
+  PRESET_UID,
+  parseBookedSize,
+  sizeLabelOf,
+  shapeClearance,
+  clearancesFor,
+  syncClearancePlacement,
+  layoutsFor,
+  layoutStatusFor,
+  shapePreset,
+  presetsFor,
+  matchPreset,
 };

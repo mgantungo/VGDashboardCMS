@@ -298,6 +298,9 @@
     },
     "invoiced_at": {
       "type": "datetime"
+    },
+    "run_date_history": {
+      "type": "json"
     }
   }
 }

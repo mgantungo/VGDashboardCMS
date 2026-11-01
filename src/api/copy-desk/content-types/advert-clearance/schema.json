@@ -1,0 +1,98 @@
+{
+  "kind": "collectionType",
+  "collectionName": "advert_clearances",
+  "info": {
+    "singularName": "advert-clearance",
+    "pluralName": "advert-clearances",
+    "displayName": "Advert Clearance",
+    "description": "Copy Desk clearance of one advert for one run date: size, page and status. Design House reads it."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "advert": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::advert.advert"
+    },
+    "run_date": {
+      "type": "date",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "cleared",
+        "changed",
+        "withdrawn",
+        "deferred"
+      ],
+      "default": "cleared"
+    },
+    "size_mode": {
+      "type": "enumeration",
+      "enum": [
+        "preset",
+        "custom",
+        "none"
+      ],
+      "default": "none"
+    },
+    "size_preset": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::ad-size-preset.ad-size-preset"
+    },
+    "size_label": {
+      "type": "string"
+    },
+    "columns": {
+      "type": "decimal"
+    },
+    "height_cm": {
+      "type": "decimal"
+    },
+    "page_fraction": {
+      "type": "decimal"
+    },
+    "size_differs_reason": {
+      "type": "text"
+    },
+    "publication": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::pager-publication.pager-publication"
+    },
+    "page_number": {
+      "type": "integer"
+    },
+    "position": {
+      "type": "string"
+    },
+    "cleared_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::vgams-user.vgams-user"
+    },
+    "cleared_at": {
+      "type": "datetime"
+    },
+    "changed_at": {
+      "type": "datetime"
+    },
+    "change_note": {
+      "type": "string"
+    },
+    "withdrawn_reason": {
+      "type": "text"
+    },
+    "deferred_to": {
+      "type": "date"
+    },
+    "defer_reason": {
+      "type": "text"
+    }
+  }
+}

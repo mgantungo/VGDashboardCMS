@@ -87,6 +87,7 @@ const transformAdvert = (a) => ({
   printAdClass:      a.print_ad_class || null,
   productionCleared: !!a.production_cleared,
   invoiceStage:      a.invoice_stage || 'not_ready',
+  runDateHistory:    Array.isArray(a.run_date_history) ? a.run_date_history : [],
 
   // ── Timestamps ─────────────────────────────────────────────────────────
   createdAt:  a.createdAt,

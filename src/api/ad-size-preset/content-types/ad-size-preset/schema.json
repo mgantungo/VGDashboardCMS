@@ -1,0 +1,63 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ad_size_presets",
+  "info": {
+    "singularName": "ad-size-preset",
+    "pluralName": "ad-size-presets",
+    "displayName": "Ad Size Preset",
+    "description": "Standard print sizes Copy Desk picks from (Full page, Half page vertical, Quarter page…). Leave Product empty for a size used by every masthead."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "applies_to": {
+      "type": "enumeration",
+      "enum": [
+        "display",
+        "classified",
+        "both"
+      ],
+      "default": "display"
+    },
+    "orientation": {
+      "type": "enumeration",
+      "enum": [
+        "any",
+        "horizontal",
+        "vertical"
+      ],
+      "default": "any"
+    },
+    "columns": {
+      "type": "decimal"
+    },
+    "height_cm": {
+      "type": "decimal"
+    },
+    "page_fraction": {
+      "type": "decimal"
+    },
+    "sort_order": {
+      "type": "integer",
+      "default": 100
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}

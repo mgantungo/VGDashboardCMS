@@ -127,6 +127,7 @@ function transformAdvert(advert, today, scheduleStatus) {
     printAdClass:        advert.print_ad_class || null,
     productionCleared:   !!advert.production_cleared,
     invoiceStage:        advert.invoice_stage || 'not_ready',
+    runDateHistory:      Array.isArray(advert.run_date_history) ? advert.run_date_history : [],
     isApproved:          advert.isApproved,   // design approved → next stage
     isScheduled:         advert.isScheduled,  // derived by schedule-status, never blindly flipped
     hasRun:              advert.hasRun,
@@ -163,7 +164,7 @@ const ADVERT_FIELDS = [
   'publishing_dates',
   'status',
   'isActive', 'isPaid', 'isClosed', 'isCanceled', 'isApproved',
-  'print_ad_class', 'production_cleared', 'invoice_stage',
+  'print_ad_class', 'production_cleared', 'invoice_stage', 'run_date_history',
   'hasRun', 'isScheduled',
   'publish_onweb', 'revenue_stream', 'cost_stream',
   'office_location', 'client_reference_no',

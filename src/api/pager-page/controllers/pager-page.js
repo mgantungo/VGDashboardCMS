@@ -2,6 +2,11 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const { isPrintEligible } = require('../../_pager-helpers/pager-utils');
+// Workflow re-order: a confirmed (locked) layout takes no more adverts, and
+// Copy Desk clearances follow the advert's page.
+const { syncClearancePlacement, LOCKED_STATUSES } = require('../../_vgams-helpers/vgams-workflow');
+const lockedMessage = (pub) =>
+  `Layout ${pub?.publication_code || ''} for ${pub?.publication_date || 'this date'} is confirmed. Reopen it in Copy Desk, or defer the advert to another day.`;
 
 /**
  * After an advert is placed on (or removed from) a pager page, reflect that
@@ -114,6 +119,7 @@ module.exports = createCoreController('api::pager-page.pager-page', ({ strapi })
       populate: { adverts: true, publication: true },
     });
     if (!page) return ctx.notFound('Page not found');
+    if (LOCKED_STATUSES.includes(page.publication?.status)) return ctx.badRequest(lockedMessage(page.publication));
 
     const existingIds = (page.adverts || []).map((a) => a.id);
     const alreadyOnPage = ids.filter((aid) => existingIds.includes(aid));
@@ -140,6 +146,7 @@ module.exports = createCoreController('api::pager-page.pager-page', ({ strapi })
       for (const advertId of ids) {
         await syncScheduleRowPage(strapi, advertId, page.publication?.publication_date, page.page_number);
       }
+      await syncClearancePlacement(strapi, ids, page.publication?.publication_date, page.publication?.id, page.page_number);
 
       ctx.body = updated;
     } catch (e) {
@@ -171,6 +178,7 @@ module.exports = createCoreController('api::pager-page.pager-page', ({ strapi })
       populate: { adverts: true, publication: true },
     });
     if (!page) return ctx.notFound('Page not found');
+    if (LOCKED_STATUSES.includes(page.publication?.status)) return ctx.badRequest(lockedMessage(page.publication));
 
     const remainingIds = (page.adverts || [])
       .map((a) => a.id)
@@ -184,6 +192,7 @@ module.exports = createCoreController('api::pager-page.pager-page', ({ strapi })
     for (const advertId of ids) {
       await syncScheduleRowPage(strapi, advertId, page.publication?.publication_date, null);
     }
+    await syncClearancePlacement(strapi, ids, page.publication?.publication_date, null, null);
 
     ctx.body = updated;
   },

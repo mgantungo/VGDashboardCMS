@@ -7,6 +7,8 @@ const {
   buildReaderSpreadLayout,
   isPrintEligible,
 } = require('../../_pager-helpers/pager-utils');
+// Workflow re-order: confirmed layouts take no more adverts; clearances follow the page.
+const { syncClearancePlacement, LOCKED_STATUSES } = require('../../_vgams-helpers/vgams-workflow');
 
 /**
  * After an advert is placed on a pager page via queueAdverts, reflect that
@@ -517,6 +519,9 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
 
     const publication = await strapi.entityService.findOne('api::pager-publication.pager-publication', id);
     if (!publication) return ctx.notFound('Publication not found');
+    if (LOCKED_STATUSES.includes(publication.status)) {
+      return ctx.badRequest(`Layout ${publication.publication_code || ''} for ${publication.publication_date} is confirmed. Reopen it in Copy Desk, or defer the adverts to another day.`);
+    }
 
     const allPages = await strapi.entityService.findMany('api::pager-page.pager-page', {
       filters: { publication: id },
@@ -584,6 +589,7 @@ module.exports = createCoreController('api::pager-publication.pager-publication'
           assigned.push({ advertId, pageId: targetPage.id, page_number: targetPage.page_number });
           await syncScheduleRowPage(strapi, advertId, publication.publication_date, targetPage.page_number);
         }
+        await syncClearancePlacement(strapi, unitAdvertIds, publication.publication_date, publication.id, targetPage.page_number);
       } catch (e) {
         for (const advertId of unitAdvertIds) {
           skipped.push({ advertId, reason: e.message });

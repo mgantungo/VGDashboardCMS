@@ -8,6 +8,8 @@
  *   POST /copy-desk/reopen-layout                 unlock it again (reason required)
  *   GET  /pager-pages/:id/available-adverts-cleared  cleared-only feed for the Pager
  *
+ * Clearance actions (size, clear, defer…) live in controllers/clearance.js.
+ *
  * The ad layout itself is the existing pager-publication / pager-page model.
  * What changes is the source of its adverts: bookings come straight from the
  * clerk (cleared at booking) instead of waiting for Design House to attach.
@@ -25,6 +27,13 @@ const {
   logWorkflow,
   LOCKED_STATUSES,
   reply,
+  clearancesFor,
+  parseBookedSize,
+  sizeLabelOf,
+  presetsFor,
+  matchPreset,
+  layoutStatusFor,
+  CLEARANCE_UID,
 } = require('../../_vgams-helpers/vgams-workflow');
 
 const COPY_DESK_ROLES = ['sub_editor'];
@@ -70,6 +79,7 @@ async function clearedPrintAdvertsOn(strapi, date, { productId = null, printAdCl
       'id', 'reference_number', 'bc_reference_number', 'advert_title', 'ad_size', 'ad_type',
       'status', 'start_date', 'end_date', 'publishing_dates', 'total_amount', 'payment_method',
       'print_ad_class', 'special_instructions', 'isPaid', 'production_cleared', 'invoice_stage',
+      'run_date_history', 'createdAt', 'updatedAt',
     ],
     populate: {
       client: { fields: ['id', 'company_name'] },
@@ -108,15 +118,34 @@ module.exports = {
 
       const adverts = await clearedPrintAdvertsOn(strapi, date, { productId, printAdClass });
       const ids = adverts.map(a => a.id);
-      const [placements, artwork, slotMap] = await Promise.all([
+      const [placements, artwork, slotMap, clearances, layoutStatus, deferredOutRows] = await Promise.all([
         placementsFor(strapi, ids, [date]),
         artworkFor(strapi, ids),
         slotMapFor(strapi, date),
+        clearancesFor(strapi, ids, [date]),
+        layoutStatusFor(strapi, [date], null),
+        strapi.entityService.findMany(CLEARANCE_UID, {
+          filters: { run_date: date, status: 'deferred' },
+          populate: { advert: { fields: ['id', 'advert_title', 'reference_number'], populate: { client: { fields: ['company_name'] } } } },
+          limit: -1,
+        }),
       ]);
 
+      // Size presets per product (for the suggested size) and layout status per product
+      const productIds = [...new Set(adverts.map(a => a.product?.id || null))];
+      const presetsByProduct = new Map();
+      const confirmedByProduct = new Map();
+      for (const pid of productIds) {
+        presetsByProduct.set(pid, await presetsFor(strapi, pid));
+        const st = (await layoutStatusFor(strapi, [date], pid))[date];
+        confirmedByProduct.set(pid, st?.status === 'confirmed');
+      }
+
       const rows = adverts.map(a => {
-        const state = runDateStates([date], placements.get(a.id), (artwork.get(a.id) || []).filter(x => x.runDate === date))[0];
+        const state = runDateStates([date], placements.get(a.id), (artwork.get(a.id) || []).filter(x => x.runDate === date), clearances.get(a.id))[0];
         const sortedDates = [...a.publishing_dates].sort();
+        const booked = parseBookedSize(a.ad_size) || parseBookedSize(a.rate_card?.size_dimension);
+        const suggested = matchPreset(presetsByProduct.get(a.product?.id || null) || [], booked);
         return {
           id: a.id,
           reference: a.reference_number,
@@ -132,6 +161,7 @@ module.exports = {
           isPaid: !!a.isPaid,
           totalAmount: a.total_amount,
           specialInstructions: a.special_instructions || '',
+          publishingDates: sortedDates,
           runIndex: sortedDates.indexOf(date) + 1,
           runCount: sortedDates.length,
           printEligible: isPrintEligible(a),
@@ -142,8 +172,30 @@ module.exports = {
           scheduleId: state.scheduleId,
           slot: slotMap.get(a.id) || null,
           invoiceStage: a.invoice_stage || 'not_ready',
+          // Copy Desk clearance (workflow re-order)
+          clearance: state.clearance,
+          bookedSize: booked ? { ...booked, label: sizeLabelOf(booked.columns, booked.heightCm) } : null,
+          bookedSizeText: a.ad_size || a.rate_card?.size_dimension || null,
+          suggestedPresetId: suggested?.id ?? null,
+          runDateHistory: Array.isArray(a.run_date_history) ? a.run_date_history : [],
+          deferredIn: (Array.isArray(a.run_date_history) ? a.run_date_history : []).filter(h => h.to === date),
+          lateArrival: !state.placed && confirmedByProduct.get(a.product?.id || null) === true,
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt,
         };
       });
+
+      // Page fill per layout: sum of cleared page fractions on each page
+      const pageFill = {};
+      for (const r of rows) {
+        if (!r.placement) continue;
+        const pub = (pageFill[r.placement.publicationId] ||= {});
+        const pg = (pub[r.placement.pageNumber] ||= { fraction: 0, adverts: 0, unknown: 0 });
+        pg.adverts += 1;
+        const f = r.clearance && ['cleared', 'changed'].includes(r.clearance.status) ? r.clearance.pageFraction : null;
+        if (f) pg.fraction = Math.round((pg.fraction + f) * 1000) / 1000;
+        else pg.unknown += 1;
+      }
 
       const counts = {
         total: rows.length,
@@ -151,10 +203,28 @@ module.exports = {
         classified: rows.filter(r => r.printAdClass === 'classified').length,
         unplaced: rows.filter(r => !r.placement).length,
         awaitingArtwork: rows.filter(r => r.artwork === 'awaiting' || r.artwork === 'dropped').length,
+        cleared: rows.filter(r => r.clearance && ['cleared', 'changed'].includes(r.clearance.status)).length,
+        awaitingClearance: rows.filter(r => !r.clearance || r.clearance.status === 'withdrawn').length,
+        lateArrivals: rows.filter(r => r.lateArrival).length,
         byPaymentMethod: rows.reduce((acc, r) => ({ ...acc, [r.paymentMethod]: (acc[r.paymentMethod] || 0) + 1 }), {}),
       };
 
-      return ctx.send({ success: true, date, publication, counts, data: rows });
+      const deferredOut = deferredOutRows.map(c => ({
+        advertId: c.advert?.id ?? null,
+        advertTitle: c.advert?.advert_title || '',
+        reference: c.advert?.reference_number || '',
+        clientName: c.advert?.client?.company_name || '—',
+        deferredTo: c.deferred_to,
+        reason: c.defer_reason || '',
+      }));
+
+      return ctx.send({
+        success: true, date, publication, counts, data: rows,
+        layouts: layoutStatus[date]?.layouts || [],
+        pageFill,
+        deferredOut,
+        serverTime: new Date().toISOString(),
+      });
     } catch (error) {
       console.error('❌ copy-desk.bookingsByDate:', error);
       return ctx.internalServerError({ success: false, message: error.message });
@@ -193,18 +263,26 @@ module.exports = {
       const date = publication.publication_date;
       const placed = pages.flatMap(p => (p.adverts || []).map(a => ({ advertId: a.id, title: a.advert_title, pageNumber: p.page_number })));
       const ids = [...new Set(placed.map(p => p.advertId))];
-      const artwork = await artworkFor(strapi, ids);
+      const [artwork, clearances] = await Promise.all([artworkFor(strapi, ids), clearancesFor(strapi, ids, [date])]);
 
-      const missing = placed.filter(p => {
+      // Each placed advert should be cleared by Copy Desk and have artwork.
+      // Either gap is allowed with a reason (decision 1 Nov 2026), and recorded.
+      const missing = placed.map(p => {
         const row = (artwork.get(p.advertId) || []).find(x => x.runDate === date);
-        return !row || !row.hasMedia;
-      });
+        const cl = (clearances.get(p.advertId) || []).find(c => ['cleared', 'changed'].includes(c.status));
+        const problems = [];
+        if (!row || !row.hasMedia) problems.push('artwork');
+        if (!cl) problems.push('clearance');
+        return { ...p, problems };
+      }).filter(p => p.problems.length > 0);
       const trimmedReason = String(reason || '').trim();
       if (missing.length > 0 && !trimmedReason) {
+        const noArt = missing.filter(m => m.problems.includes('artwork')).length;
+        const noClear = missing.filter(m => m.problems.includes('clearance')).length;
         return reply(ctx, 400, {
           success: false,
           code: 'reason_required',
-          message: `${missing.length} placed advert(s) have no artwork for ${date} yet. Give a reason to confirm anyway.`,
+          message: `${noArt} placed advert(s) have no artwork and ${noClear} are not cleared for ${date}. Give a reason to confirm anyway.`,
           missing,
         });
       }
@@ -234,13 +312,13 @@ module.exports = {
           previousStatus,
           newStatus: 'locked',
           notes: `Layout ${publication.publication_code || publication.id} (${date}) confirmed — page ${p.pageNumber}`
-            + (isMissing ? ` — confirmed without artwork: ${trimmedReason}` : ''),
+            + (isMissing ? ` — confirmed without ${missing.find(m => m.advertId === p.advertId).problems.join(' and ')}: ${trimmedReason}` : ''),
         });
       }
 
       return ctx.send({
         success: true,
-        message: `Layout for ${date} confirmed (${ids.length} advert(s), ${missing.length} without artwork)`,
+        message: `Layout for ${date} confirmed (${ids.length} advert(s), ${missing.length} with gaps)`,
         publicationId: publication.id,
         status: 'locked',
         placedCount: ids.length,
@@ -322,6 +400,10 @@ module.exports = {
       const publication = page.publication;
       const date = publication?.publication_date;
       if (!date) return ctx.send({ data: [], groups: [], ungrouped: [] });
+      // A confirmed layout takes no more adverts
+      if (LOCKED_STATUSES.includes(publication.status)) {
+        return ctx.send({ data: [], groups: [], ungrouped: [], locked: true });
+      }
 
       const siblingPages = await strapi.entityService.findMany('api::pager-page.pager-page', {
         filters: { publication: publication.id },

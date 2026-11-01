@@ -5,7 +5,7 @@
  *
  *   POST /design-house/adverts/:id/artwork        attach artwork to any booking, new or old
  *   POST /design-house/schedules/:scheduleId/drop drop one day's artwork (row stays, flagged)
- *   POST /design-house/placements                 Copy Desk placement + artwork state per advert
+ *   POST /design-house/placements                 Copy Desk placement, clearance (size) + artwork state per advert
  *
  * Design House works in parallel with Copy Desk, so none of these depend on
  * an advert having been placed first. When it has been placed, the page
@@ -20,6 +20,7 @@ const {
   placementsFor,
   artworkFor,
   runDateStates,
+  clearancesFor,
   recomputeInvoiceStages,
   logWorkflow,
   findActor,
@@ -266,19 +267,22 @@ module.exports = {
 
       const adverts = await strapi.entityService.findMany('api::advert.advert', {
         filters: { id: { $in: ids } },
-        fields: ['id', 'publishing_dates', 'start_date'],
+        fields: ['id', 'publishing_dates', 'start_date', 'run_date_history'],
         limit: -1,
       });
-      const [placements, artwork] = await Promise.all([placementsFor(strapi, ids), artworkFor(strapi, ids)]);
+      const [placements, artwork, clearances] = await Promise.all([
+        placementsFor(strapi, ids), artworkFor(strapi, ids), clearancesFor(strapi, ids),
+      ]);
       const today = todayISO();
 
       const data = {};
       for (const a of adverts) {
         const dates = Array.isArray(a.publishing_dates) && a.publishing_dates.length > 0 ? a.publishing_dates : [a.start_date];
-        const states = runDateStates(dates, placements.get(a.id), artwork.get(a.id));
+        const states = runDateStates(dates, placements.get(a.id), artwork.get(a.id), clearances.get(a.id));
         const upcoming = states.filter(s => s.date >= today);
         data[a.id] = {
           runDates: states,
+          runDateHistory: Array.isArray(a.run_date_history) ? a.run_date_history : [],
           placed: upcoming.some(s => s.placed),
           nextPlacement: upcoming.find(s => s.placed) || null,
           nextUnplaced: upcoming.find(s => !s.placed) || null,

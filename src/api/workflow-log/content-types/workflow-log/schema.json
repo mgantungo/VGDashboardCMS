@@ -40,7 +40,11 @@
         "artwork_carried",
         "artwork_dropped",
         "invoice_confirmed",
-        "invoiced"
+        "invoiced",
+        "cleared_for_design",
+        "clearance_changed",
+        "clearance_withdrawn",
+        "run_date_deferred"
       ]
     },
     "previous_status": {
