@@ -9,6 +9,8 @@
 //   node scripts/backfill-invoice-stage.js --apply    # write
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const { createStrapi } = require('@strapi/strapi');
 
 const APPLY = process.argv.includes('--apply');
@@ -16,7 +18,14 @@ const APPLY = process.argv.includes('--apply');
 async function main() {
   let app;
   try {
-    app = await createStrapi({ distDir: './dist', autoReload: false, serveAdminPanel: false }).load();
+    app = await createStrapi({
+      // JS project: config lives at the project root. A TypeScript build
+      // would put it in ./dist instead — use that if it exists.
+      appDir: process.cwd(),
+      distDir: fs.existsSync(path.join(process.cwd(), 'dist', 'config')) ? path.join(process.cwd(), 'dist') : process.cwd(),
+      autoReload: false,
+      serveAdminPanel: false,
+    }).load();
 
     const invoices = await app.db.query('api::invoice.invoice').findMany({
       select: ['id', 'invoice_number', 'createdAt'],

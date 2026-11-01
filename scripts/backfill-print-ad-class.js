@@ -29,7 +29,14 @@ function csvCell(v) {
 async function main() {
   let app;
   try {
-    app = await createStrapi({ distDir: './dist', autoReload: false, serveAdminPanel: false }).load();
+    app = await createStrapi({
+      // JS project: config lives at the project root. A TypeScript build
+      // would put it in ./dist instead — use that if it exists.
+      appDir: process.cwd(),
+      distDir: fs.existsSync(path.join(process.cwd(), 'dist', 'config')) ? path.join(process.cwd(), 'dist') : process.cwd(),
+      autoReload: false,
+      serveAdminPanel: false,
+    }).load();
 
     const adverts = await app.db.query('api::advert.advert').findMany({
       where: { print_ad_class: { $null: true } },

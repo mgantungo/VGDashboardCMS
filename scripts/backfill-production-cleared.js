@@ -8,9 +8,11 @@
 //   node scripts/backfill-production-cleared.js --apply    # write
 //   node scripts/backfill-production-cleared.js --apply --all   # include adverts whose run dates are all past
 //
-// Run from the project root after `npm run build` (uses ./dist like the other scripts).
+// Run from the project root (where package.json is). Reads the same .env as Strapi.
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const { createStrapi } = require('@strapi/strapi');
 
 const APPLY = process.argv.includes('--apply');
@@ -19,7 +21,14 @@ const ALL = process.argv.includes('--all');
 async function main() {
   let app;
   try {
-    app = await createStrapi({ distDir: './dist', autoReload: false, serveAdminPanel: false }).load();
+    app = await createStrapi({
+      // JS project: config lives at the project root. A TypeScript build
+      // would put it in ./dist instead — use that if it exists.
+      appDir: process.cwd(),
+      distDir: fs.existsSync(path.join(process.cwd(), 'dist', 'config')) ? path.join(process.cwd(), 'dist') : process.cwd(),
+      autoReload: false,
+      serveAdminPanel: false,
+    }).load();
     const today = new Date().toISOString().split('T')[0];
 
     const adverts = await app.db.query('api::advert.advert').findMany({
