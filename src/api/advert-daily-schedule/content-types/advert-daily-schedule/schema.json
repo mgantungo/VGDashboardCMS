@@ -46,7 +46,7 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::design-batch.design-batch",
-      "inversedBy": "daily_schedules"
+      "mappedBy": "daily_schedules"
     },
     "source_file_group_id": {
       "type": "integer",
