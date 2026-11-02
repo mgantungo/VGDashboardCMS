@@ -12,6 +12,7 @@
  *   basis         'booked' (createdAt in range, default) | 'run' (a publishing date in range)
  *   productId     optional — one masthead/product
  *   paymentMethod optional — cash | credit | pdc | bank_transfer | mobile_money
+ *   salesPersonId optional — one vgams-sales-person
  *   printAdClass  optional on /list — display | classified | unclassified
  *
  * Amounts:
@@ -51,7 +52,7 @@ function emptyBucket() {
 }
 
 async function loadAdverts(strapi, body) {
-  const { startDate, endDate, basis = 'booked', productId, paymentMethod } = body;
+  const { startDate, endDate, basis = 'booked', productId, paymentMethod, salesPersonId } = body;
 
   const filters = {
     isCanceled: false,
@@ -59,6 +60,7 @@ async function loadAdverts(strapi, body) {
   };
   if (productId) filters.product.id = Number(productId);
   if (paymentMethod && METHODS.includes(paymentMethod)) filters.payment_method = paymentMethod;
+  if (salesPersonId) filters.vgams_sales_persons = { id: Number(salesPersonId) };
 
   if (basis === 'run') {
     // publishing_dates is JSON and can't be filtered in SQL; start_date is the
@@ -82,6 +84,7 @@ async function loadAdverts(strapi, body) {
       client:  { fields: ['id', 'company_name'] },
       product: { fields: ['id', 'product_name'] },
       vgams_user: { fields: ['id', 'name'] },
+      vgams_sales_persons: { fields: ['id', 'name', 'email'] },
     },
     sort: { createdAt: 'desc' },
     limit: -1,
@@ -107,6 +110,7 @@ async function loadAdverts(strapi, body) {
       productId: a.product?.id || null,
       productName: a.product?.product_name || '—',
       bookedBy: a.vgams_user?.name || '',
+      salesPerson: (a.vgams_sales_persons || []).map(s => s.name || s.email).filter(Boolean).join(', ') || 'Unassigned',
       printAdClass: a.print_ad_class || 'unclassified',
       paymentMethod: a.payment_method || 'unknown',
       adSize: a.ad_size,
@@ -202,6 +206,7 @@ module.exports = {
           basis: body.basis || 'booked',
           productId: body.productId || null,
           paymentMethod: body.paymentMethod || null,
+          salesPersonId: body.salesPersonId || null,
         },
         classes: Object.fromEntries(CLASSES.map(c => [c, { ...roundBucket(classes[c]), sharePct: share(c) }])),
         byProduct: [...byProduct.values()].map(roundRow).sort((a, b) => b.total - a.total),
